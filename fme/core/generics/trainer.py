@@ -590,14 +590,8 @@ class Trainer:
         if dist.is_root():
           temporary_location = os.path.join(
             os.path.dirname(checkpoint_path), f".{uuid.uuid4()}.tmp"
-        )
-        if ema_checkpoint_path is not None:
-            ema_temporary_location: str | None = os.path.join(
-                os.path.dirname(ema_checkpoint_path), f".{uuid.uuid4()}.tmp"
-            )
-        else:
-            ema_temporary_location = None
-        try:
+          )
+          try:
             data = {
                 "num_batches_seen": self.num_batches_seen,
                 "current_epoch_num_batches_seen": self._current_epoch_num_batches_seen,
