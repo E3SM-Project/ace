@@ -19,7 +19,7 @@ import torch
 import xarray as xr
 from xarray.coding.times import CFDatetimeCoder
 
-from fme.core.coordinates import Distributed
+from fme.core.distributed import Distributed
 from fme.core.coordinates import (
     DepthCoordinate,
     HorizontalCoordinates,
