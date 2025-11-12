@@ -11,6 +11,7 @@ numpy
 omegaconf>=2.1.0
 pandas
 plotly
+nvidia-physicsnemo
 s3fs
 tensorly
 tensorly-torch
