@@ -48,6 +48,11 @@ class LatLonRegion(Region):
             torch.logical_and(lat_mask, lon_mask), 1.0, 0.0
         )
 
+        dist = Distributed.get_instance()
+        self._regional_weights = self._regional_weights[
+            *dist.get_local_slices(self._regional_weights.shape)
+        ]
+
     @property
     def regional_weights(self) -> torch.Tensor:
         return self._regional_weights

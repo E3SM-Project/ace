@@ -228,8 +228,8 @@ class SingleModuleStep(StepABC):
         self._config = config
         self._no_optimization = NullOptimization()
 
-        dist = Distributed.get_instance()
-        self.module = dist.wrap_module(self.module)
+        self.dist = Distributed.get_instance()
+        self.module = self.dist.wrap_module(self.module)
 
         self._timestep = timestep
 
@@ -326,7 +326,7 @@ class SingleModuleStep(StepABC):
             The state of the stepper.
         """
         return {
-            "module": self.module.state_dict(),
+            "module": self.dist.gather_model_state_dict(self.module)
         }
 
     def load_state(self, state: dict[str, Any]) -> None:
@@ -340,7 +340,10 @@ class SingleModuleStep(StepABC):
         if "module.device_buffer" in module:
             # for backwards compatibility with old checkpoints
             del module["module.device_buffer"]
-        self.module.load_state_dict(module)
+        module = self.dist.scatter_model_state_dict(
+            self.module, module, strict=False
+        )
+        self.module.load_state_dict(module, strict=False)
 
 
 def step_with_adjustments(

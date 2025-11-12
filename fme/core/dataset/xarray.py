@@ -19,6 +19,7 @@ import torch
 import xarray as xr
 from xarray.coding.times import CFDatetimeCoder
 
+from fme.core.coordinates import Distributed
 from fme.core.coordinates import (
     DepthCoordinate,
     HorizontalCoordinates,
@@ -576,6 +577,7 @@ class XarrayDataset(torch.utils.data.Dataset):
         self._check_isel_dimensions(first_dataset.sizes)
         self._labels = set(config.labels)
         self._infer_timestep = config.infer_timestep
+        self._dist = Distributed.get_instance()
 
     def _check_isel_dimensions(self, data_dim_sizes):
         # Horizontal dimensions are not currently supported, as the current isel code
@@ -830,6 +832,14 @@ class XarrayDataset(torch.utils.data.Dataset):
             else:
                 ds = self._open_file(file_idx)
                 ds = ds.isel(**self.isel)
+                has_lat="lat" in self.dims
+                has_lon="lon" in self.dims
+                if self._dist.is_spatial_distributed() and has_lat and has_lon :
+                   crop_shape = self._shape_excluding_time_after_selection
+                   local_shape_h, local_offset_h, local_shape_w, local_offset_w = self._dist.get_local_shape_and_offset(crop_shape)
+                   ds = ds.isel(lat=slice(local_offset_h, local_offset_h + local_shape_h), lon=slice(local_offset_w, local_offset_w + local_shape_w))
+                   shape[1]=local_shape_h
+                   shape[2]=local_shape_w
                 tensor_dict = load_series_data(
                     idx=start,
                     n_steps=n_steps,
@@ -854,6 +864,12 @@ class XarrayDataset(torch.utils.data.Dataset):
             ds = self._open_file(idxs[0])
             ds = ds.isel(**self.isel)
             shape = [total_steps] + self._shape_excluding_time_after_selection
+            if self._dist.is_spatial_distributed() and has_lat and has_lon :
+              crop_shape = self._shape_excluding_time_after_selection
+              local_shape_h, local_offset_h, local_shape_w, local_offset_w = self._dist.get_local_shape_and_offset(crop_shape)
+              ds = ds.isel(lat=slice(local_offset_h, local_offset_h + local_shape_h), lon=slice(local_offset_w, local_offset_w + local_shape_w))
+              shape[1]=local_shape_h
+              shape[2]=local_shape_w
             for name in self._time_invariant_names:
                 variable = ds[name].variable
                 if self.fill_nans is not None:
