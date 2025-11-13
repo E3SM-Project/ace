@@ -294,8 +294,6 @@ class LatLonOperations(GriddedOperations):
                 "Area weights must be longitudinally uniform, "
                 "as assumed for zonal mean."
             )
-        dist = Distributed.get_instance()
-        area_weights = area_weights[*dist.get_local_slices(area_weights.shape)]
         self._device_area = area_weights.to(get_device())
         self._cpu_area = area_weights.to("cpu")
         self._device_mask_provider = mask_provider.to(get_device())
@@ -346,9 +344,32 @@ class LatLonOperations(GriddedOperations):
         name: str | None = None,
     ) -> torch.Tensor:
         area_weights = self._get_area_weights(data, name)
-        return metrics.weighted_mean(
-            data, area_weights, dim=self.HORIZONTAL_DIMS, keepdim=keepdim
-        )
+        
+        # For spatial parallelism, we need to compute global mean across
+        # all spatial ranks by reducing both the weighted sum and total weight
+        from fme.core.distributed import Distributed
+        dist = Distributed.get_instance()
+        
+        if dist.spatial_parallelism:
+            # Compute local weighted sum and total weight
+            weighted_sum = metrics.weighted_sum(
+                data, area_weights, dim=self.HORIZONTAL_DIMS, keepdim=keepdim
+            )
+            total_weight = area_weights.sum(
+                dim=self.HORIZONTAL_DIMS, keepdim=keepdim
+            )
+            
+            # All-reduce across spatial parallel group
+            weighted_sum = dist.spatial_reduce_sum(weighted_sum)
+            total_weight = dist.spatial_reduce_sum(total_weight)
+            
+            # Compute global mean
+            return weighted_sum / total_weight
+        else:
+            # Non-distributed case
+            return metrics.weighted_mean(
+                data, area_weights, dim=self.HORIZONTAL_DIMS, keepdim=keepdim
+            )
 
     def regional_area_weighted_mean(
         self,

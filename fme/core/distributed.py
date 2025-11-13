@@ -307,6 +307,34 @@ class Distributed:
             torch.distributed.all_reduce(tensor, op=torch.distributed.ReduceOp.MAX)
         return tensor
 
+    def spatial_reduce_sum(self, tensor: torch.Tensor) -> torch.Tensor:
+        """
+        Reduce a tensor across spatial parallel group only.
+
+        This reduces only across the h and w parallel dimensions,
+        not across the entire world.
+
+        Modifies the input tensor in-place as a side effect.
+        """
+        if self.spatial_parallelism:
+            import torch
+            # Get the spatial process group (h x w)
+            spatial_group = comm.get_group("spatial")
+            torch.distributed.all_reduce(tensor, group=spatial_group)
+        return tensor
+
+    def spatial_reduce_mean(self, tensor: torch.Tensor) -> torch.Tensor:
+        """
+        Reduce a tensor representing a mean across spatial parallel group only.
+
+        Modifies the input tensor in-place as a side effect.
+        """
+        if self.spatial_parallelism:
+            spatial_size = comm.get_size("h") * comm.get_size("w")
+            self.spatial_reduce_sum(tensor)
+            tensor = tensor / spatial_size
+        return tensor
+
     def gather(self, tensor: torch.Tensor) -> list[torch.Tensor] | None:
         """
         Gather a tensor from all processes to the root process.
@@ -439,7 +467,12 @@ class Distributed:
         """
         if self._distributed:
             logger.debug(f"Barrier on rank {self.rank}")
-            torch.distributed.barrier()
+            if self.spatial_parallelism:
+                # Use physicsnemo's barrier via comm module
+                if torch.distributed.is_initialized():
+                    torch.distributed.barrier()
+            else:
+                torch.distributed.barrier()
 
     def set_seed(self, seed: int):
         """
@@ -454,13 +487,16 @@ class Distributed:
         return self._seed
 
     def shutdown(self):
-        self.barrier()
         if self._distributed:
+            # Only call barrier if torch.distributed is still initialized
+            if torch.distributed.is_initialized():
+                self.barrier()
             logger.debug(f"Shutting down rank {self.rank}")
             if self.spatial_parallelism:
                 comm.cleanup()
             else:
-                torch.distributed.destroy_process_group()
+                if torch.distributed.is_initialized():
+                    torch.distributed.destroy_process_group()
 
 
 singleton: Distributed | None = None

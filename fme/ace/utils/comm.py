@@ -19,6 +19,7 @@ import logging
 import math
 from typing import Union
 import numpy as np
+import torch
 
 # we are using the distributed manager from physicsnemo
 from physicsnemo.distributed.manager import DistributedManager
@@ -118,7 +119,16 @@ def cleanup():
 # initialization routine
 def init(model_parallel_sizes=[1, 1, 1, 1], model_parallel_names=["h", "w", "fin", "fout"], data_parallel_sizes=[1, -1], data_parallel_names=["ensemble", "batch"], verbose=False):
 
-    # call basic init first
+    # Initialize torch.distributed first if not already done and using torchrun
+    # This prevents physicsnemo from trying to initialize with GPU settings
+    if "RANK" in os.environ and not torch.distributed.is_initialized():
+        from fme.core.device import using_gpu
+        if using_gpu():
+            torch.distributed.init_process_group(backend="nccl", init_method="env://")
+        else:
+            torch.distributed.init_process_group(backend="gloo", init_method="env://")
+    
+    # call basic init - always needed to initialize the manager
     DistributedManager.initialize()
 
     # extract manager object
@@ -189,8 +199,6 @@ def init(model_parallel_sizes=[1, 1, 1, 1], model_parallel_names=["h", "w", "fin
                 _COMM_ROOTS[gname] = min(grp)
 
     if verbose:
-        import torch
-
         for rank in range(_DM.world_size):
             if rank == _DM.rank:
                 print(f"{rank}: groups:")

@@ -234,11 +234,13 @@ class FourierNeuralOperatorBlock(nn.Module):
         x, residual = self.filter(x_norm)
 
         if hasattr(self, "inner_skip"):
+            # Slice residual to match output shape for spatial parallelism
+            residual_sliced = residual[..., : self.output_shape_loc[0], : self.output_shape_loc[1]]
             if self.concat_skip:
-                x = torch.cat((x, self.inner_skip(residual)), dim=1)
+                x = torch.cat((x, self.inner_skip(residual_sliced)), dim=1)
                 x = self.inner_skip_conv(x)
             else:
-                x = x + self.inner_skip(residual)
+                x = x + self.inner_skip(residual_sliced)
 
         if hasattr(self, "act_layer"):
             x = self.act_layer(x)
@@ -255,11 +257,13 @@ class FourierNeuralOperatorBlock(nn.Module):
         x = self.drop_path(x)
 
         if hasattr(self, "outer_skip"):
+            # Slice residual to match output shape for spatial parallelism
+            residual_sliced = residual[..., : self.output_shape_loc[0], : self.output_shape_loc[1]]
             if self.concat_skip:
-                x = torch.cat((x, self.outer_skip(residual)), dim=1)
+                x = torch.cat((x, self.outer_skip(residual_sliced)), dim=1)
                 x = self.outer_skip_conv(x)
             else:
-                x = x + self.outer_skip(residual)
+                x = x + self.outer_skip(residual_sliced)
 
         return x
 
@@ -735,13 +739,15 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
 
         # learned position embedding
         if self.pos_embed:
-            # currently using deliberately a differently shape position embedding
-            self.pos_embed = nn.Parameter(
-                torch.zeros(
-                    1, self.embed_dim, self.img_shape_loc[0], self.img_shape_loc[1]
-                )
-            )
-            # self.pos_embed = nn.Parameter( torch.zeros(1, self.embed_dim, self.img_shape_eff[0], self.img_shape_eff[1]) )
+            # When using spatial parallelism, create pos_embed with full dimensions.
+            # The physicsnemo wrapper will handle sharding based on metadata.
+            if dist.spatial_parallelism:
+                pos_embed_shape = (1, self.embed_dim, self.img_shape[0], self.img_shape[1])
+            else:
+                pos_embed_shape = (1, self.embed_dim, self.img_shape_loc[0], self.img_shape_loc[1])
+            
+            self.pos_embed = nn.Parameter(torch.zeros(pos_embed_shape))
+            
             if dist.spatial_parallelism:
                 self.pos_embed.is_shared_mp = []
                 self.pos_embed.sharded_dims_mp = [None, None, "h", "w"]
@@ -807,7 +813,9 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
         x = self._forward_features(x)
 
         if self.big_skip:
-            x = torch.cat((x, residual), dim=1)
+            # Slice residual to match local dimensions for spatial parallelism
+            residual_sliced = residual[..., : self.img_shape_loc[0], : self.img_shape_loc[1]]
+            x = torch.cat((x, residual_sliced), dim=1)
 
         if self.checkpointing >= 1:
             x = checkpoint(self.decoder, x)
