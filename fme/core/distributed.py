@@ -453,10 +453,22 @@ class Distributed:
         return modes_lat_local, modes_lon_local
 
     def get_input_out_shapes(self,forward_transform,inverse_transform):
-        if (self.comm_get_size("spatial") > 1):
+        # When using physicsnemo's spatial parallelism with non-distributed transforms,
+        # the transforms don't have lat_shapes/lon_shapes, so compute local shapes directly
+        if self.spatial_parallelism and not hasattr(forward_transform, 'lat_shapes'):
+            # Using non-distributed transforms with spatial parallelism
+            # Compute local shapes based on current sharding
+            h_slice, w_slice = self.get_local_slices((forward_transform.nlat, forward_transform.nlon))
+            input_shape_loc = (h_slice.stop - h_slice.start, w_slice.stop - w_slice.start)
+            
+            h_slice, w_slice = self.get_local_slices((inverse_transform.nlat, inverse_transform.nlon))
+            output_shape_loc = (h_slice.stop - h_slice.start, w_slice.stop - w_slice.start)
+        elif self.spatial_parallelism and hasattr(forward_transform, 'lat_shapes'):
+            # Using distributed transforms (Makani's approach)
             input_shape_loc = (forward_transform.lat_shapes[comm.get_rank("h")], forward_transform.lon_shapes[comm.get_rank("w")])
             output_shape_loc = (inverse_transform.lat_shapes[comm.get_rank("h")], inverse_transform.lon_shapes[comm.get_rank("w")])
         else:
+            # No spatial parallelism - use full shapes
             input_shape_loc = (forward_transform.nlat, forward_transform.nlon)
             output_shape_loc = (inverse_transform.nlat, inverse_transform.nlon)
         return input_shape_loc, output_shape_loc

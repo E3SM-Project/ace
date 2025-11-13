@@ -117,9 +117,14 @@ class GriddedOperations(abc.ABC):
     ) -> TensorDict:
         result = {}
         for name in truth:
+            t = truth[name]
+            p = predicted[name]
+            # Slice predicted to match truth spatial dims if needed
+            if p.shape[-2:] != t.shape[-2:]:
+                p = p[..., :t.shape[-2], :t.shape[-1]]
             result[name] = self.area_weighted_rmse(
-                truth=truth[name],
-                predicted=predicted[name],
+                truth=t,
+                predicted=p,
                 name=name,
             )
         return result

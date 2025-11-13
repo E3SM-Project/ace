@@ -119,16 +119,8 @@ def cleanup():
 # initialization routine
 def init(model_parallel_sizes=[1, 1, 1, 1], model_parallel_names=["h", "w", "fin", "fout"], data_parallel_sizes=[1, -1], data_parallel_names=["ensemble", "batch"], verbose=False):
 
-    # Initialize torch.distributed first if not already done and using torchrun
-    # This prevents physicsnemo from trying to initialize with GPU settings
-    if "RANK" in os.environ and not torch.distributed.is_initialized():
-        from fme.core.device import using_gpu
-        if using_gpu():
-            torch.distributed.init_process_group(backend="nccl", init_method="env://")
-        else:
-            torch.distributed.init_process_group(backend="gloo", init_method="env://")
-    
     # call basic init - always needed to initialize the manager
+    # DistributedManager.initialize() will handle torch.distributed initialization
     DistributedManager.initialize()
 
     # extract manager object

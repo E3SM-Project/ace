@@ -29,6 +29,7 @@ from fme.core.coordinates import (
     SerializableVerticalCoordinate,
     VerticalCoordinate,
 )
+from fme.core.distributed import Distributed
 from fme.core.corrector.atmosphere import AtmosphereCorrectorConfig
 from fme.core.dataset.data_typing import VariableMetadata
 from fme.core.dataset.utils import encode_timestep
@@ -297,6 +298,30 @@ class SingleModuleStepperConfig:
         )
 
 
+def _apply_spatial_slicing_to_gen_data(data: TensorMapping) -> TensorMapping:
+    """Apply spatial slicing to DATA LOADER tensors to match model output dimensions.
+
+    The model's distributed operations (e.g., distributed FFT in SFNO) internally
+    partition the spatial dimensions. However, the data loader provides full-resolution
+    data. This function slices the data loader tensors to match the spatially partitioned
+    model outputs.
+    """
+    dist = Distributed.get_instance()
+    if dist.is_spatial_distributed():
+        # Get the full spatial dimensions from the first tensor (from data loader)
+        first_tensor = next(iter(data.values()))
+        # Assuming shape is [..., lat, lon] where lat and lon are the last 2 dims
+        full_spatial_shape = (first_tensor.shape[-2], first_tensor.shape[-1])
+        h_slice, w_slice = dist.get_local_slices(full_spatial_shape)
+
+        # Apply slicing to all tensors
+        return {
+            k: v[..., h_slice, w_slice]
+            for k, v in data.items()
+        }
+    return data
+
+
 def _prepend_timesteps(
     data: EnsembleTensorDict, timesteps: TensorMapping, time_dim: int = 2
 ) -> EnsembleTensorDict:
@@ -305,7 +330,11 @@ def _prepend_timesteps(
         break
     else:
         return data  # data is length zero
+
+    # Slice timesteps (from data loader) to match spatially partitioned model outputs
+    timesteps = _apply_spatial_slicing_to_gen_data(timesteps)
     timesteps = add_ensemble_dim(timesteps, repeats=n_ensemble)
+
     return EnsembleTensorDict(
         {k: torch.cat([timesteps[k], v], dim=time_dim) for k, v in data.items()}
     )
@@ -1307,7 +1336,7 @@ class Stepper(
         stepped = TrainOutput(
             metrics=metrics,
             gen_data=gen_data,
-            target_data=add_ensemble_dim(target_data.data),
+            target_data=add_ensemble_dim(_apply_spatial_slicing_to_gen_data(target_data.data)),
             time=target_data.time,
             normalize=self.normalizer.normalize,
             derive_func=self.derive_func,
@@ -1369,15 +1398,25 @@ class Stepper(
             with context:
                 gen_step = next(output_iterator)
                 gen_step = unfold_ensemble_dim(gen_step, n_ensemble=n_ensemble)
+                # Slice gen_step to match target_step spatial dimensions before loss
+                target_step = add_ensemble_dim(
+                    _apply_spatial_slicing_to_gen_data({
+                        k: v.select(self.TIME_DIM, step)
+                        for k, v in target_data.data.items()
+                    })
+                )
+                # For each key in gen_step, slice to match target_step shape
+                for k in gen_step:
+                    if k in target_step:
+                        # Only slice if both tensors are present
+                        tgt = target_step[k]
+                        out = gen_step[k]
+                        # Only slice if last two dims differ
+                        if out.shape[-2:] != tgt.shape[-2:]:
+                            gen_step[k] = out[..., :tgt.shape[-2], :tgt.shape[-1]]
                 output_list.append(gen_step)
                 # Note: here we examine the loss for a single timestep,
                 # not a single model call (which may contain multiple timesteps).
-                target_step = add_ensemble_dim(
-                    {
-                        k: v.select(self.TIME_DIM, step)
-                        for k, v in target_data.data.items()
-                    }
-                )
                 step_loss = self.loss_obj(gen_step, target_step, step=step)
                 metrics[f"loss_step_{step}"] = step_loss.detach()
             if optimize_step:

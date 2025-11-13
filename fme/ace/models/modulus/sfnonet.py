@@ -234,8 +234,8 @@ class FourierNeuralOperatorBlock(nn.Module):
         x, residual = self.filter(x_norm)
 
         if hasattr(self, "inner_skip"):
-            # Slice residual to match output shape for spatial parallelism
-            residual_sliced = residual[..., : self.output_shape_loc[0], : self.output_shape_loc[1]]
+            # Slice residual to match x's actual spatial shape
+            residual_sliced = residual[..., :x.shape[-2], :x.shape[-1]]
             if self.concat_skip:
                 x = torch.cat((x, self.inner_skip(residual_sliced)), dim=1)
                 x = self.inner_skip_conv(x)
@@ -257,8 +257,8 @@ class FourierNeuralOperatorBlock(nn.Module):
         x = self.drop_path(x)
 
         if hasattr(self, "outer_skip"):
-            # Slice residual to match output shape for spatial parallelism
-            residual_sliced = residual[..., : self.output_shape_loc[0], : self.output_shape_loc[1]]
+            # Slice residual to match x's actual spatial shape
+            residual_sliced = residual[..., :x.shape[-2], :x.shape[-1]]
             if self.concat_skip:
                 x = torch.cat((x, self.outer_skip(residual_sliced)), dim=1)
                 x = self.outer_skip_conv(x)
@@ -492,7 +492,8 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
             self.img_shape[1] // self.residual_filter_factor // 2 + 1
         )
 
-        if (dist.comm_get_size("spatial") > 1 ) and (not thd.is_initialized()):
+        # Initialize torch_harmonics distributed if using Makani's approach (not PhysicsNeMo)
+        if (not dist.spatial_parallelism) and (dist.comm_get_size("h") > 1) and (not thd.is_initialized()):
             polar_group = None if (dist.comm_get_size("h") == 1) else dist.comm_get_group("h")
             azimuth_group = None if (dist.comm_get_size("w") == 1) else dist.comm_get_group("w")
             thd.init(polar_group, azimuth_group)
@@ -522,22 +523,30 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
             sht_handle = th.RealSHT
             isht_handle = th.InverseRealSHT
 
-            if dist.comm_get_size("spatial") > 1:
+            # Use Makani's distributed transforms only when using Makani's parallelism
+            # (not PhysicsNeMo's spatial parallelism)
+            # PhysicsNeMo handles sharding separately and uses non-distributed transforms on global grids
+            if not dist.spatial_parallelism and dist.comm_get_size("h") > 1:
                 sht_handle = thd.DistributedRealSHT
                 isht_handle = thd.DistributedInverseRealSHT
+            
+            # For PhysicsNeMo's spatial parallelism, use GLOBAL grid sizes
+            # PhysicsNeMo wrapper handles the data sharding, transforms see full dimensions
+            img_shape_for_transform = self.img_shape
+            h_w_for_transform = (self.h, self.w)
                 
-            # set up
+            # set up transforms with appropriate grid sizes
             self.trans_down = sht_handle(
-                *self.img_shape, lmax=modes_lat, mmax=modes_lon, grid=data_grid
+                *img_shape_for_transform, lmax=modes_lat, mmax=modes_lon, grid=data_grid
             ).float()
             self.itrans_up = isht_handle(
-                *self.img_shape, lmax=modes_lat, mmax=modes_lon, grid=data_grid
+                *img_shape_for_transform, lmax=modes_lat, mmax=modes_lon, grid=data_grid
             ).float()
             self.trans = sht_handle(
-                self.h, self.w, lmax=modes_lat, mmax=modes_lon, grid="legendre-gauss"
+                *h_w_for_transform, lmax=modes_lat, mmax=modes_lon, grid="legendre-gauss"
             ).float()
             self.itrans = isht_handle(
-                self.h, self.w, lmax=modes_lat, mmax=modes_lon, grid="legendre-gauss"
+                *h_w_for_transform, lmax=modes_lat, mmax=modes_lon, grid="legendre-gauss"
             ).float()
 
         elif self.spectral_transform == "fft":
@@ -547,7 +556,8 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
                 )
             fft_handle = th.RealFFT2
             ifft_handle = th.InverseRealFFT2
-            if dist.comm_get_size("spatial") > 1:
+            # Use Makani's distributed transforms only when using Makani's parallelism
+            if not dist.spatial_parallelism and dist.comm_get_size("h") > 1:
                 fft_handle = DistributedRealFFT2
                 ifft_handle = DistributedInverseRealFFT2
 
@@ -556,40 +566,47 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
                 self.img_shape[0] + self.padding[0],
                 self.img_shape[1] + self.padding[1],
             )
-            self.img_shape_loc = (
-                self.img_shape_eff[0],
-                self.img_shape_eff[1],
-            )
+            
+            # For PhysicsNeMo's spatial parallelism, use GLOBAL grid sizes
+            # PhysicsNeMo wrapper handles the data sharding, transforms see full dimensions
+            img_shape_eff_for_transform = self.img_shape_eff
+            h_w_for_transform = (self.h, self.w)
 
             self.trans_down = fft_handle(
-                *self.img_shape_eff, lmax=modes_lat, mmax=modes_lon
+                *img_shape_eff_for_transform, lmax=modes_lat, mmax=modes_lon
             ).float()
             self.itrans_up = ifft_handle(
-                *self.img_shape_eff, lmax=modes_lat, mmax=modes_lon
+                *img_shape_eff_for_transform, lmax=modes_lat, mmax=modes_lon
             ).float()
             self.trans = fft_handle(
-                self.h, self.w, lmax=modes_lat, mmax=modes_lon
+                *h_w_for_transform, lmax=modes_lat, mmax=modes_lon
             ).float()
             self.itrans = ifft_handle(
-                self.h, self.w, lmax=modes_lat, mmax=modes_lon
+                *h_w_for_transform, lmax=modes_lat, mmax=modes_lon
             ).float()
         else:
             raise (ValueError("Unknown spectral transform"))
 
-        # use the SHT/FFT to compute the local, downscaled grid dimensions
-        self.img_shape_loc = (self.trans_down.nlat, self.trans_down.nlon)
-        self.img_shape_eff = (self.trans_down.nlat, self.trans_down.nlon)
-        self.h_loc = self.itrans.nlat
-        self.w_loc = self.itrans.nlon
-        if dist.comm_get_size("spatial") > 1:
+        # Compute local grid dimensions based on parallelism mode
+        if dist.spatial_parallelism:
+            # For PhysicsNeMo's spatial parallelism, compute local shapes from global transforms
+            h_slice, w_slice = dist.get_local_slices((self.trans_down.nlat, self.trans_down.nlon))
+            self.img_shape_loc = (h_slice.stop - h_slice.start, w_slice.stop - w_slice.start)
+            h_slice, w_slice = dist.get_local_slices((self.itrans_up.nlat, self.itrans_up.nlon))
+            self.img_shape_eff = (h_slice.stop - h_slice.start, w_slice.stop - w_slice.start)
+            h_slice, w_slice = dist.get_local_slices((self.itrans.nlat, self.itrans.nlon))
+            self.h_loc = h_slice.stop - h_slice.start
+            self.w_loc = w_slice.stop - w_slice.start
+        elif hasattr(self.trans_down, 'lat_shapes'):
+            # For Makani's distributed transforms, get shapes from the transform itself
             self.img_shape_loc = (self.trans_down.lat_shapes[dist.comm_get_rank("h")], self.trans_down.lon_shapes[dist.comm_get_rank("w")])
             self.img_shape_eff = (self.itrans_up.lat_shapes[dist.comm_get_rank("h")], self.itrans_up.lon_shapes[dist.comm_get_rank("w")])
             self.h_loc = self.itrans.lat_shapes[dist.comm_get_rank("h")]
             self.w_loc = self.itrans.lon_shapes[dist.comm_get_rank("w")]
         else:
+            # No parallelism, local = global
             self.img_shape_loc = (self.trans_down.nlat, self.trans_down.nlon)
-            #CHECK: should be itrans_up?
-            self.img_shape_eff = (self.trans_down.nlat, self.trans_down.nlon)
+            self.img_shape_eff = (self.itrans_up.nlat, self.itrans_up.nlon)
             self.h_loc = self.itrans.nlat
             self.w_loc = self.itrans.nlon
     
@@ -630,7 +647,8 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
 
         # pick norm layer
         if self.normalization_layer == "layer_norm":
-            if dist.comm_get_size("spatial") > 1:
+            # Use distributed norms for spatial parallelism (both Makani and PhysicsNeMo)
+            if dist.spatial_parallelism or (dist.comm_get_size("h") > 1):
                 ## CHECK ME: norm_layer0 and norm_layer1, as coded in makani
                 norm_layer0 = partial(DistributedLayerNorm, normalized_shape=(self.embed_dim), elementwise_affine=True, eps=1e-6)
                 norm_layer1 = norm_layer0
@@ -645,7 +663,8 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
                     nn.LayerNorm, normalized_shape=(self.h_loc, self.w_loc), eps=1e-6
                 )
         elif self.normalization_layer == "instance_norm":
-            if dist.comm_get_size("spatial") > 1:
+            # Use distributed norms for spatial parallelism (both Makani and PhysicsNeMo)
+            if dist.spatial_parallelism or (dist.comm_get_size("h") > 1):
                 norm_layer0 = partial(DistributedInstanceNorm2d,
                                          num_features=self.embed_dim,
                                          eps=1e-6, affine=True)
@@ -813,8 +832,8 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
         x = self._forward_features(x)
 
         if self.big_skip:
-            # Slice residual to match local dimensions for spatial parallelism
-            residual_sliced = residual[..., : self.img_shape_loc[0], : self.img_shape_loc[1]]
+            # Slice residual to match x's actual spatial dimensions for spatial parallelism
+            residual_sliced = residual[..., :x.shape[-2], :x.shape[-1]]
             x = torch.cat((x, residual_sliced), dim=1)
 
         if self.checkpointing >= 1:

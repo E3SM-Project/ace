@@ -52,6 +52,9 @@ def weighted_sum(
     if weights is None:
         return tensor.sum(dim=dim, keepdim=keepdim)
 
+    # Slice weights to match tensor's last two spatial dims if needed
+    if weights.shape[-2:] != tensor.shape[-2:]:
+        weights = weights[..., :tensor.shape[-2], :tensor.shape[-1]]
     expanded_weights = weights.expand(tensor.shape)
 
     # remove potential "expected NaNs", i.e. any NaNs with 0 weight
@@ -109,6 +112,9 @@ def weighted_nanmean(
     """
     if weights is None:
         return tensor.nanmean(dim=dim, keepdim=keepdim)
+    # Slice weights to match tensor's last two spatial dims if needed
+    if weights.shape[-2:] != tensor.shape[-2:]:
+        weights = weights[..., :tensor.shape[-2], :tensor.shape[-1]]
     denom = torch.where(torch.isnan(tensor), 0.0, weights.expand(tensor.shape)).sum(
         dim=dim, keepdim=keepdim
     )
@@ -403,6 +409,21 @@ def spherical_power_spectrum(
     Notes:
         Computed by summing over all "m" wavenumbers for each total "l" wavenumber.
     """
+
+    # Ensure field has correct shape for SHT
+    nlat, nlon = sht.nlat, sht.nlon
+    # Slice or pad latitude
+    if field.shape[-2] > nlat:
+        field = field[..., :nlat, :]
+    elif field.shape[-2] < nlat:
+        pad = (0, 0, 0, nlat - field.shape[-2])
+        field = torch.nn.functional.pad(field, pad)
+    # Slice or pad longitude
+    if field.shape[-1] > nlon:
+        field = field[..., :, :nlon]
+    elif field.shape[-1] < nlon:
+        pad = (0, nlon - field.shape[-1])
+        field = torch.nn.functional.pad(field, pad)
     field_sht = sht.forward(field)
     power_spectrum = torch.sum(abs(field_sht) ** 2, dim=-1)
     return power_spectrum
