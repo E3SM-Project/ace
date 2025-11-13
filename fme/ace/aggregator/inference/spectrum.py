@@ -19,13 +19,26 @@ class SphericalPowerSpectrumAggregator:
         self._real_sht = gridded_operations.get_real_sht()
         self._power_spectrum: dict[str, torch.Tensor] = {}
         self._counts: dict[str, int] = defaultdict(int)
+        # Skip spectrum with spatial parallelism (partial fields only)
+        dist = Distributed.get_instance()
+        self._spatial_parallel = (
+            dist.is_spatial_distributed()
+            if hasattr(dist, "is_spatial_distributed")
+            else False
+        )
 
     @torch.no_grad()
     def record_batch(self, data: TensorMapping):
+        # Skip with spatial parallelism (only have partial fields)
+        if self._spatial_parallel:
+            return
+
         for name in data:
             batch_size = data[name].shape[0]
             time_size = data[name].shape[1]
-            power_spectrum = spherical_power_spectrum(data[name], self._real_sht)
+            power_spectrum = spherical_power_spectrum(
+                data[name], self._real_sht
+            )
             mean_power_spectrum = torch.mean(power_spectrum, dim=(0, 1))
             new_count = batch_size * time_size
             if name not in self._power_spectrum:
