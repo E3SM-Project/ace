@@ -387,9 +387,10 @@ class Trainer:
             wandb.log(all_logs, step=self.num_batches_seen)
 
             if self.config.save_checkpoint:
-                if dist.is_root():
-                    logging.info(f"Saving checkpoints for epoch {self._epochs_trained}")
-                    self.save_all_checkpoints(valid_loss, inference_error)
+                # All ranks assemble state (needed for any distributed collectives inside get_state);
+                # only root performs filesystem writes.
+                logging.info(f"Saving checkpoints for epoch {self._epochs_trained}")
+                self.save_all_checkpoints(valid_loss, inference_error)
 
     def _log_first_batch_metrics(self):
         wandb = WandB.get_instance()
@@ -473,6 +474,7 @@ class Trainer:
                 self.config.checkpoint_every_n_batches > 0
                 and self.num_batches_seen % self.config.checkpoint_every_n_batches == 0
             ):
+                # All ranks call save to participate in any collectives; only root writes.
                 self._save_restart_checkpoints()
                 self._last_saved_num_batches_seen = self.num_batches_seen
         if self.num_batches_seen > self._last_saved_num_batches_seen:
@@ -610,10 +612,10 @@ class Trainer:
                         stepper=self.stepper.get_state(),
                         ema=self._ema.get_state(),
                     )
-                    # never include optimization in EMA checkpoint
                     if "optimization" in ema_data:
                         ema_data.pop("optimization")
-                    torch.save(ema_data, ema_temporary_location)
+                    if dist.is_root():
+                        torch.save(ema_data, ema_temporary_location)
             if dist.is_root():
                 torch.save(data, temporary_location)
                 if ema_temporary_location is not None and ema_checkpoint_path is not None:
@@ -647,6 +649,9 @@ class Trainer:
         )
 
     def save_all_checkpoints(self, valid_loss: float, inference_error: float | None):
+        # be safe and sync all ranks when saving ckpts
+        dist = Distributed.get_instance()
+        sync_ckpt = dist.is_distributed()
         if self.config.validate_using_ema:
             best_checkpoint_context = self._ema_context
         else:
@@ -660,6 +665,9 @@ class Trainer:
                 )
                 self._best_validation_loss = valid_loss
                 save_best_checkpoint = True  # wait until inference error is updated
+                self.save_checkpoint(self.paths.best_checkpoint_path)
+                if sync_ckpt:
+                    dist.barrier()
             if inference_error is not None and (
                 inference_error <= self._best_inference_error
             ):
@@ -673,6 +681,8 @@ class Trainer:
                 )
                 self._best_inference_error = inference_error
                 self.save_checkpoint(self.paths.best_inference_checkpoint_path)
+                if sync_ckpt:
+                    dist.barrier()
 
                 # Save epoch-specific best inference checkpoint if configured
                 if self.config.save_best_inference_epoch_checkpoints:
@@ -689,7 +699,12 @@ class Trainer:
             if save_best_checkpoint:
                 self.save_checkpoint(self.paths.best_checkpoint_path)
 
+                if sync_ckpt:
+                        dist.barrier()
+        # restart/latest checkpoint always saved
         self._save_restart_checkpoints()
+        if sync_ckpt:
+            dist.barrier()
 
         if self._ema_epoch_checkpoint_enabled(self._epochs_trained):
             ema_epoch_checkpoint_path = self.paths.ema_epoch_checkpoint_path(
@@ -698,12 +713,16 @@ class Trainer:
             logging.info(f"Saving EMA epoch checkpoint to {ema_epoch_checkpoint_path}")
             with self._ema_context():
                 self.save_checkpoint(ema_epoch_checkpoint_path)
+            if sync_ckpt:
+                dist.barrier()
         if self._epoch_checkpoint_enabled(self._epochs_trained):
             epoch_checkpoint_path = self.paths.epoch_checkpoint_path(
                 self._epochs_trained
             )
             logging.info(f"Saving epoch checkpoint to {epoch_checkpoint_path}")
             self.save_checkpoint(epoch_checkpoint_path)
+            if sync_ckpt:
+                dist.barrier()
 
 
 def inference_one_epoch(

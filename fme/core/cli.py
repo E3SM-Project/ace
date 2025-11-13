@@ -77,8 +77,11 @@ def prepare_directory(
 ) -> ResumeResultsConfig | None:
     """Create experiment directory and dump config_data to it."""
     dist = Distributed.get_instance()
-    if not os.path.isdir(path) and dist.is_root():
+    # Ensure directory exists on all ranks: root creates, then barrier.
+    if dist.is_root() and not os.path.isdir(path):
         os.makedirs(path, exist_ok=True)
+    if dist.is_distributed():
+        dist.barrier()
     if resume_results is not None and not os.path.isdir(
         os.path.join(path, "training_checkpoints")
     ):
@@ -86,8 +89,12 @@ def prepare_directory(
     else:
         # either not given or ignored because we already resumed once before
         resume_results = None
-    with open(os.path.join(path, "config.yaml"), "w") as f:
-        yaml.dump(config_data, f, default_flow_style=False, sort_keys=False)
+    # Only root writes config; others wait to avoid race causing mismatched collectives.
+    if dist.is_root():
+        with open(os.path.join(path, "config.yaml"), "w") as f:
+            yaml.dump(config_data, f, default_flow_style=False, sort_keys=False)
+    if dist.is_distributed():
+        dist.barrier()
     return resume_results
 
 
