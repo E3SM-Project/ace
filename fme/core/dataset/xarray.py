@@ -833,24 +833,19 @@ class XarrayDataset(torch.utils.data.Dataset):
             else:
                 ds = self._open_file(file_idx)
                 ds = ds.isel(**self.isel)
-                has_lat="lat" in self.dims
-                has_lon="lon" in self.dims
-                if self._dist.is_spatial_distributed() and has_lat and has_lon :
-                   slice_h, slice_w = self._dist.get_local_slices(self._shape_excluding_time_after_selection)
-                   ds = ds.isel(lat=slice_h, lon=slice_w)
-                   shape[1]=slice_h.stop - slice_h.start
-                   shape[2]=slice_w.stop - slice_w.start
+                ds_local, shape_local = self._dist.dataset_reshape(ds, self.dims, shape)
                 tensor_dict = load_series_data(
                     idx=start,
                     n_steps=n_steps,
-                    ds=ds,
+                    ds=ds_local,
                     names=self._time_dependent_names,
                     final_dims=self.dims,
-                    final_shape=shape,
+                    final_shape=shape_local,
                     fill_nans=self.fill_nans,
                 )
-                ds.close()
-                del ds
+                ds_local.close()
+                del ds_local
+                #CHECK: DO I also need to del ds
             for n in self._time_dependent_names:
                 arrays.setdefault(n, []).append(tensor_dict[n])
 
@@ -864,19 +859,16 @@ class XarrayDataset(torch.utils.data.Dataset):
             ds = self._open_file(idxs[0])
             ds = ds.isel(**self.isel)
             shape = [total_steps] + self._shape_excluding_time_after_selection
-            if self._dist.is_spatial_distributed() and has_lat and has_lon :
-              slice_h, slice_w = self._dist.get_local_slices(self._shape_excluding_time_after_selection)
-              ds = ds.isel(lat=slice_h, lon=slice_w)
-              shape[1]=slice_h.stop - slice_h.start
-              shape[2]=slice_w.stop - slice_w.start
+            ds_local, shape_local = self._dist.dataset_reshape(ds, self.dims, shape)
 
             for name in self._time_invariant_names:
-                variable = ds[name].variable
+                variable = ds_local[name].variable
                 if self.fill_nans is not None:
                     variable = variable.fillna(self.fill_nans.value)
-                tensors[name] = as_broadcasted_tensor(variable, self.dims, shape)
-            ds.close()
-            del ds
+                tensors[name] = as_broadcasted_tensor(variable, self.dims, shape_local)
+            ds_local.close()
+            del ds_local
+            #CHECK: DO I also need to del ds
 
         # load static derived variables
         for name in self._static_derived_names:
