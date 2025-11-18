@@ -585,6 +585,12 @@ class Trainer:
         temporary_location = os.path.join(
             os.path.dirname(checkpoint_path), f".{uuid.uuid4()}.tmp"
         )
+        if ema_checkpoint_path is not None:
+            ema_temporary_location: str | None = os.path.join(
+                os.path.dirname(ema_checkpoint_path), f".{uuid.uuid4()}.tmp"
+            )
+        else:
+            ema_temporary_location = None
         try:
             data = {
                 "num_batches_seen": self.num_batches_seen,
@@ -597,17 +603,27 @@ class Trainer:
             }
             if include_optimization:
                 data["optimization"] = self.optimization.get_state()
-            else:
-                data["ema"].pop("ema_params")  # don't need if not saving optimization
+            if ema_temporary_location is not None:
+                with self._ema_context():
+                    ema_data = dict(
+                        data,
+                        stepper=self.stepper.get_state(),
+                        ema=self._ema.get_state(),
+                    )
+                    # never include optimization in EMA checkpoint
+                    if "optimization" in ema_data:
+                        ema_data.pop("optimization")
+                    if dist.is_root():
+                      torch.save(ema_data, ema_temporary_location)
             if dist.is_root():
               torch.save(data, temporary_location)
+              if ema_temporary_location is not None and ema_checkpoint_path is not None:
+                os.replace(ema_temporary_location, ema_checkpoint_path)
               os.replace(temporary_location, checkpoint_path)
         finally:
             if dist.is_root() and os.path.exists(temporary_location):
-                os.remove(temporary_location)
-            if ema_temporary_location is not None and os.path.exists(
-                ema_temporary_location
-            ):
+              os.remove(temporary_location)
+              if ema_temporary_location is not None and os.path.exists(ema_temporary_location):
                 os.remove(ema_temporary_location)
 
     def restore_checkpoint(self, checkpoint_path, ema_checkpoint_path):
