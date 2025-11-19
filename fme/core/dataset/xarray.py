@@ -19,6 +19,7 @@ import torch
 import xarray as xr
 from xarray.coding.times import CFDatetimeCoder
 
+from fme.core.distributed import Distributed
 from fme.core.coordinates import (
     DepthCoordinate,
     HorizontalCoordinates,
@@ -42,6 +43,7 @@ from .utils import (
     load_series_data,
     load_series_data_zarr_async,
 )
+
 
 SLICE_NONE = slice(None)
 GET_RAW_TIMES_NUM_FILES_PARALLELIZATION_THRESHOLD = 12
@@ -576,6 +578,7 @@ class XarrayDataset(torch.utils.data.Dataset):
         self._check_isel_dimensions(first_dataset.sizes)
         self._labels = set(config.labels)
         self._infer_timestep = config.infer_timestep
+        self._dist = Distributed.get_instance()
 
     def _check_isel_dimensions(self, data_dim_sizes):
         # Horizontal dimensions are not currently supported, as the current isel code
@@ -830,17 +833,21 @@ class XarrayDataset(torch.utils.data.Dataset):
             else:
                 ds = self._open_file(file_idx)
                 ds = ds.isel(**self.isel)
+                ds_local, shape_local = self._dist.dataset_reshape(ds, self.dims, shape)
                 tensor_dict = load_series_data(
                     idx=start,
                     n_steps=n_steps,
-                    ds=ds,
+                    ds=ds_local,
                     names=self._time_dependent_names,
                     final_dims=self.dims,
-                    final_shape=shape,
+                    final_shape=shape_local,
                     fill_nans=self.fill_nans,
                 )
+                ds_local.close()
+                del ds_local
                 ds.close()
                 del ds
+                #CHECK: DO I also need to del ds
             for n in self._time_dependent_names:
                 arrays.setdefault(n, []).append(tensor_dict[n])
 
@@ -854,11 +861,16 @@ class XarrayDataset(torch.utils.data.Dataset):
             ds = self._open_file(idxs[0])
             ds = ds.isel(**self.isel)
             shape = [total_steps] + self._shape_excluding_time_after_selection
+            ds_local, shape_local = self._dist.dataset_reshape(ds, self.dims, shape)
+
             for name in self._time_invariant_names:
-                variable = ds[name].variable
+                variable = ds_local[name].variable
                 if self.fill_nans is not None:
                     variable = variable.fillna(self.fill_nans.value)
-                tensors[name] = as_broadcasted_tensor(variable, self.dims, shape)
+                tensors[name] = as_broadcasted_tensor(variable, self.dims, shape_local)
+            ds_local.close()
+            del ds_local
+            #CHECK: DO I also need to del ds
             ds.close()
             del ds
 
