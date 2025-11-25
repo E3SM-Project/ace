@@ -14,7 +14,7 @@ from fme.ace.models.makani_mpu.mappings import init_gradient_reduction_hooks
 from torch import nn
 from fme.ace.models.makani_utils.checkpoint_helpers import  gather_model_state_dict, prepend_prefix_to_state_dict, scatter_model_state_dict
 import torch_harmonics.distributed as thd
-
+from fme.core.dataset.test_helper import gather_helper_conv
 
 logger = logging.getLogger(__name__)
 
@@ -471,6 +471,14 @@ class Distributed:
         shape[1]=slice_h.stop - slice_h.start
         shape[2]=slice_w.stop - slice_w.start
       return ds, shape
+
+    def gather_spatial_distributed(self, local_tensor, gather=True):
+        if gather and self.spatial_parallelism:
+          w_group = self.comm_get_group("w")
+          h_group = self.comm_get_group("h")
+          return gather_helper_conv(local_tensor, hdim=-2, wdim=-1, w_group=w_group, h_group=h_group)
+        else :
+          return local_tensor
 
     def barrier(self):
         """

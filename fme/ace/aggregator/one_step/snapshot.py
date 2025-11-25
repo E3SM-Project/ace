@@ -9,7 +9,7 @@ from fme.core.wandb import Image
 
 from ..plotting import plot_paneled_data
 
-
+from fme.core.distributed import Distributed
 class SnapshotAggregator:
     """
     An aggregator that records the first sample of the last batch of data.
@@ -65,23 +65,22 @@ class SnapshotAggregator:
         input_time = 0
         target_time = 1
         gen, target, input = {}, {}, {}
+        dist = Distributed.get_instance()
         for name in self._gen_data.keys():
             # use first sample in batch
-            gen[name] = (
-                self._gen_data[name]
-                .select(dim=time_dim, index=target_time)[0]
-                .cpu()
-                .numpy()
-            )
+            gen_data_local=self._gen_data[name].select(dim=time_dim, index=target_time)[0]
+            gen_data = dist.gather_spatial_distributed(gen_data_local)
+            gen[name] = (gen_data.cpu().numpy())
+
+            target_local=self._target_data[name].select(dim=time_dim, index=target_time)[0]
+            target_data = dist.gather_spatial_distributed(target_local)
             target[name] = (
-                self._target_data[name]
-                .select(dim=time_dim, index=target_time)[0]
+                target_data
                 .cpu()
                 .numpy()
             )
             input[name] = (
-                self._target_data[name]
-                .select(dim=time_dim, index=input_time)[0]
+                target_data
                 .cpu()
                 .numpy()
             )
