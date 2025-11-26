@@ -296,11 +296,10 @@ class LatLonOperations(GriddedOperations):
             )
 
         dist = Distributed.get_instance()
-        if dist.spatial_parallelism:
-          area_weights = area_weights[*dist.get_local_slices(area_weights.shape)]
+        area_weights = area_weights[*dist.get_local_slices(area_weights.shape)]
 
         self._device_area = area_weights.to(get_device())
-        #NOTE: we do not need the *.to("cpu") lines.
+        # NOTE: we do not need the *.to("cpu") lines.
         self._cpu_area = area_weights.to("cpu")
         self._device_mask_provider = mask_provider.to(get_device())
         self._cpu_mask_provider = mask_provider.to("cpu")
