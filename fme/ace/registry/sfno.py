@@ -4,7 +4,7 @@ from typing import Literal
 from fme.ace.models.makani.sfnonet import (
     SphericalFourierNeuralOperatorNet as MakaniSFNO,
 )
-from fme.ace.models.modulus.sfnonet import SphericalFourierNeuralOperatorNet, SFNO
+from fme.ace.models.modulus.sfnonet import SphericalFourierNeuralOperatorNet
 from fme.ace.registry.registry import ModuleConfig, ModuleSelector
 from fme.core.distributed import Distributed
 
@@ -46,22 +46,12 @@ class SphericalFourierNeuralOperatorBuilder(ModuleConfig):
         n_out_channels: int,
         img_shape: tuple[int, int],
     ):
-      dist= Distributed.get_instance()
-      if dist.spatial_parallelism:
-        sfno_net = SFNO(
+        return SphericalFourierNeuralOperatorNet(
             params=self,
             in_chans=n_in_channels,
             out_chans=n_out_channels,
-            img_shape=img_shape,)
-      else:
-        sfno_net = SphericalFourierNeuralOperatorNet(
-            params=self,
-            in_chans=n_in_channels,
-            out_chans=n_out_channels,
-            img_shape=img_shape,)
-
-      return sfno_net
-
+            img_shape=img_shape,
+        )
 
 @ModuleSelector.register("SFNO-v0.1.0")
 @dataclasses.dataclass

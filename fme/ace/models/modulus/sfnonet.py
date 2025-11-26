@@ -20,9 +20,6 @@ from typing import Any, Tuple
 import torch
 import torch.nn as nn
 
-# get spectral transforms from torch_harmonics
-import torch_harmonics as th
-import torch_harmonics.distributed as thd
 from torch.utils.checkpoint import checkpoint
 
 from .initialization import trunc_normal_
@@ -37,12 +34,6 @@ from .s2convolutions import SpectralAttentionS2, SpectralConvS2
 from dataclasses import dataclass
 import physicsnemo
 from physicsnemo.models.meta import ModelMetaData
-
-from fme.ace.models.makani_mpu.fft import DistributedRealFFT2, DistributedInverseRealFFT2
-
-from fme.ace.models.makani_mpu.layers import DistributedMLP
-
-from fme.ace.models.makani_mpu.layer_norm import DistributedInstanceNorm2d, DistributedLayerNorm
 
 from fme.core.distributed import Distributed
 
@@ -78,9 +69,10 @@ class SpectralFilterLayer(nn.Module):
     ):
         super(SpectralFilterLayer, self).__init__()
 
+        dist = Distributed.get_instance()
+
         if filter_type == "non-linear" and (
-            isinstance(forward_transform, th.RealSHT)
-            or isinstance(forward_transform, thd.DistributedRealSHT)
+            isinstance(forward_transform, dist.th_real_sht())
         ):
             self.filter = SpectralAttentionS2(
                 forward_transform,
@@ -110,8 +102,7 @@ class SpectralFilterLayer(nn.Module):
 
         # spectral transform is passed to the module
         elif filter_type == "linear" and (
-            isinstance(forward_transform, th.RealSHT)
-            or isinstance(forward_transform, thd.DistributedRealSHT)
+            isinstance(forward_transform, dist.th_real_sht())
         ):
             self.filter = SpectralConvS2(
                 forward_transform,
@@ -164,9 +155,10 @@ class FourierNeuralOperatorBlock(nn.Module):
     ):
         super(FourierNeuralOperatorBlock, self).__init__()
 
-        # determine some shapes
         dist = Distributed.get_instance()
-        self.input_shape_loc, self.output_shape_loc = dist.get_input_out_shapes(forward_transform,inverse_transform)
+        self.input_shape_loc, self.output_shape_loc = dist.get_input_out_shapes(
+            forward_transform, inverse_transform
+        )
 
         # norm layer
         self.norm0 = norm_layer[0]()
@@ -209,10 +201,8 @@ class FourierNeuralOperatorBlock(nn.Module):
         # norm layer
         self.norm1 = norm_layer[1]()
 
-
-
         if use_mlp == True:
-            MLPH = DistributedMLP if (dist.comm_get_size("matmul") > 1) else MLP
+            MLPH = dist.get_mlp(MLP)
             mlp_hidden_dim = int(embed_dim * mlp_ratio)
             self.mlp = MLPH(
                 in_features=embed_dim,
@@ -268,7 +258,7 @@ class FourierNeuralOperatorBlock(nn.Module):
         return x
 
 
-class SphericalFourierNeuralOperatorNet(torch.nn.Module):
+class SphericalFourierNeuralOperatorNetBase(torch.nn.Module):
     """
     Spherical Fourier Neural Operator Network
 
@@ -388,7 +378,7 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
         spectral_layers: int = 3,
         checkpointing: int = 0,
     ):
-        super(SphericalFourierNeuralOperatorNet, self).__init__()
+        super(SphericalFourierNeuralOperatorNetBase, self).__init__()
         dist = Distributed.get_instance()
         self.params = params
         self.spectral_transform = (
@@ -491,11 +481,6 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
             self.img_shape[1] // self.residual_filter_factor // 2 + 1
         )
 
-        # check for distributed
-        if (dist.comm_get_size("spatial") > 1 ) and (not thd.is_initialized()):
-          polar_group = None if (dist.comm_get_size("h") == 1) else dist.comm_get_group("h")
-          azimuth_group = None if (dist.comm_get_size("w") == 1) else dist.comm_get_group("w")
-          thd.init(polar_group, azimuth_group)
         # no global padding because we removed the horizontal distributed code
         self.padding = (0, 0)
 
@@ -503,13 +488,13 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
             self.residual_filter_down = nn.Identity()
             self.residual_filter_up = nn.Identity()
         else:
-            self.residual_filter_down = th.RealSHT(
+            self.residual_filter_down = dist.th_real_sht()(
                 *self.img_shape,
                 lmax=modes_lat_residual,
                 mmax=modes_lon_residual,
                 grid=data_grid,
             ).float()
-            self.residual_filter_up = th.InverseRealSHT(
+            self.residual_filter_up = dist.th_inverse_real_sht()(
                 *self.img_shape,
                 lmax=modes_lat_residual,
                 mmax=modes_lon_residual,
@@ -518,13 +503,9 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
 
         # prepare the spectral transforms
         if self.spectral_transform == "sht":
-            sht_handle = th.RealSHT
-            isht_handle = th.InverseRealSHT
+            sht_handle = dist.th_real_sht()
+            isht_handle = dist.th_inverse_real_sht()
 
-            # parallelism
-            if dist.comm_get_size("spatial") > 1:
-                sht_handle = thd.DistributedRealSHT
-                isht_handle = thd.DistributedInverseRealSHT
             # set up
             self.trans_down = sht_handle(
                 *self.img_shape, lmax=modes_lat, mmax=modes_lon, grid=data_grid
@@ -544,11 +525,8 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
                 raise NotImplementedError(
                     "Residual filter factor is not implemented for FFT spectral transform"
                 )
-            fft_handle = th.RealFFT2
-            ifft_handle = th.InverseRealFFT2
-            if dist.comm_get_size("spatial") > 1:
-                fft_handle = DistributedRealFFT2
-                ifft_handle = DistributedInverseRealFFT2
+            fft_handle = dist.th_real_fft2()
+            ifft_handle = dist.th_inverse_real_fft2()
 
             # effective image size:
             self.img_shape_eff = (
@@ -626,33 +604,27 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
 
         # pick norm layer
         if self.normalization_layer == "layer_norm":
-          if dist.comm_get_size("spatial") > 1:
-            ## CHECK ME: norm_layer0 and norm_layer1, as coded in makani
-            norm_layer0 = partial(DistributedLayerNorm, normalized_shape=(self.embed_dim), elementwise_affine=True, eps=1e-6)
-            norm_layer1 = norm_layer0
-          ## CHECK ME: norm_layer0 and norm_layer1, as coded in ace
-          else:
-            norm_layer0 = partial(
-                nn.LayerNorm,
-                normalized_shape=(self.img_shape_loc[0], self.img_shape_loc[1]),
-                eps=1e-6,
-            )
-            norm_layer1 = partial(
-                nn.LayerNorm, normalized_shape=(self.h_loc, self.w_loc), eps=1e-6
-            )
-        elif self.normalization_layer == "instance_norm":
             if dist.comm_get_size("spatial") > 1:
-                norm_layer0 = partial(DistributedInstanceNorm2d,
-                                         num_features=self.embed_dim,
-                                         eps=1e-6, affine=True)
+                ## CHECK ME: norm_layer0 and norm_layer1, as coded in makani
+                norm_layer0 = partial(dist.layer_norm(), normalized_shape=(self.embed_dim), elementwise_affine=True, eps=1e-6)
+                norm_layer1 = norm_layer0
+                ## CHECK ME: norm_layer0 and norm_layer1, as coded in ace
             else:
                 norm_layer0 = partial(
-                  nn.InstanceNorm2d,
-                  num_features=self.embed_dim,
-                  eps=1e-6,
-                  affine=True,
-                  track_running_stats=False,
+                    dist.layer_norm(),
+                    normalized_shape=(self.img_shape_loc[0], self.img_shape_loc[1]),
+                    eps=1e-6,
                 )
+                norm_layer1 = partial(
+                    dist.layer_norm(), normalized_shape=(self.h_loc, self.w_loc), eps=1e-6
+                )
+        elif self.normalization_layer == "instance_norm":
+            norm_layer0 = partial(
+                dist.instance_norm_2d(),
+                num_features=self.embed_dim,
+                eps=1e-6,
+                affine=True
+            )
             norm_layer1 = norm_layer0
         elif self.normalization_layer == "none":
             norm_layer0 = nn.Identity
@@ -817,15 +789,25 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
             x = self.decoder(x)
 
         return x
+
+
 # this part exposes the model to modulus by constructing modulus Modules
 @dataclass
 class SphericalFourierNeuralOperatorNetMetaData(ModelMetaData):
-    name: str = "SFNO"
-
+    name: str = "SphericalFourierNeuralOperatorNet"
     jit: bool = False
     cuda_graphs: bool = False
     amp_cpu: bool = False
     amp_gpu: bool = True
 
+def init_sfno():
+    """Helper function to initialize SFNO model"""
+    dist = Distributed.get_instance()
+    if dist.spatial_parallelism:
+        return physicsnemo.Module.from_torch(
+            SphericalFourierNeuralOperatorNetBase,
+            SphericalFourierNeuralOperatorNetMetaData()
+        )
+    return SphericalFourierNeuralOperatorNetBase
 
-SFNO = physicsnemo.Module.from_torch(SphericalFourierNeuralOperatorNet, SphericalFourierNeuralOperatorNetMetaData())
+SphericalFourierNeuralOperatorNet = init_sfno()
