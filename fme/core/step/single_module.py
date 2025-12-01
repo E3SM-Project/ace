@@ -22,6 +22,7 @@ from fme.core.packer import Packer
 from fme.core.registry import CorrectorSelector, ModuleSelector
 from fme.core.step.step import StepABC, StepConfigABC, StepSelector
 from fme.core.typing_ import TensorDict, TensorMapping
+from fme.core.device import get_device, using_gpu
 
 DEFAULT_TIMESTEP = datetime.timedelta(hours=6)
 DEFAULT_ENCODED_TIMESTEP = encode_timestep(DEFAULT_TIMESTEP)
@@ -218,6 +219,7 @@ class SingleModuleStep(StepABC):
             )
         else:
             self.ocean = None
+
         self.module = config.builder.build(
             n_in_channels=n_in_channels,
             n_out_channels=n_out_channels,
@@ -228,14 +230,15 @@ class SingleModuleStep(StepABC):
         self._config = config
         self._no_optimization = NullOptimization()
 
-        dist = Distributed.get_instance()
-        self.module = dist.wrap_module(self.module)
+        self.dist = Distributed.get_instance()
+        self.module = self.dist.wrap_module(self.module)
 
         self._timestep = timestep
 
         self._corrector = corrector
         self.in_names = config.in_names
         self.out_names = config.out_names
+
 
     @property
     def config(self) -> SingleModuleStepConfig:
@@ -325,8 +328,10 @@ class SingleModuleStep(StepABC):
         Returns:
             The state of the stepper.
         """
+        # iterate over parameters and gather them from the ranks
+        state_dict= self.dist.gather_model_state_dict(self.module)
         return {
-            "module": self.module.state_dict(),
+            "module": state_dict,
         }
 
     def load_state(self, state: dict[str, Any]) -> None:
@@ -337,11 +342,13 @@ class SingleModuleStep(StepABC):
             state: The state to load.
         """
         module = state["module"]
+        #CHECK: Getting an error because this key is missing
+        # if I use strict=true
         if "module.device_buffer" in module:
-            # for backwards compatibility with old checkpoints
-            del module["module.device_buffer"]
-        self.module.load_state_dict(module)
-
+        #    for backwards compatibility with old checkpoints
+          del module["module.device_buffer"]
+        module=self.dist.scatter_model_state_dict(self.module, module,strict=False)
+        self.module.load_state_dict(module,strict=False)
 
 def step_with_adjustments(
     input: TensorMapping,

@@ -35,6 +35,7 @@ from .spectrum import PairedSphericalPowerSpectrumAggregator
 from .time_mean import TimeMeanAggregator, TimeMeanEvaluatorAggregator
 from .video import VideoAggregator
 from .zonal_mean import ZonalMeanAggregator
+from fme.core.distributed import Distributed
 
 wandb = WandB.get_instance()
 APPROXIMATELY_TWO_YEARS = datetime.timedelta(days=730)
@@ -157,12 +158,23 @@ class InferenceEvaluatorAggregatorConfig:
             monthly_reference_data = xr.open_dataset(
                 self.monthly_reference_data, decode_timedelta=False
             )
+            dist = Distributed.get_instance()
+            # CHECK: Is there another way to get lat_length and lon_length?
+            # Should we move this splitting operation inside the InferenceEvaluatorAggregator?
+            lat_length = len(monthly_reference_data.coords['lat'])
+            lon_length = len(monthly_reference_data.coords['lon'])
+            crop_shape = (lat_length, lon_length)
+            slice_h, slice_w = dist.get_local_slices(crop_shape)
+            monthly_reference_data = monthly_reference_data.isel(lat=slice_h, lon=slice_w)
+
         if self.time_mean_reference_data is None:
             time_mean = None
         else:
             time_mean = xr.open_dataset(
                 self.time_mean_reference_data, decode_timedelta=False
             )
+
+
         return InferenceEvaluatorAggregator(
             dataset_info=dataset_info,
             n_timesteps=n_timesteps,

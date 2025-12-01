@@ -1,13 +1,27 @@
 import logging
 import os
 from collections.abc import Callable
-
+import contextlib
 import torch.distributed
 from torch.nn import SyncBatchNorm
 from torch.nn.functional import pad
 from torch.nn.parallel import DistributedDataParallel
 
 from fme.core.device import get_device, using_gpu, using_srun
+from fme.ace.utils import comm
+from physicsnemo.distributed.utils import compute_split_shapes
+from fme.ace.models.makani_mpu.mappings import init_gradient_reduction_hooks
+from fme.ace.models.makani_mpu.layers import DistributedMLP
+from fme.ace.models.makani_mpu.fft import DistributedRealFFT2, DistributedInverseRealFFT2
+from fme.ace.models.makani_mpu.layer_norm import DistributedInstanceNorm2d, DistributedLayerNorm
+from torch import nn
+from fme.ace.models.makani_utils.checkpoint_helpers import (
+    gather_model_state_dict as gmsd,
+    scatter_model_state_dict as smsd,
+)
+import torch_harmonics as th
+import torch_harmonics.distributed as thd
+from fme.core.dataset.test_helper import gather_helper_conv
 
 logger = logging.getLogger(__name__)
 
@@ -59,11 +73,37 @@ class Distributed:
         return singleton
 
     def __init__(self):
-        if torch.distributed.is_available() and not torch.distributed.is_initialized():
+        h = int(os.environ.get("H_PARALLEL_SIZE", 1))
+        w = int(os.environ.get("W_PARALLEL_SIZE", 1))
+        fin = int(os.environ.get("FIN_PARALLEL_SIZE", 1))
+        fout = int(os.environ.get("FOUT_PARALLEL_SIZE", 1))
+
+        self.spatial_parallelism = False
+        if (h > 1) or (w > 1) or (fin > 1) or (fout > 1):
+            self._distributed = self._init_makani_distributed(h, w, fin, fout)
+            self.spatial_parallelism = True
+        elif torch.distributed.is_available() and not torch.distributed.is_initialized():
             self._distributed = self._init_distributed()
         else:
             self._distributed = False
         self._seed = 0
+
+    def _init_makani_distributed(self, h, w, fin, fout):
+        distributed = (h > 1) or (w > 1) or (fin > 1) or (fout > 1)
+        if distributed:
+            # comm.init takes care of everything
+            comm.init(
+               model_parallel_sizes=[h, w, fin, fout],
+               model_parallel_names=["h", "w", "fin", "fout"],
+               verbose=False,
+            )
+            self.world_size = comm.get_world_size()
+            self.rank = comm.get_world_rank()
+            self.local_rank = comm.get_local_rank()
+            self._device_id = self.local_rank
+            distributed = True
+            torch.cuda.set_device(self._device_id)
+        return distributed
 
     def _init_distributed(self):
         if "RANK" in os.environ and not using_srun():  # we were executed with torchrun
@@ -107,6 +147,77 @@ class Distributed:
             distributed = False
         return distributed
 
+    def comm_get_size(self, key: str):
+        return comm.get_size(key) if self.spatial_parallelism else 1
+
+    def comm_get_group(self, key: str):
+        return comm.get_group(key) if self.spatial_parallelism else 1
+
+    def comm_get_rank(self, key: str):
+        return comm.get_rank(key) if self.spatial_parallelism else 0
+
+    def scatter_model_state_dict(self, model: nn.Module, state_dict, strict=True):
+        if (self.spatial_parallelism) and (comm.get_size("model") > 1):
+            state_dict = smsd(model, state_dict, strict=strict)
+        return state_dict
+
+    def gather_model_state_dict(self, model: nn.Module):
+        if (self.spatial_parallelism) and (comm.get_size("model") > 1):
+            return gmsd(model)
+        return model.state_dict()
+
+    def get_local_shape_and_offset(self, crop_shape):
+        local_shape_h, local_shape_w = crop_shape
+        local_offset_h, local_offset_w = 0, 0
+        size_h, size_w = self.comm_get_size("h"), self.comm_get_size("w")
+        rank_h, rank_w = self.comm_get_rank("h"), self.comm_get_rank("w")
+        if size_h > 1:
+            shapes_h = compute_split_shapes(local_shape_h, size_h)
+            local_shape_h = shapes_h[rank_h]
+            local_offset_h = sum(shapes_h[:rank_h])
+        if size_w > 1:
+            shapes_w = compute_split_shapes(local_shape_w, size_w)
+            local_shape_w = shapes_w[rank_w]
+            local_offset_w = sum(shapes_w[:rank_w])
+        return local_shape_h, local_offset_h, local_shape_w, local_offset_w
+
+    def get_local_tensor_dict(self, tensor_dict, shape_excluding_time):
+        tensor_dict_local = {}
+        for n, tensor in tensor_dict.items():
+            if len(tensor.shape) == 3:
+                tensor_dict_local[n] = tensor[
+                    :, *self.get_local_slices(shape_excluding_time)
+                ]
+            else:
+                tensor_dict_local[n] = tensor
+
+        return tensor_dict_local
+
+    def get_local_slices(self, crop_shape):
+        local_shape_h, local_shape_w = crop_shape
+        local_offset_h, local_offset_w = 0, 0
+        size_h, size_w = self.comm_get_size("h"), self.comm_get_size("w")
+        rank_h, rank_w = self.comm_get_rank("h"), self.comm_get_rank("w")
+        if size_h > 1:
+            shapes_h = compute_split_shapes(local_shape_h, size_h)
+            local_shape_h = shapes_h[rank_h]
+            local_offset_h = sum(shapes_h[:rank_h])
+        if size_w > 1:
+            shapes_w = compute_split_shapes(local_shape_w, size_w)
+            local_shape_w = shapes_w[rank_w]
+            local_offset_w = sum(shapes_w[:rank_w])
+        return slice(
+            local_offset_h, local_offset_h + local_shape_h
+        ), slice(
+            local_offset_w, local_offset_w + local_shape_w
+        )
+
+    def sampler_replicas(self):
+        return self.comm_get_size("batch") if self.spatial_parallelism else self.world_size
+
+    def sampler_rank(self):
+        return self.comm_get_rank("batch") if self.spatial_parallelism else self.rank
+
     def get_sampler(
         self,
         dataset: torch.utils.data.Dataset,
@@ -116,17 +227,25 @@ class Distributed:
         return torch.utils.data.DistributedSampler(
             dataset,
             shuffle=shuffle,
-            num_replicas=self.world_size,
-            rank=self.rank,
+            num_replicas=self.sampler_replicas(),
+            rank=self.sampler_rank(),
             seed=self._seed,
             drop_last=drop_last,
         )
+
+    def check_local_batch_size(self, batch_size):
+        if batch_size % self.comm_get_size("data") != 0:
+            raise ValueError(
+                f"batch_size ({batch_size}) must be divisible by "
+                f"data workers ({self.comm_get_size('data')})"
+            )
 
     def local_batch_size(self, batch_size: int) -> int:
         """
         Get the local batch size for the current process.
         """
-        return batch_size // self.world_size
+        new_world_size = self.comm_get_size("data") if self.spatial_parallelism else self.world_size
+        return batch_size // new_world_size
 
     def reduce_mean(self, tensor: torch.Tensor) -> torch.Tensor:
         """
@@ -238,11 +357,35 @@ class Distributed:
     def wrap_module(self, module: torch.nn.Module) -> torch.nn.Module:
         """
         Wrap a model with DistributedDataParallel if running in a distributed context.
+        For spatial parallelism, uses custom gradient reduction hooks.
+        For standard data parallelism, uses PyTorch's DistributedDataParallel.
         """
-        if self.is_distributed() and any(p.requires_grad for p in module.parameters()):
+        # Only wrap if there are trainable parameters
+        if not any(p.requires_grad for p in module.parameters()):
+            return DummyWrapper(module)
+
+        if self.spatial_parallelism:
+            # Use custom gradient reduction for spatial/model parallelism
+            capture_stream = torch.cuda.Stream(device="cuda")
+            with torch.cuda.stream(capture_stream):
+                module = init_gradient_reduction_hooks(
+                    module,
+                    device=self.local_rank,
+                    reduction_buffer_count=1,
+                    broadcast_buffers=False,
+                    find_unused_parameters=False,
+                    gradient_as_bucket_view=True,
+                    static_graph=False,
+                    verbose=False,
+                )
+            capture_stream.synchronize()
+            return module
+
+        if self.is_distributed():
+            # Use standard PyTorch DDP for data parallelism
             if using_gpu():
                 device_ids = [self._device_id]
-                output_device = [self._device_id]
+                output_device = self._device_id
             else:
                 device_ids = None
                 output_device = None
@@ -251,8 +394,130 @@ class Distributed:
                 device_ids=device_ids,
                 output_device=output_device,
             )
+
+        return DummyWrapper(module)
+
+    def get_local_modes(self, inverse_transform):
+        if isinstance(inverse_transform, thd.DistributedInverseRealSHT):
+            if self.spatial_parallelism:
+                modes_lat_local = inverse_transform.l_shapes[self.comm_get_rank("h")]
+                modes_lon_local = inverse_transform.m_shapes[self.comm_get_rank("w")]
+                # These variables are not used
+                # nlat_local = inverse_transform.lat_shapes[comm.get_rank("h")]
+                # nlon_local = inverse_transform.lon_shapes[comm.get_rank("w")]
+            else:
+                modes_lat_local = inverse_transform.lmax_local
+                modes_lon_local = inverse_transform.mmax_local
+                # These variables are not used
+                # self.lpad = 0
+                # self.mpad = 0
         else:
-            return DummyWrapper(module)
+            modes_lat_local = inverse_transform.lmax
+            modes_lon_local = inverse_transform.mmax
+        return modes_lat_local, modes_lon_local
+
+    def get_input_out_shapes(self,forward_transform,inverse_transform):
+        if (self.comm_get_size("spatial") > 1):
+            input_shape_loc = (
+                forward_transform.lat_shapes[self.comm_get_rank("h")],
+                forward_transform.lon_shapes[self.comm_get_rank("w")]
+            )
+            output_shape_loc = (
+                inverse_transform.lat_shapes[self.comm_get_rank("h")],
+                inverse_transform.lon_shapes[self.comm_get_rank("w")]
+            )
+        else:
+            input_shape_loc = (
+                forward_transform.nlat,
+                forward_transform.nlon
+            )
+            output_shape_loc = (
+                inverse_transform.nlat,
+                inverse_transform.nlon
+            )
+        return input_shape_loc, output_shape_loc
+
+    def dataset_reshape(self, ds, dims, shape):
+        shape_excluding_time = (shape[1], shape[2])
+        # Check for the presence of latitude and longitude dimensions
+        has_lat = "lat" in dims
+        has_lon = "lon" in dims
+        has_latitude = "latitude" in dims
+        has_longitude = "longitude" in dims
+
+        # Get local slices for height and width
+        slice_h, slice_w = self.get_local_slices(shape_excluding_time)
+
+        # Determine the appropriate dimension names for latitude and longitude
+        lat_dim = "lat" if has_lat else "latitude" if has_latitude else None
+        lon_dim = "lon" if has_lon else "longitude" if has_longitude else None
+
+        # Check if both dimensions are available
+        if lat_dim is not None and lon_dim is not None:
+            ds = ds.isel(**{lat_dim: slice_h, lon_dim: slice_w})
+            shape[1] = slice_h.stop - slice_h.start
+            shape[2] = slice_w.stop - slice_w.start
+        return ds, shape
+
+    def get_mlp(self, mlp):
+        return DistributedMLP if self.spatial_parallelism else mlp
+
+    def init_thd(self, _thd):
+        if (self.comm_get_size("spatial") > 1) and (not _thd.is_initialized()):
+            polar_group = self.comm_get_group("h") if self.comm_get_size("h") > 1 else None
+            azimuth_group = self.comm_get_group("w") if self.comm_get_size("w") > 1 else None
+            _thd.init(polar_group, azimuth_group)
+        return _thd
+
+    def th_real_sht(self):
+        _thd = self.init_thd(thd)
+        return _thd.DistributedRealSHT if self.spatial_parallelism else th.RealSHT
+
+    def th_inverse_real_sht(self):
+        _thd = self.init_thd(thd)
+        return _thd.DistributedInverseRealSHT if self.spatial_parallelism else th.InverseRealSHT
+
+    def th_real_fft2(self):
+        return DistributedRealFFT2 if self.spatial_parallelism else th.RealFFT2
+
+    def th_inverse_real_fft2(self):
+        return DistributedInverseRealFFT2 if self.spatial_parallelism else th.InverseRealFFT2
+
+    def instance_norm_2d(self):
+        return DistributedInstanceNorm2d if self.spatial_parallelism else nn.InstanceNorm2d
+
+    def layer_norm(self):
+        return DistributedLayerNorm if self.spatial_parallelism else nn.LayerNorm
+
+    def set_image_shapes(self, trans_down, itrans_up, itrans):
+        img_shape_loc = None
+        img_shape_eff = None
+        h_loc = None
+        w_loc = None
+
+        if self.comm_get_size("spatial") > 1:
+          img_shape_loc = (trans_down.lat_shapes[self.comm_get_rank("h")],
+                         trans_down.lon_shapes[self.comm_get_rank("w")])
+          img_shape_eff = (itrans_up.lat_shapes[self.comm_get_rank("h")],
+                         itrans_up.lon_shapes[self.comm_get_rank("w")])
+          h_loc = itrans.lat_shapes[self.comm_get_rank("h")]
+          w_loc = itrans.lon_shapes[self.comm_get_rank("w")]
+        else:
+          img_shape_loc = (trans_down.nlat, trans_down.nlon)
+          # CHECK: should be itrans_up?
+          img_shape_eff = (trans_down.nlat, trans_down.nlon)
+          h_loc = itrans.nlat
+          w_loc = itrans.nlon
+
+        return img_shape_loc, img_shape_eff, h_loc, w_loc
+
+    def gather_spatial_distributed(self, local_tensor, gather=True):
+        if gather and self.spatial_parallelism:
+          w_group = self.comm_get_group("w")
+          h_group = self.comm_get_group("h")
+          return gather_helper_conv(local_tensor, hdim=-2, wdim=-1, w_group=w_group, h_group=h_group)
+        else :
+          return local_tensor
 
     def barrier(self):
         """
@@ -278,7 +543,10 @@ class Distributed:
         self.barrier()
         if self._distributed:
             logger.debug(f"Shutting down rank {self.rank}")
-            torch.distributed.destroy_process_group()
+            if self.spatial_parallelism:
+                comm.cleanup()
+            else:
+                torch.distributed.destroy_process_group()
 
 
 singleton: Distributed | None = None
