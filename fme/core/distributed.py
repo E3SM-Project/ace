@@ -489,6 +489,28 @@ class Distributed:
     def layer_norm(self):
         return DistributedLayerNorm if self.spatial_parallelism else nn.LayerNorm
 
+    def set_image_shapes(self, trans_down, itrans_up, itrans):
+        img_shape_loc = None
+        img_shape_eff = None
+        h_loc = None
+        w_loc = None
+
+        if self.comm_get_size("spatial") > 1:
+          img_shape_loc = (trans_down.lat_shapes[self.comm_get_rank("h")],
+                         trans_down.lon_shapes[self.comm_get_rank("w")])
+          img_shape_eff = (itrans_up.lat_shapes[self.comm_get_rank("h")],
+                         itrans_up.lon_shapes[self.comm_get_rank("w")])
+          h_loc = itrans.lat_shapes[self.comm_get_rank("h")]
+          w_loc = itrans.lon_shapes[self.comm_get_rank("w")]
+        else:
+          img_shape_loc = (trans_down.nlat, trans_down.nlon)
+          # CHECK: should be itrans_up?
+          img_shape_eff = (trans_down.nlat, trans_down.nlon)
+          h_loc = itrans.nlat
+          w_loc = itrans.nlon
+
+        return img_shape_loc, img_shape_eff, h_loc, w_loc
+
     def gather_spatial_distributed(self, local_tensor, gather=True):
         if gather and self.spatial_parallelism:
           w_group = self.comm_get_group("w")

@@ -141,15 +141,13 @@ class SpectralConvS2(nn.Module):
             self.weight = nn.Parameter(scale * torch.randn(*weight_shape, 2))
             if self.operator_type == "dhconv":
                 self.weight.is_shared_mp = ["matmul", "w"]
-                if dist.spatial_parallelism:
-                    self.weight.sharded_dims_mp = [None for _ in weight_shape]
-                    self.weight.sharded_dims_mp[-1] = "h"
+                self.weight.sharded_dims_mp = [None for _ in weight_shape]
+                self.weight.sharded_dims_mp[-1] = "h"
             else:
                 self.weight.is_shared_mp = ["matmul"]
-                if dist.spatial_parallelism:
-                    self.weight.sharded_dims_mp = [None for _ in weight_shape]
-                    self.weight.sharded_dims_mp[-1] = "w"
-                    self.weight.sharded_dims_mp[-2] = "h"
+                self.weight.sharded_dims_mp = [None for _ in weight_shape]
+                self.weight.sharded_dims_mp[-1] = "w"
+                self.weight.sharded_dims_mp[-2] = "h"
 
         # get the contraction handle
         self._contract = get_contract_fun(
@@ -158,9 +156,8 @@ class SpectralConvS2(nn.Module):
 
         if bias:
             self.bias = nn.Parameter(scale * torch.zeros(1, out_channels, 1, 1))
-            if dist.spatial_parallelism:
-                self.bias.is_shared_mp = ["model"]
-                self.bias.sharded_dims_mp = [None, None, None, None]
+            self.bias.is_shared_mp = ["model"]
+            self.bias.sharded_dims_mp = [None, None, None, None]
 
     def forward(self, x):  # pragma: no cover
         dtype = x.dtype

@@ -554,18 +554,7 @@ class SphericalFourierNeuralOperatorNetBase(torch.nn.Module):
             raise (ValueError("Unknown spectral transform"))
 
         # use the SHT/FFT to compute the local, downscaled grid dimensions
-        if dist.comm_get_size("spatial") > 1:
-            self.img_shape_loc = (self.trans_down.lat_shapes[dist.comm_get_rank("h")], self.trans_down.lon_shapes[dist.comm_get_rank("w")])
-            self.img_shape_eff = (self.itrans_up.lat_shapes[dist.comm_get_rank("h")], self.itrans_up.lon_shapes[dist.comm_get_rank("w")])
-            self.h_loc = self.itrans.lat_shapes[dist.comm_get_rank("h")]
-            self.w_loc = self.itrans.lon_shapes[dist.comm_get_rank("w")]
-        else:
-            self.img_shape_loc = (self.trans_down.nlat, self.trans_down.nlon)
-            #CHECK: should be itrans_up?
-            self.img_shape_eff = (self.trans_down.nlat, self.trans_down.nlon)
-            self.h_loc = self.itrans.nlat
-            self.w_loc = self.itrans.nlon
-
+        self.img_shape_loc,self.img_shape_eff,self.h_loc, self.w_loc = dist.set_image_shapes(self.trans_down,self.itrans_up, self.itrans )
         # determine activation function
         if self.activation_function == "relu":
             self.activation_function = nn.ReLU
@@ -584,18 +573,16 @@ class SphericalFourierNeuralOperatorNetBase(torch.nn.Module):
             encoder_modules.append(
                 nn.Conv2d(current_dim, encoder_hidden_dim, 1, bias=True)
             )
-            if dist.spatial_parallelism:
-              # weight sharing
-              encoder_modules[-1].weight.is_shared_mp = ["spatial"]
-              if encoder_modules[-1].bias is not None:
-                encoder_modules[-1].bias.is_shared_mp = ["spatial"]
+            # weight sharing
+            encoder_modules[-1].weight.is_shared_mp = ["spatial"]
+            if encoder_modules[-1].bias is not None:
+              encoder_modules[-1].bias.is_shared_mp = ["spatial"]
             encoder_modules.append(self.activation_function())
             current_dim = encoder_hidden_dim
         #final layer
         encoder_modules.append(nn.Conv2d(current_dim, self.embed_dim, 1, bias=False))
-        if dist.spatial_parallelism:
-          # weight sharing
-          encoder_modules[-1].weight.is_shared_mp = ["spatial"]
+        # weight sharing
+        encoder_modules[-1].weight.is_shared_mp = ["spatial"]
         self.encoder = nn.Sequential(*encoder_modules)
 
         # dropout
@@ -692,18 +679,16 @@ class SphericalFourierNeuralOperatorNetBase(torch.nn.Module):
             decoder_modules.append(
                 nn.Conv2d(current_dim, decoder_hidden_dim, 1, bias=True)
             )
-            if dist.spatial_parallelism:
-              # weight sharing
-              decoder_modules[-1].weight.is_shared_mp = ["spatial"]
-              # decoder_modules[-1].weight.sharded_dims_mp = [None, None, None, None]
-              if decoder_modules[-1].bias is not None:
-                decoder_modules[-1].bias.is_shared_mp = ["spatial"]
+            # weight sharing
+            decoder_modules[-1].weight.is_shared_mp = ["spatial"]
+            # decoder_modules[-1].weight.sharded_dims_mp = [None, None, None, None]
+            if decoder_modules[-1].bias is not None:
+              decoder_modules[-1].bias.is_shared_mp = ["spatial"]
             decoder_modules.append(self.activation_function())
             current_dim = decoder_hidden_dim
         decoder_modules.append(nn.Conv2d(current_dim, self.out_chans, 1, bias=False))
         # weight sharing
-        if dist.spatial_parallelism:
-          decoder_modules[-1].weight.is_shared_mp = ["spatial"]
+        decoder_modules[-1].weight.is_shared_mp = ["spatial"]
         self.decoder = nn.Sequential(*decoder_modules)
 
         # learned position embedding
