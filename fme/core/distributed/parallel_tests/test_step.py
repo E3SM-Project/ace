@@ -9,6 +9,7 @@ non-parallel StepABC tests (which include also cases that don't work in parallel
 
 import dataclasses
 import datetime
+import os
 import pathlib
 import tempfile
 import unittest
@@ -26,6 +27,7 @@ from fme.ace.testing.fv3gfs_data import get_scalar_dataset
 from fme.core.coordinates import HybridSigmaPressureCoordinate, LatLonCoordinates
 from fme.core.corrector.atmosphere import AtmosphereCorrectorConfig, EnergyBudgetConfig
 from fme.core.dataset_info import DatasetInfo
+from fme.core.distributed import Distributed
 from fme.core.distributed.non_distributed import DummyWrapper
 from fme.core.labels import BatchLabels
 from fme.core.normalizer import NetworkAndLossNormalizationConfig, NormalizationConfig
@@ -37,7 +39,8 @@ from fme.core.step.single_module import SingleModuleStepConfig
 from fme.core.step.step import StepABC, StepSelector
 from fme.core.typing_ import TensorDict
 
-DEFAULT_IMG_SHAPE = (45, 90)
+# Must be divisible by h_size (typically 2) for spatial parallelism.
+DEFAULT_IMG_SHAPE = (44, 90)
 
 DATA_DIR = pathlib.Path(__file__).parent / "testdata"
 
@@ -90,7 +93,6 @@ def get_single_module_noise_conditioned_selector(
                             context_pos_embed_dim=2,
                             pos_embed=False,
                             num_layers=2,
-                            local_blocks=[0],
                             affine_norms=True,
                         )
                     ),
@@ -169,7 +171,6 @@ def get_single_module_with_atmosphere_corrector_selector(
                             noise_embed_dim=4,
                             noise_type="isotropic",
                             num_layers=2,
-                            local_blocks=[0],
                         )
                     ),
                 ),
@@ -238,12 +239,20 @@ def get_tensor_dict(
     return data_dict
 
 
+def scatter_tensor_dict(td: TensorDict) -> TensorDict:
+    """Scatter each tensor in the dict to the local spatial shard."""
+    dist = Distributed.get_instance()
+    return {k: dist.scatter_spatial(v) for k, v in td.items()}
+
+
 def get_step(
     selector: StepSelector,
     img_shape: tuple[int, int],
     init_weights: Callable[[list[nn.Module]], None] = lambda _: None,
     all_labels: set[str] | None = None,
 ) -> StepABC:
+    # Ensure CUDA device is set before any tensor creation.
+    Distributed.get_instance()
     device = fme.get_device()
     horizontal_coordinate = LatLonCoordinates(
         lat=torch.zeros(img_shape[0], device=device),
@@ -268,9 +277,11 @@ def test_step_applies_wrapper(config: StepSelector):
     img_shape = DEFAULT_IMG_SHAPE
     n_samples = 5
     step = get_step(config, img_shape)
-    input_data = get_tensor_dict(step.input_names, img_shape, n_samples)
-    next_step_input_data = get_tensor_dict(
-        step.next_step_input_names, img_shape, n_samples
+    input_data = scatter_tensor_dict(
+        get_tensor_dict(step.input_names, img_shape, n_samples)
+    )
+    next_step_input_data = scatter_tensor_dict(
+        get_tensor_dict(step.next_step_input_names, img_shape, n_samples)
     )
     multi_calls = 1
     if isinstance(config._step_config_instance, MultiCallStepConfig):
@@ -412,6 +423,12 @@ def cache_step_output(output_data: TensorDict, checkpoint_path: pathlib.Path):
     SELECTOR_GETTERS.items(),
 )
 @pytest.mark.parallel
+@pytest.mark.skipif(
+    int(os.environ.get("FME_DISTRIBUTED_H", "1")) > 1
+    or int(os.environ.get("FME_DISTRIBUTED_W", "1")) > 1,
+    reason="Cached regression testdata was saved without spatial parallelism; "
+    "model state_dict keys may differ under distributed SHT.",
+)
 def test_step_regression(
     case_name,
     get_config: Callable[[pathlib.Path | None], StepSelector],

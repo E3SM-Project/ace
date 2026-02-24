@@ -355,6 +355,8 @@ class LatLonOperations(GriddedOperations):
         name: str | None = None,
         regional_weights: torch.Tensor | None = None,
     ):
+        from fme.core.distributed import Distributed
+
         if data.device == torch.device("cpu"):
             area_weights = self._cpu_area
             mask_provider = self._cpu_mask_provider
@@ -362,6 +364,11 @@ class LatLonOperations(GriddedOperations):
             area_weights = self._device_area
             mask_provider = self._device_mask_provider
         area_weights = _mask_area_weights(area_weights, mask_provider, name)
+        # Under spatial parallelism the stored weights are at global shape
+        # while data tensors are at local (sharded) shape.  Scatter the
+        # weights so they match the data.
+        dist = Distributed.get_instance()
+        area_weights = dist.scatter_spatial(area_weights)
         if regional_weights is None:
             return area_weights
         if regional_weights.device.type != data.device.type:

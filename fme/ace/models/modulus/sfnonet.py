@@ -537,6 +537,13 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
                 self.h, self.w, lmax=modes_lat, mmax=modes_lon, grid="legendre-gauss"
             ).float()
 
+            if sp_active:
+                from fme.core.distributed.sht_compat import patch_distributed_sht
+
+                patch_distributed_sht(
+                    self.trans_down, self.itrans_up, self.trans, self.itrans
+                )
+
         elif self.spectral_transform == "fft":
             if residual_filter_factor != 1:
                 raise NotImplementedError(

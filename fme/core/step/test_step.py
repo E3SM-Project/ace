@@ -18,6 +18,7 @@ from fme.ace.testing.fv3gfs_data import get_scalar_dataset
 from fme.core.coordinates import HybridSigmaPressureCoordinate, LatLonCoordinates
 from fme.core.corrector.atmosphere import AtmosphereCorrectorConfig, EnergyBudgetConfig
 from fme.core.dataset_info import DatasetInfo
+from fme.core.distributed import Distributed
 from fme.core.distributed.non_distributed import DummyWrapper
 from fme.core.labels import BatchLabels
 from fme.core.normalizer import NetworkAndLossNormalizationConfig, NormalizationConfig
@@ -31,7 +32,8 @@ from fme.core.typing_ import TensorDict
 
 from .radiation import SeparateRadiationStepConfig
 
-DEFAULT_IMG_SHAPE = (45, 90)
+# Must be divisible by h_size (typically 2) for spatial parallelism.
+DEFAULT_IMG_SHAPE = (44, 90)
 
 
 def get_network_and_loss_normalization_config(
@@ -206,7 +208,6 @@ def get_label_conditioned_selector(
                             noise_embed_dim=4,
                             noise_type="isotropic",
                             num_layers=2,
-                            local_blocks=[0],
                         )
                     ),
                 ),
@@ -455,6 +456,8 @@ def get_step(
     init_weights: Callable[[list[nn.Module]], None] = lambda _: None,
     all_labels: set[str] | None = None,
 ) -> StepABC:
+    # Ensure CUDA device is set before any tensor creation.
+    Distributed.get_instance()
     device = fme.get_device()
     horizontal_coordinate = LatLonCoordinates(
         lat=torch.zeros(img_shape[0], device=device),
@@ -476,10 +479,19 @@ def get_step(
 def test_label_conditioned_step():
     selector = get_label_conditioned_selector()
     step = get_step(selector, DEFAULT_IMG_SHAPE, all_labels={"a", "b"})
-    input_data = get_tensor_dict(step.input_names, DEFAULT_IMG_SHAPE, n_samples=1)
-    next_step_input_data = get_tensor_dict(
-        step.next_step_input_names, DEFAULT_IMG_SHAPE, n_samples=1
-    )
+    dist = Distributed.get_instance()
+    input_data = {
+        k: dist.scatter_spatial(v)
+        for k, v in get_tensor_dict(
+            step.input_names, DEFAULT_IMG_SHAPE, n_samples=1
+        ).items()
+    }
+    next_step_input_data = {
+        k: dist.scatter_spatial(v)
+        for k, v in get_tensor_dict(
+            step.next_step_input_names, DEFAULT_IMG_SHAPE, n_samples=1
+        ).items()
+    }
     output = step.step(
         args=StepArgs(
             input=input_data,
@@ -490,8 +502,10 @@ def test_label_conditioned_step():
         ),
         wrapper=lambda x: x,
     )
-    assert output["diagnostic_main"].shape == (1, 45, 90)
-    assert output["diagnostic_rad"].shape == (1, 45, 90)
+    expected_h = DEFAULT_IMG_SHAPE[0] // max(dist.h_size, 1)
+    expected_w = DEFAULT_IMG_SHAPE[1] // max(dist.w_size, 1)
+    assert output["diagnostic_main"].shape == (1, expected_h, expected_w)
+    assert output["diagnostic_rad"].shape == (1, expected_h, expected_w)
 
 
 @pytest.mark.parametrize("config", HAS_NEXT_STEP_FORCING_NAME_CASES)

@@ -33,7 +33,9 @@ def test_scatter_gather_roundtrip_4d():
     """scatter then gather on a (B, C, H, W) tensor recovers the original."""
     dist = Distributed.get_instance()
     B, C, H, W = 2, 3, 8, 12
-    x = torch.randn(B, C, H, W, device=get_device())
+    # Use a fixed seed so all ranks produce the identical starting tensor.
+    gen = torch.Generator(device=get_device()).manual_seed(42)
+    x = torch.randn(B, C, H, W, device=get_device(), generator=gen)
     local = dist.scatter_spatial(x)  # default h_dim=-2, w_dim=-1
     reconstructed = dist.gather_spatial(local)
     torch.testing.assert_close(reconstructed, x)

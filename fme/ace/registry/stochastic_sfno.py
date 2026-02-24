@@ -7,6 +7,7 @@ import torch
 
 from fme.ace.registry.registry import ModuleConfig, ModuleSelector
 from fme.core.dataset_info import DatasetInfo
+from fme.core.distributed import Distributed
 from fme.core.models.conditional_sfno.sfnonet import (
     Context,
     ContextConfig,
@@ -262,11 +263,16 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
                 embed_dim_labels=len(dataset_info.all_labels),
             ),
         )
+        # Under spatial parallelism the wrapper's positional
+        # embedding must use local (sharded) spatial dimensions.
+        dist = Distributed.get_instance()
+        local_h = dataset_info.img_shape[0] // max(dist.h_size, 1)
+        local_w = dataset_info.img_shape[1] // max(dist.w_size, 1)
         return NoiseConditionedSFNO(
             sfno_net,
             noise_type=self.noise_type,
             embed_dim_noise=self.noise_embed_dim,
             embed_dim_pos=self.context_pos_embed_dim,
             embed_dim_labels=len(dataset_info.all_labels),
-            img_shape=dataset_info.img_shape,
+            img_shape=(local_h, local_w),
         )

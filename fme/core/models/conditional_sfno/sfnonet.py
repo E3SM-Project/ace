@@ -382,6 +382,20 @@ def get_lat_lon_sfnonet(
     data_grid = params.data_grid if hasattr(params, "data_grid") else "equiangular"
 
     spatial_parallel = dist.h_size > 1 or dist.w_size > 1
+
+    if spatial_parallel:
+        local_blocks = (
+            params.local_blocks
+            if hasattr(params, "local_blocks")
+            else None
+        )
+        if local_blocks:
+            raise ValueError(
+                "local_blocks (DISCO convolution) is not supported "
+                "with spatial parallelism.  Set local_blocks=[] to "
+                "use spectral filters for all blocks."
+            )
+
     if spatial_parallel:
         thd.init(dist.h_group, dist.w_group)
         sht_cls = thd.DistributedRealSHT
@@ -402,6 +416,11 @@ def get_lat_lon_sfnonet(
     itrans = isht_cls(
         h, w, lmax=modes_lat, mmax=modes_lon, grid="legendre-gauss"
     ).float()
+
+    if spatial_parallel:
+        from fme.core.distributed.sht_compat import patch_distributed_sht
+
+        patch_distributed_sht(trans_down, itrans_up, trans, itrans)
 
     # Under spatial parallelism the model sees the *local* shard dims.
     if spatial_parallel:
