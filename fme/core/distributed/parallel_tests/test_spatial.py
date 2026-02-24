@@ -12,7 +12,6 @@ import torch
 from fme.core import get_device
 from fme.core.distributed import Distributed
 
-
 # -----------------------------------------------------------------------
 # scatter + gather round-trip
 # -----------------------------------------------------------------------

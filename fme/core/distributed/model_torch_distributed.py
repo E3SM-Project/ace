@@ -304,9 +304,7 @@ class ModelTorchDistributed(DistributedBackend):
         """Flat (h, w) process group for all-gather / all-reduce."""
         if not hasattr(self, "_spatial_group"):
             # Flatten the (h, w) sub-mesh into a single group.
-            self._spatial_group = self._dm.get_mesh_group(
-                self._mesh["h", "w"]
-            )
+            self._spatial_group = self._dm.get_mesh_group(self._mesh["h", "w"])
         return self._spatial_group
 
     def scatter_spatial(
@@ -335,12 +333,8 @@ class ModelTorchDistributed(DistributedBackend):
         h_chunk = h_total // self._h_size
         w_chunk = w_total // self._w_size
 
-        tensor = tensor.narrow(
-            h_dim, self._h_rank * h_chunk, h_chunk
-        )
-        tensor = tensor.narrow(
-            w_dim, self._w_rank * w_chunk, w_chunk
-        )
+        tensor = tensor.narrow(h_dim, self._h_rank * h_chunk, h_chunk)
+        tensor = tensor.narrow(w_dim, self._w_rank * w_chunk, w_chunk)
         return tensor.contiguous()
 
     def gather_spatial(
@@ -357,9 +351,7 @@ class ModelTorchDistributed(DistributedBackend):
         w_dim = w_dim % ndim
 
         # All-gather across the flat spatial group.
-        gather_list = [
-            torch.empty_like(tensor) for _ in range(spatial_size)
-        ]
+        gather_list = [torch.empty_like(tensor) for _ in range(spatial_size)]
         torch.distributed.all_gather(
             gather_list, tensor.contiguous(), group=self.spatial_group
         )
@@ -369,8 +361,7 @@ class ModelTorchDistributed(DistributedBackend):
         rows = []
         for hi in range(self._h_size):
             row_tiles = [
-                gather_list[hi * self._w_size + wi]
-                for wi in range(self._w_size)
+                gather_list[hi * self._w_size + wi] for wi in range(self._w_size)
             ]
             rows.append(torch.cat(row_tiles, dim=w_dim))
         return torch.cat(rows, dim=h_dim)
