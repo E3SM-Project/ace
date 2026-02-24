@@ -43,6 +43,17 @@ class MockDistributed:
         """
         return self.gather(tensor)  # this is single-process, can't be irregular
 
+    def reduce_sum_spatial(self, tensor: torch.Tensor) -> torch.Tensor:
+        return tensor
+
+    @property
+    def h_size(self) -> int:
+        return 1
+
+    @property
+    def w_size(self) -> int:
+        return 1
+
 
 @contextlib.contextmanager
 def mock_distributed(fill_value: float = 0.0, world_size: int = 1):
