@@ -111,3 +111,58 @@ class DistributedBackend(ABC):
 
     @abstractmethod
     def shutdown(self): ...
+
+    # ------------------------------------------------------------------
+    # Spatial parallelism API (concrete defaults → no-ops)
+    # ------------------------------------------------------------------
+
+    @property
+    def h_rank(self) -> int:
+        """Rank along the h spatial dimension. Default: 0."""
+        return 0
+
+    @property
+    def w_rank(self) -> int:
+        """Rank along the w spatial dimension. Default: 0."""
+        return 0
+
+    @property
+    def h_size(self) -> int:
+        """Number of ranks along h. Default: 1."""
+        return 1
+
+    @property
+    def w_size(self) -> int:
+        """Number of ranks along w. Default: 1."""
+        return 1
+
+    @property
+    def h_group(self):
+        """Process group for the h dimension. Default: None."""
+        return None
+
+    @property
+    def w_group(self):
+        """Process group for the w dimension. Default: None."""
+        return None
+
+    @property
+    def spatial_group(self):
+        """Process group spanning all spatial (h × w) peers. Default: None."""
+        return None
+
+    def scatter_spatial(
+        self, tensor: torch.Tensor, h_dim: int = -2, w_dim: int = -1
+    ) -> torch.Tensor:
+        """Slice *tensor* to the local spatial shard. No-op by default."""
+        return tensor
+
+    def gather_spatial(
+        self, tensor: torch.Tensor, h_dim: int = -2, w_dim: int = -1
+    ) -> torch.Tensor:
+        """All-gather spatial shards back to full resolution. No-op by default."""
+        return tensor
+
+    def reduce_sum_spatial(self, tensor: torch.Tensor) -> torch.Tensor:
+        """All-reduce (SUM) over spatial peers. No-op by default."""
+        return tensor

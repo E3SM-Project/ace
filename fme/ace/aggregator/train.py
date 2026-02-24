@@ -64,6 +64,7 @@ class TrainAggregator(AggregatorABC[TrainOutput]):
 
     @torch.no_grad()
     def record_batch(self, batch: TrainOutput):
+        batch = batch.gather_spatial()
         self._loss += batch.metrics["loss"]
         self._n_loss_batches += 1
 

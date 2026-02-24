@@ -47,6 +47,9 @@ class SphericalFourierNeuralOperatorBuilder(ModuleConfig):
         n_out_channels: int,
         dataset_info: DatasetInfo,
     ):
+        from fme.core.distributed import Distributed
+
+        dist = Distributed.get_instance()
         if len(dataset_info.all_labels) > 0:
             raise ValueError(
                 "SphericalFourierNeuralOperatorNet does not support labels"

@@ -85,13 +85,20 @@ class NoiseConditionedSFNO(torch.nn.Module):
     ) -> torch.Tensor:
         x = x.reshape(-1, *x.shape[-3:])
         if self.noise_type == "isotropic":
-            lmax = self.conditional_model.itrans_up.lmax
-            mmax = self.conditional_model.itrans_up.mmax
+            import torch_harmonics.distributed as thd
+
+            itrans = self.conditional_model.itrans_up
+            if isinstance(itrans, thd.DistributedInverseRealSHT):
+                lmax = itrans.lmax_local
+                mmax = itrans.mmax_local
+            else:
+                lmax = itrans.lmax
+                mmax = itrans.mmax
             noise = isotropic_noise(
                 (x.shape[0], self.embed_dim),
                 lmax,
                 mmax,
-                self.conditional_model.itrans_up,
+                itrans,
                 device=x.device,
             )
         elif self.noise_type == "gaussian":

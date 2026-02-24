@@ -159,8 +159,8 @@ class Distributed:
         return torch.utils.data.DistributedSampler(
             dataset,
             shuffle=shuffle,
-            num_replicas=self._distributed.total_ranks,
-            rank=self._distributed.rank,
+            num_replicas=self._distributed.total_data_parallel_ranks,
+            rank=self._distributed.data_parallel_rank,
             seed=self._seed,
             drop_last=drop_last,
         )
@@ -362,6 +362,57 @@ class Distributed:
 
     def shutdown(self):
         return self._distributed.shutdown()
+
+    # ------------------------------------------------------------------
+    # Spatial parallelism delegation
+    # ------------------------------------------------------------------
+
+    @property
+    def h_rank(self) -> int:
+        return self._distributed.h_rank
+
+    @property
+    def w_rank(self) -> int:
+        return self._distributed.w_rank
+
+    @property
+    def h_size(self) -> int:
+        return self._distributed.h_size
+
+    @property
+    def w_size(self) -> int:
+        return self._distributed.w_size
+
+    @property
+    def h_group(self):
+        """Process group for the h spatial dimension."""
+        return self._distributed.h_group
+
+    @property
+    def w_group(self):
+        """Process group for the w spatial dimension."""
+        return self._distributed.w_group
+
+    @property
+    def spatial_group(self):
+        """Process group spanning all spatial (h × w) peers."""
+        return self._distributed.spatial_group
+
+    def scatter_spatial(
+        self, tensor: torch.Tensor, h_dim: int = -2, w_dim: int = -1
+    ) -> torch.Tensor:
+        """Slice *tensor* to the local spatial shard (no-op if non-spatial)."""
+        return self._distributed.scatter_spatial(tensor, h_dim, w_dim)
+
+    def gather_spatial(
+        self, tensor: torch.Tensor, h_dim: int = -2, w_dim: int = -1
+    ) -> torch.Tensor:
+        """All-gather spatial shards back to full resolution."""
+        return self._distributed.gather_spatial(tensor, h_dim, w_dim)
+
+    def reduce_sum_spatial(self, tensor: torch.Tensor) -> torch.Tensor:
+        """All-reduce (SUM) over spatial peers only."""
+        return self._distributed.reduce_sum_spatial(tensor)
 
 
 singleton: Distributed | None = None

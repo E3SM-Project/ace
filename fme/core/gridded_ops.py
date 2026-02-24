@@ -16,6 +16,49 @@ from fme.core.tensors import assert_dict_allclose
 from fme.core.typing_ import TensorDict, TensorMapping
 
 
+def _spatial_weighted_mean(
+    data: torch.Tensor,
+    weights: torch.Tensor,
+    dim: tuple[int, ...],
+    keepdim: bool = False,
+) -> torch.Tensor:
+    """Weighted mean that is correct under spatial sharding.
+
+    Computes the local numerator and denominator, all-reduces both across
+    spatial peers via ``Distributed.reduce_sum_spatial`` (a no-op when there
+    is no spatial parallelism), and returns numerator / denominator.
+    """
+    from fme.core.distributed import Distributed
+
+    expanded = weights.expand(data.shape)
+    # Mask NaNs that sit behind zero-weight cells.
+    data = data.where(expanded != 0.0, 0.0)
+    num = (data * expanded).sum(dim=dim, keepdim=keepdim)
+    den = expanded.sum(dim=dim, keepdim=keepdim)
+
+    dist = Distributed.get_instance()
+    num = dist.reduce_sum_spatial(num)
+    den = dist.reduce_sum_spatial(den)
+    return num / den
+
+
+def _spatial_weighted_sum(
+    data: torch.Tensor,
+    weights: torch.Tensor,
+    dim: tuple[int, ...],
+    keepdim: bool = False,
+) -> torch.Tensor:
+    """Weighted sum that is correct under spatial sharding."""
+    from fme.core.distributed import Distributed
+
+    expanded = weights.expand(data.shape)
+    data = data.where(expanded != 0.0, 0.0)
+    local = (data * expanded).sum(dim=dim, keepdim=keepdim)
+
+    dist = Distributed.get_instance()
+    return dist.reduce_sum_spatial(local)
+
+
 class GriddedOperations(abc.ABC):
     def __eq__(self, other) -> bool:
         if not isinstance(other, GriddedOperations):
@@ -332,7 +375,7 @@ class LatLonOperations(GriddedOperations):
         name: str | None = None,
     ) -> torch.Tensor:
         area_weights = self._get_area_weights(data, name)
-        return metrics.weighted_sum(
+        return _spatial_weighted_sum(
             data, area_weights, dim=self.HORIZONTAL_DIMS, keepdim=keepdim
         )
 
@@ -343,7 +386,7 @@ class LatLonOperations(GriddedOperations):
         name: str | None = None,
     ) -> torch.Tensor:
         area_weights = self._get_area_weights(data, name)
-        return metrics.weighted_mean(
+        return _spatial_weighted_mean(
             data, area_weights, dim=self.HORIZONTAL_DIMS, keepdim=keepdim
         )
 
@@ -355,7 +398,7 @@ class LatLonOperations(GriddedOperations):
         name: str | None = None,
     ) -> torch.Tensor:
         regional_area_weights = self._get_area_weights(data, name, regional_weights)
-        return metrics.weighted_mean(
+        return _spatial_weighted_mean(
             data,
             regional_area_weights,
             dim=self.HORIZONTAL_DIMS,

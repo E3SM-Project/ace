@@ -122,6 +122,66 @@ class ChannelLayerNorm(nn.Module):
         return y
 
 
+class DistributedGlobalLayerNorm(nn.Module):
+    """LayerNorm over (C, H, W) with cross-shard all-reduce of statistics.
+
+    Standard ``nn.LayerNorm`` computes mean/variance from the local shard
+    only, which diverges from single-GPU results when the spatial grid is
+    partitioned across ranks.  This class all-reduces the first two moments
+    across the spatial process group so the normalisation is globally
+    consistent.
+    """
+
+    def __init__(
+        self,
+        normalized_shape: Tuple[int, ...],
+        eps: float = 1e-5,
+        elementwise_affine: bool = False,
+    ):
+        super().__init__()
+        self.normalized_shape = normalized_shape
+        self.n_dims = len(normalized_shape)
+        self.eps = eps
+        self.elementwise_affine = elementwise_affine
+        if elementwise_affine:
+            self.weight = nn.Parameter(torch.ones(normalized_shape))
+            self.bias = nn.Parameter(torch.zeros(normalized_shape))
+        else:
+            self.register_parameter("weight", None)
+            self.register_parameter("bias", None)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        from fme.core.distributed import Distributed
+
+        dist = Distributed.get_instance()
+
+        # Dimensions to reduce: last ``n_dims`` dimensions of x.
+        reduce_dims = tuple(range(x.ndim - self.n_dims, x.ndim))
+
+        # Local element count per sample (same on every rank for a given
+        # reduce_dims since C is not sharded).  Global count = local * spatial_size.
+        local_count = 1
+        for d in reduce_dims:
+            local_count *= x.shape[d]
+        spatial_size = dist.h_size * dist.w_size
+        global_count = local_count * spatial_size
+
+        # Local sums → all-reduce across spatial peers.
+        local_sum = x.sum(dim=reduce_dims, keepdim=True)
+        local_sum_sq = (x * x).sum(dim=reduce_dims, keepdim=True)
+        global_sum = dist.reduce_sum_spatial(local_sum)
+        global_sum_sq = dist.reduce_sum_spatial(local_sum_sq)
+
+        mean = global_sum / global_count
+        var = global_sum_sq / global_count - mean * mean
+
+        x = (x - mean) * torch.rsqrt(var + self.eps)
+
+        if self.weight is not None:
+            x = x * self.weight + self.bias
+        return x
+
+
 class ConditionalLayerNorm(nn.Module):
     """
     Conditional Layer Normalization as described in "AdaSpeech: Adaptive
@@ -185,11 +245,24 @@ class ConditionalLayerNorm(nn.Module):
             self.W_scale_pos = None
             self.W_bias_pos = None
         if global_layer_norm:
-            self.norm = nn.LayerNorm(
-                (self.n_channels, img_shape[0], img_shape[1]),
-                eps=epsilon,
-                elementwise_affine=elementwise_affine,
-            )
+            from fme.core.distributed import Distributed
+
+            dist = Distributed.get_instance()
+            norm_shape = (self.n_channels, img_shape[0], img_shape[1])
+            if dist.h_size > 1 or dist.w_size > 1:
+                # Use distributed variant that all-reduces mean/var
+                # across spatial shards for globally consistent stats.
+                self.norm = DistributedGlobalLayerNorm(
+                    norm_shape,
+                    eps=epsilon,
+                    elementwise_affine=elementwise_affine,
+                )
+            else:
+                self.norm = nn.LayerNorm(
+                    norm_shape,
+                    eps=epsilon,
+                    elementwise_affine=elementwise_affine,
+                )
         else:
             self.norm = ChannelLayerNorm(
                 self.n_channels,

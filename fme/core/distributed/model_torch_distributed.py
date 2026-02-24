@@ -270,3 +270,117 @@ class ModelTorchDistributed(DistributedBackend):
         self.barrier()
         logger.debug("Shutting down rank %d", self._rank)
         DistributedManager.cleanup()
+
+    # ------------------------------------------------------------------
+    # Spatial parallelism overrides
+    # ------------------------------------------------------------------
+
+    @property
+    def h_rank(self) -> int:
+        return self._h_rank
+
+    @property
+    def w_rank(self) -> int:
+        return self._w_rank
+
+    @property
+    def h_size(self) -> int:
+        return self._h_size
+
+    @property
+    def w_size(self) -> int:
+        return self._w_size
+
+    @property
+    def h_group(self):
+        return self._h_group
+
+    @property
+    def w_group(self):
+        return self._w_group
+
+    @property
+    def spatial_group(self):
+        """Flat (h, w) process group for all-gather / all-reduce."""
+        if not hasattr(self, "_spatial_group"):
+            # Flatten the (h, w) sub-mesh into a single group.
+            self._spatial_group = self._dm.get_mesh_group(
+                self._mesh["h", "w"]
+            )
+        return self._spatial_group
+
+    def scatter_spatial(
+        self, tensor: torch.Tensor, h_dim: int = -2, w_dim: int = -1
+    ) -> torch.Tensor:
+        """Pure local slicing — pick this rank's tile from the full tensor."""
+        if self._h_size == 1 and self._w_size == 1:
+            return tensor
+
+        # Resolve negative dims.
+        ndim = tensor.ndim
+        h_dim = h_dim % ndim
+        w_dim = w_dim % ndim
+
+        h_total = tensor.shape[h_dim]
+        w_total = tensor.shape[w_dim]
+        if h_total % self._h_size != 0:
+            raise ValueError(
+                f"h dim size {h_total} not divisible by h_size {self._h_size}"
+            )
+        if w_total % self._w_size != 0:
+            raise ValueError(
+                f"w dim size {w_total} not divisible by w_size {self._w_size}"
+            )
+
+        h_chunk = h_total // self._h_size
+        w_chunk = w_total // self._w_size
+
+        tensor = tensor.narrow(
+            h_dim, self._h_rank * h_chunk, h_chunk
+        )
+        tensor = tensor.narrow(
+            w_dim, self._w_rank * w_chunk, w_chunk
+        )
+        return tensor.contiguous()
+
+    def gather_spatial(
+        self, tensor: torch.Tensor, h_dim: int = -2, w_dim: int = -1
+    ) -> torch.Tensor:
+        """All-gather spatial shards and reassemble the full tensor."""
+        spatial_size = self._h_size * self._w_size
+        if spatial_size == 1:
+            return tensor
+
+        # Resolve negative dims.
+        ndim = tensor.ndim
+        h_dim = h_dim % ndim
+        w_dim = w_dim % ndim
+
+        # All-gather across the flat spatial group.
+        gather_list = [
+            torch.empty_like(tensor) for _ in range(spatial_size)
+        ]
+        torch.distributed.all_gather(
+            gather_list, tensor.contiguous(), group=self.spatial_group
+        )
+
+        # Reassemble the 2-D tile grid.
+        # Spatial ranks are laid out in row-major (h, w) order.
+        rows = []
+        for hi in range(self._h_size):
+            row_tiles = [
+                gather_list[hi * self._w_size + wi]
+                for wi in range(self._w_size)
+            ]
+            rows.append(torch.cat(row_tiles, dim=w_dim))
+        return torch.cat(rows, dim=h_dim)
+
+    def reduce_sum_spatial(self, tensor: torch.Tensor) -> torch.Tensor:
+        """All-reduce (SUM) over spatial peers."""
+        spatial_size = self._h_size * self._w_size
+        if spatial_size == 1:
+            return tensor
+        torch.distributed.all_reduce(
+            tensor, op=torch.distributed.ReduceOp.SUM, group=self.spatial_group
+        )
+        return tensor

@@ -25,6 +25,8 @@ import torch_harmonics as th
 import torch_harmonics.distributed as thd
 from torch.utils.checkpoint import checkpoint
 
+from fme.core.distributed import Distributed
+
 from .initialization import trunc_normal_
 
 # wrap fft, to unify interface to spectral transforms
@@ -463,9 +465,25 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
         data_grid = params.data_grid if hasattr(params, "data_grid") else "equiangular"
         # self.pretrain_encoding = params.pretrain_encoding if hasattr(params, "pretrain_encoding") else False
 
+        # spatial parallelism
+        dist = Distributed.get_instance()
+        sp_active = dist.h_size > 1 or dist.w_size > 1
+
         # compute the downscaled image size
         self.h = int(self.img_shape[0] // self.scale_factor)
         self.w = int(self.img_shape[1] // self.scale_factor)
+
+        # guards for unsupported SP configurations
+        if sp_active and self.scale_factor > 1:
+            raise ValueError(
+                "SphericalFourierNeuralOperatorNet does not support "
+                "spatial parallelism with scale_factor > 1."
+            )
+        if sp_active and self.residual_filter_factor > 1:
+            raise ValueError(
+                "SphericalFourierNeuralOperatorNet does not support "
+                "spatial parallelism with residual_filter_factor > 1."
+            )
 
         # Compute the maximum frequencies in h and in w
         modes_lat = int(self.h * self.hard_thresholding_fraction)
@@ -497,8 +515,13 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
 
         # prepare the spectral transforms
         if self.spectral_transform == "sht":
-            sht_handle = th.RealSHT
-            isht_handle = th.InverseRealSHT
+            if sp_active:
+                thd.init(dist.h_group, dist.w_group)
+                sht_handle = thd.DistributedRealSHT
+                isht_handle = thd.DistributedInverseRealSHT
+            else:
+                sht_handle = th.RealSHT
+                isht_handle = th.InverseRealSHT
 
             # set up
             self.trans_down = sht_handle(
@@ -519,8 +542,18 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
                 raise NotImplementedError(
                     "Residual filter factor is not implemented for FFT spectral transform"
                 )
-            fft_handle = th.RealFFT2
-            ifft_handle = th.InverseRealFFT2
+
+            if sp_active:
+                from fme.ace.models.makani_fcn3.mpu.layers import (
+                    DistributedInverseRealFFT2,
+                    DistributedRealFFT2,
+                )
+
+                fft_handle = DistributedRealFFT2
+                ifft_handle = DistributedInverseRealFFT2
+            else:
+                fft_handle = th.RealFFT2
+                ifft_handle = th.InverseRealFFT2
 
             # effective image size:
             self.img_shape_eff = (
@@ -548,10 +581,21 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
             raise (ValueError("Unknown spectral transform"))
 
         # use the SHT/FFT to compute the local, downscaled grid dimensions
-        self.img_shape_loc = (self.trans_down.nlat, self.trans_down.nlon)
-        self.img_shape_eff = (self.trans_down.nlat, self.trans_down.nlon)
-        self.h_loc = self.itrans.nlat
-        self.w_loc = self.itrans.nlon
+        # Note: for distributed transforms, .nlat/.nlon return GLOBAL sizes,
+        # so we divide by the spatial group sizes to get local tile dimensions.
+        if sp_active:
+            self.img_shape_loc = (
+                self.trans_down.nlat // dist.h_size,
+                self.trans_down.nlon // dist.w_size,
+            )
+            self.img_shape_eff = self.img_shape_loc
+            self.h_loc = self.itrans.nlat // dist.h_size
+            self.w_loc = self.itrans.nlon // dist.w_size
+        else:
+            self.img_shape_loc = (self.trans_down.nlat, self.trans_down.nlon)
+            self.img_shape_eff = (self.trans_down.nlat, self.trans_down.nlon)
+            self.h_loc = self.itrans.nlat
+            self.w_loc = self.itrans.nlon
 
         # determine activation function
         if self.activation_function == "relu":
@@ -591,13 +635,25 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
                 nn.LayerNorm, normalized_shape=(self.h_loc, self.w_loc), eps=1e-6
             )
         elif self.normalization_layer == "instance_norm":
-            norm_layer0 = partial(
-                nn.InstanceNorm2d,
-                num_features=self.embed_dim,
-                eps=1e-6,
-                affine=True,
-                track_running_stats=False,
-            )
+            if sp_active:
+                from fme.ace.models.makani_fcn3.mpu.layer_norm import (
+                    DistributedInstanceNorm2d,
+                )
+
+                norm_layer0 = partial(
+                    DistributedInstanceNorm2d,
+                    num_features=self.embed_dim,
+                    eps=1e-6,
+                    affine=True,
+                )
+            else:
+                norm_layer0 = partial(
+                    nn.InstanceNorm2d,
+                    num_features=self.embed_dim,
+                    eps=1e-6,
+                    affine=True,
+                    track_running_stats=False,
+                )
             norm_layer1 = norm_layer0
         elif self.normalization_layer == "none":
             norm_layer0 = nn.Identity
@@ -678,8 +734,9 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
                     1, self.embed_dim, self.img_shape_loc[0], self.img_shape_loc[1]
                 )
             )
-            # self.pos_embed = nn.Parameter( torch.zeros(1, self.embed_dim, self.img_shape_eff[0], self.img_shape_eff[1]) )
             self.pos_embed.is_shared_mp = ["matmul"]
+            if sp_active:
+                self.pos_embed.sharded_dims_mp = [None, None, "h", "w"]
             trunc_normal_(self.pos_embed, std=0.02)
 
         self.apply(self._init_weights)

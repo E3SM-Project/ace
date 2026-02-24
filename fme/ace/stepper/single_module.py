@@ -455,6 +455,29 @@ class TrainOutput(TrainOutputABC):
     def get_metrics(self) -> TensorDict:
         return self.metrics
 
+    def gather_spatial(self) -> "TrainOutput":
+        """All-gather spatial shards back to full resolution.
+
+        Returns *self* unchanged when spatial parallelism is inactive.
+        """
+        from fme.core.distributed import Distributed
+
+        dist = Distributed.get_instance()
+        if dist.h_size <= 1 and dist.w_size <= 1:
+            return self
+        return TrainOutput(
+            metrics=self.metrics,
+            gen_data=EnsembleTensorDict(
+                {k: dist.gather_spatial(v) for k, v in self.gen_data.items()}
+            ),
+            target_data=EnsembleTensorDict(
+                {k: dist.gather_spatial(v) for k, v in self.target_data.items()}
+            ),
+            time=self.time,
+            normalize=self.normalize,
+            derive_func=self.derive_func,
+        )
+
 
 def stack_list_of_tensor_dicts(
     dict_list: list[TensorDict],
@@ -1525,6 +1548,7 @@ class TrainStepper(
                 and the normalized batch data.
         """
         self._init_for_epoch(data.epoch)
+        data = data.to_spatial_shard()
         metrics: dict[str, float] = {}
         input_data = data.get_start(self._prognostic_names, self.n_ic_timesteps)
         target_data = self._stepper.get_forward_data(

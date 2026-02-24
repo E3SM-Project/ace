@@ -451,6 +451,26 @@ class BatchData:
         self.data = {name: tensor.pin_memory() for name, tensor in self.data.items()}
         return self
 
+    def to_spatial_shard(self: SelfType) -> SelfType:
+        """Slice every tensor in *data* to this rank's spatial tile.
+
+        When spatial parallelism is inactive the ``scatter_spatial`` call is a
+        no-op and this method returns *self* unchanged.
+        """
+        from fme.core.distributed import Distributed
+
+        dist = Distributed.get_instance()
+        if dist.h_size <= 1 and dist.w_size <= 1:
+            return self
+        return self.__class__(
+            data={k: dist.scatter_spatial(v) for k, v in self.data.items()},
+            time=self.time,
+            horizontal_dims=self.horizontal_dims,
+            epoch=self.epoch,
+            labels=self.labels,
+            n_ensemble=self.n_ensemble,
+        )
+
 
 @dataclasses.dataclass
 class PairedData:

@@ -22,6 +22,7 @@ import torch.nn as nn
 
 # get spectral transforms from torch_harmonics
 import torch_harmonics as th
+import torch_harmonics.distributed as thd
 from torch.utils.checkpoint import checkpoint
 
 from fme.core.benchmark.timer import Timer, NullTimer
@@ -366,6 +367,10 @@ def get_lat_lon_sfnonet(
         embed_dim_pos=0,
     ),
 ) -> "SphericalFourierNeuralOperatorNet":
+    from fme.core.distributed import Distributed
+
+    dist = Distributed.get_instance()
+
     h, w = img_shape
     hard_thresholding_fraction = (
         params.hard_thresholding_fraction
@@ -375,28 +380,48 @@ def get_lat_lon_sfnonet(
     modes_lat = int(h * hard_thresholding_fraction)
     modes_lon = int((w // 2 + 1) * hard_thresholding_fraction)
     data_grid = params.data_grid if hasattr(params, "data_grid") else "equiangular"
-    trans_down = th.RealSHT(
+
+    spatial_parallel = dist.h_size > 1 or dist.w_size > 1
+    if spatial_parallel:
+        thd.init(dist.h_group, dist.w_group)
+        sht_cls = thd.DistributedRealSHT
+        isht_cls = thd.DistributedInverseRealSHT
+    else:
+        sht_cls = th.RealSHT
+        isht_cls = th.InverseRealSHT
+
+    trans_down = sht_cls(
         *img_shape, lmax=modes_lat, mmax=modes_lon, grid=data_grid
     ).float()
-    itrans_up = th.InverseRealSHT(
+    itrans_up = isht_cls(
         *img_shape, lmax=modes_lat, mmax=modes_lon, grid=data_grid
     ).float()
-    trans = th.RealSHT(
+    trans = sht_cls(
         *img_shape, lmax=modes_lat, mmax=modes_lon, grid="legendre-gauss"
     ).float()
-    itrans = th.InverseRealSHT(
+    itrans = isht_cls(
         h, w, lmax=modes_lat, mmax=modes_lon, grid="legendre-gauss"
     ).float()
 
+    # Under spatial parallelism the model sees the *local* shard dims.
+    if spatial_parallel:
+        local_h = h // dist.h_size
+        local_w = w // dist.w_size
+        local_img_shape: Tuple[int, int] = (local_h, local_w)
+    else:
+        local_img_shape = img_shape
+
     def get_pos_embed():
-        pos_embed = nn.Parameter(torch.zeros(1, params.embed_dim, h, w))
+        pos_embed = nn.Parameter(
+            torch.zeros(1, params.embed_dim, local_img_shape[0], local_img_shape[1])
+        )
         pos_embed.is_shared_mp = ["matmul"]
         trunc_normal_(pos_embed, std=0.02)
         return pos_embed
 
     return SphericalFourierNeuralOperatorNet(
         params,
-        img_shape=img_shape,
+        img_shape=local_img_shape,
         in_chans=in_chans,
         out_chans=out_chans,
         context_config=context_config,
