@@ -394,6 +394,66 @@ class LatLonOperations(GriddedOperations):
         return {"area_weights": self._cpu_area}
 
 
+class DistributedLatLonOperations(LatLonOperations):
+    """LatLonOperations subclass that all-reduces across spatial ranks.
+
+    Area weights must be the LOCAL slice (for this rank's spatial chunk).
+    """
+
+    def __init__(
+        self,
+        area_weights: torch.Tensor,
+        mask_provider: MaskProviderABC = NullMaskProvider,
+        grid: str = "legendre-gauss",
+    ):
+        # Skip longitudinal-uniformity check: the local slice may be a
+        # subset of longitudes.
+        self._device_area = area_weights.to(get_device())
+        self._cpu_area = area_weights.to("cpu")
+        self._device_mask_provider = mask_provider.to(get_device())
+        self._cpu_mask_provider = mask_provider.to("cpu")
+        self._grid = grid
+
+    def _spatial_reduce_sum(self, tensor: torch.Tensor) -> torch.Tensor:
+        from fme.core.distributed.distributed import Distributed
+
+        return Distributed.get_instance().spatial_reduce_sum(tensor)
+
+    def area_weighted_sum(
+        self,
+        data: torch.Tensor,
+        keepdim: bool = False,
+        name: str | None = None,
+    ) -> torch.Tensor:
+        area_weights = self._get_area_weights(data, name)
+        local_sum = metrics.weighted_sum(
+            data, area_weights, dim=self.HORIZONTAL_DIMS, keepdim=keepdim
+        )
+        return self._spatial_reduce_sum(local_sum)
+
+    def area_weighted_mean(
+        self,
+        data: torch.Tensor,
+        keepdim: bool = False,
+        name: str | None = None,
+    ) -> torch.Tensor:
+        area_weights = self._get_area_weights(data, name)
+        expanded_weights = area_weights.expand(data.shape)
+        data_clean = data.where(expanded_weights != 0.0, 0.0)
+        local_weighted_sum = (data_clean * expanded_weights).sum(
+            dim=self.HORIZONTAL_DIMS, keepdim=keepdim
+        )
+        local_weight_sum = expanded_weights.sum(
+            dim=self.HORIZONTAL_DIMS, keepdim=keepdim
+        )
+        global_weighted_sum = self._spatial_reduce_sum(local_weighted_sum)
+        global_weight_sum = self._spatial_reduce_sum(local_weight_sum)
+        return global_weighted_sum / global_weight_sum
+
+    def get_initialization_kwargs(self) -> dict[str, Any]:
+        return {"area_weights": self._cpu_area}
+
+
 class HEALPixSHT(nn.Module):
     def __init__(self, nside: int, lmax: int, mmax: int, grid: str):
         super().__init__()

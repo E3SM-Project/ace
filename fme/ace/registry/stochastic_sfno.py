@@ -4,9 +4,11 @@ from collections.abc import Callable
 from typing import Literal
 
 import torch
+import torch_harmonics.distributed as thd
 
 from fme.ace.registry.registry import ModuleConfig, ModuleSelector
 from fme.core.dataset_info import DatasetInfo
+from fme.core.distributed.distributed import Distributed
 from fme.core.models.conditional_sfno.sfnonet import (
     Context,
     ContextConfig,
@@ -19,8 +21,8 @@ from fme.core.models.conditional_sfno.sfnonet import (
 
 def isotropic_noise(
     leading_shape: tuple[int, ...],
-    lmax: int,  # length of the ℓ axis expected by isht
-    mmax: int,  # length of the m axis expected by isht
+    lmax: int,  # length of the ℓ axis expected by isht (global)
+    mmax: int,  # length of the m axis expected by isht (global)
     isht: Callable[[torch.Tensor], torch.Tensor],
     device: torch.device,
 ) -> torch.Tensor:
@@ -39,6 +41,14 @@ def isotropic_noise(
     scale = math.sqrt(4.0 * math.pi) / lmax  # (Unsöld theorem ⇒ L = lmax)
     alm = (real + 1j * imag) * scale
 
+    # For distributed iSHT, slice to local spectral extent
+    if isinstance(isht, thd.DistributedInverseRealSHT):
+        l_start = sum(isht.l_shapes[: isht.comm_rank_polar])
+        l_local = isht.l_shapes[isht.comm_rank_polar]
+        m_start = sum(isht.m_shapes[: isht.comm_rank_azimuth])
+        m_local = isht.m_shapes[isht.comm_rank_azimuth]
+        alm = alm[..., l_start : l_start + l_local, m_start : m_start + m_local]
+
     return isht(alm)
 
 
@@ -56,6 +66,7 @@ class NoiseConditionedSFNO(torch.nn.Module):
         self.conditional_model = conditional_model
         self.embed_dim = embed_dim_noise
         self.noise_type = noise_type
+        self.img_shape = img_shape
         self.label_pos_embed: torch.nn.Parameter | None = None
         # register pos embed if pos_embed_dim != 0
         if embed_dim_pos != 0:
@@ -80,6 +91,11 @@ class NoiseConditionedSFNO(torch.nn.Module):
         else:
             self.pos_embed = None
 
+    def _get_spatial_slices(self):
+        """Return (h_slice, w_slice) for the local spatial chunk."""
+        dist = Distributed.get_instance()
+        return dist.get_spatial_slices(*self.img_shape)
+
     def forward(
         self, x: torch.Tensor, labels: torch.Tensor | None = None
     ) -> torch.Tensor:
@@ -103,11 +119,15 @@ class NoiseConditionedSFNO(torch.nn.Module):
         else:
             raise ValueError(f"Invalid noise type: {self.noise_type}")
 
+        h_slice, w_slice = self._get_spatial_slices()
+
         if self.pos_embed is not None:
-            embedding_pos = self.pos_embed.repeat(noise.shape[0], 1, 1, 1)
+            pos_local = self.pos_embed[..., h_slice, w_slice]
+            embedding_pos = pos_local.repeat(noise.shape[0], 1, 1, 1)
             if self.label_pos_embed is not None and labels is not None:
+                label_local = self.label_pos_embed[..., h_slice, w_slice]
                 label_embedding_pos = torch.einsum(
-                    "bl, lpxy -> bpxy", labels, self.label_pos_embed
+                    "bl, lpxy -> bpxy", labels, label_local
                 )
                 embedding_pos = embedding_pos + label_embedding_pos
         else:

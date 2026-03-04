@@ -393,6 +393,41 @@ class Distributed:
         """
         return self._seed
 
+    @property
+    def h_size(self) -> int:
+        return self._distributed.h_size
+
+    @property
+    def w_size(self) -> int:
+        return self._distributed.w_size
+
+    @property
+    def h_rank(self) -> int:
+        return self._distributed.h_rank
+
+    @property
+    def w_rank(self) -> int:
+        return self._distributed.w_rank
+
+    @property
+    def h_group(self):
+        return self._distributed.h_group
+
+    @property
+    def w_group(self):
+        return self._distributed.w_group
+
+    @property
+    def is_spatial_parallel(self) -> bool:
+        return self._distributed.is_spatial_parallel
+
+    def get_spatial_slices(self, h: int, w: int) -> tuple[slice, slice]:
+        """Return ``(h_slice, w_slice)`` for the local spatial chunk."""
+        return self._distributed.get_spatial_slices(h, w)
+
+    def spatial_reduce_sum(self, tensor: torch.Tensor) -> torch.Tensor:
+        return self._distributed.spatial_reduce_sum(tensor)
+
     def shutdown(self):
         return self._distributed.shutdown()
 
