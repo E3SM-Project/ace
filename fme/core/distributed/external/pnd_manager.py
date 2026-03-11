@@ -3,9 +3,8 @@
 Based on the following file:
 https://github.com/NVIDIA/physicsnemo/blob/62adbe43da94615b3843dbee866bd7af8939bc91/physicsnemo/distributed/manager.py
 
-We make some edits (formatting, removal of version checks and decorators,
-and removal of unused functions) to fit the current needs of FME.
-We also require a minimum of torch 2.4.0 for FME as a result.
+We make some edits (formatting, removal of decorators and unused functions)
+to fit the current needs of FME. Requires PyTorch >= 2.4.0.
 """
 
 # SPDX-FileCopyrightText: Copyright (c) 2023 - 2025 NVIDIA CORPORATION & AFFILIATES.
@@ -31,6 +30,14 @@ from warnings import warn
 import numpy as np
 import torch
 import torch.distributed as dist
+
+_MIN_TORCH_VERSION = (2, 4)
+_torch_version = tuple(int(x) for x in torch.__version__.split(".")[:2])
+if _torch_version < _MIN_TORCH_VERSION:
+    raise RuntimeError(
+        f"FME requires PyTorch >= {'.'.join(str(v) for v in _MIN_TORCH_VERSION)}, "
+        f"but found {torch.__version__}"
+    )
 
 
 class PhysicsNeMoUninitializedDistributedManagerWarning(Warning):
@@ -179,17 +186,12 @@ class DistributedManager:
         """Setup method using generic initialization."""
         rank = int(os.environ["RANK"])
         world_size = int(os.environ["WORLD_SIZE"])
-        if "LOCAL_RANK" in os.environ:
-            local_rank_str = os.environ.get("LOCAL_RANK")
-            if local_rank_str is not None:
-                local_rank = int(local_rank_str)
-            else:
-                local_rank = rank % torch.cuda.device_count()
-
+        local_rank_str = os.environ.get("LOCAL_RANK")
+        if local_rank_str is not None:
+            local_rank = int(local_rank_str)
         else:
             local_rank = rank % torch.cuda.device_count()
 
-        # Read env variables
         addr = os.environ.get("MASTER_ADDR")
         port = os.environ.get("MASTER_PORT")
 
@@ -200,23 +202,6 @@ class DistributedManager:
             addr=addr,
             port=port,
             backend=DistributedManager.get_available_backend(),
-        )
-
-    @staticmethod
-    def initialize_open_mpi(addr, port):
-        """Setup method using OpenMPI initialization."""
-        rank = int(os.environ["OMPI_COMM_WORLD_RANK"])
-        world_size = int(os.environ["OMPI_COMM_WORLD_SIZE"])
-        local_rank = int(os.environ["OMPI_COMM_WORLD_LOCAL_RANK"])
-
-        DistributedManager.setup(
-            rank=rank,
-            world_size=world_size,
-            local_rank=local_rank,
-            addr=addr,
-            port=port,
-            backend=DistributedManager.get_available_backend(),
-            method="openmpi",
         )
 
     @staticmethod
@@ -247,9 +232,6 @@ class DistributedManager:
             `SLURM`: Initialization on SLURM systems.
                 Uses `SLURM_PROCID`, `SLURM_NPROCS`, `SLURM_LOCALID` and
                 `SLURM_LAUNCH_NODE_IPADDR` environment variables.
-            `OPENMPI`: Initialization for OpenMPI launchers.
-                Uses `OMPI_COMM_WORLD_RANK`, `OMPI_COMM_WORLD_SIZE` and
-                `OMPI_COMM_WORLD_LOCAL_RANK` environment variables.
 
         Initialization by default is done using the first valid method in the
         order listed above. Initialization method can also be explicitly
@@ -261,28 +243,21 @@ class DistributedManager:
             warn("Distributed manager is already initialized")
             return
 
-        addr = os.getenv("MASTER_ADDR", "localhost")
         port = os.getenv("MASTER_PORT", "12355")
         # https://pytorch.org/docs/master/notes/cuda.html#id5
-        # was changed in version 2.2
-        if torch.__version__ < (2, 2):
-            os.environ["NCCL_ASYNC_ERROR_HANDLING"] = "0"
-        else:
-            os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "0"
+        os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "0"
         initialization_method = os.getenv(
             "PHYSICSNEMO_DISTRIBUTED_INITIALIZATION_METHOD"
         )
         if initialization_method is None:
             try:
                 DistributedManager.initialize_env()
-            except TypeError:
+            except (KeyError, TypeError):
                 if "SLURM_PROCID" in os.environ:
                     DistributedManager.initialize_slurm(port)
-                elif "OMPI_COMM_WORLD_RANK" in os.environ:
-                    DistributedManager.initialize_open_mpi(addr, port)
                 else:
                     warn(
-                        "Could not initialize using ENV, SLURM or OPENMPI "
+                        "Could not initialize using ENV or SLURM "
                         "methods. Assuming this is a single process job"
                     )
                     DistributedManager._shared_state["_is_initialized"] = True
@@ -290,15 +265,13 @@ class DistributedManager:
             DistributedManager.initialize_env()
         elif initialization_method == "SLURM":
             DistributedManager.initialize_slurm(port)
-        elif initialization_method == "OPENMPI":
-            DistributedManager.initialize_open_mpi(addr, port)
         else:
             raise RuntimeError(
                 "Unknown initialization method "
                 f"{initialization_method}. "
                 "Supported values for "
                 "PHYSICSNEMO_DISTRIBUTED_INITIALIZATION_METHOD are "
-                "ENV, SLURM and OPENMPI"
+                "ENV and SLURM"
             )
 
         # Set per rank numpy random seed for data sampling
@@ -383,7 +356,7 @@ class DistributedManager:
         )
 
         # Finally, upon success, cache the mesh dimensions:
-        self._mesh_dims = {key: val for key, val in zip(mesh_dim_names, mesh_shape)}
+        self._mesh_dims = dict(zip(mesh_dim_names, mesh_shape))
 
         return self._global_mesh
 
@@ -401,7 +374,7 @@ class DistributedManager:
         if not hasattr(self, "_mesh_groups"):
             self._mesh_groups: dict[int, dist.ProcessGroup] = {}
 
-        if key in self._mesh_groups.keys():
+        if key in self._mesh_groups:
             return self._mesh_groups[key]
         else:
             if mesh.ndim != 1:
@@ -453,22 +426,15 @@ class DistributedManager:
 
         if manager._distributed:
             # Setup distributed process group.
-            # device_id (introduced in PyTorch 2.3) only accepts CUDA devices.
+            # device_id only accepts CUDA devices.
+            # https://github.com/pytorch/pytorch/issues/160731
             if manager.device.type == "cuda":
-                try:
-                    dist.init_process_group(
-                        backend,
-                        rank=manager.rank,
-                        world_size=manager.world_size,
-                        device_id=manager.device,
-                    )
-                except TypeError:
-                    # device_id only introduced in PyTorch 2.3
-                    dist.init_process_group(
-                        backend,
-                        rank=manager.rank,
-                        world_size=manager.world_size,
-                    )
+                dist.init_process_group(
+                    backend,
+                    rank=manager.rank,
+                    world_size=manager.world_size,
+                    device_id=manager.device,
+                )
             else:
                 dist.init_process_group(
                     backend,
