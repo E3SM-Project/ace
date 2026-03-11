@@ -123,8 +123,13 @@ def test_spatial_parallel_backward_step(img_shape):
         f"Loss deviates from baseline: "
         f"actual={actual_loss:.8f}, expected={baseline_loss:.8f}, rel_diff={rel_loss:.3e}"
     )
+    max_rel = (
+        ((grad - baseline_grad).abs() / baseline_grad.abs().clamp_min(1e-12))
+        .max()
+        .item()
+    )
     assert torch.allclose(grad, baseline_grad, rtol=1e-3, atol=1e-6), (
-    f"grad_x differs from baseline: "
-    f"max_abs={(grad - baseline_grad).abs().max().item():.3e}, "
-    f"max_rel={((grad - baseline_grad).abs() / baseline_grad.abs().clamp_min(1e-12)).max().item():.3e}"
-)
+        f"grad_x differs from baseline: "
+        f"max_abs={(grad - baseline_grad).abs().max().item():.3e}, "
+        f"max_rel={max_rel:.3e}"
+    )
