@@ -182,6 +182,11 @@ class DistributedManager:
             return "gloo"
 
     @staticmethod
+    def _local_rank_from_cuda(rank: int) -> int:
+        device_count = torch.cuda.device_count()
+        return rank % device_count if device_count > 0 else 0
+
+    @staticmethod
     def initialize_env():
         """Setup method using generic initialization."""
         rank = int(os.environ["RANK"])
@@ -190,7 +195,7 @@ class DistributedManager:
         if local_rank_str is not None:
             local_rank = int(local_rank_str)
         else:
-            local_rank = rank % torch.cuda.device_count()
+            local_rank = DistributedManager._local_rank_from_cuda(rank)
 
         addr = os.environ.get("MASTER_ADDR")
         port = os.environ.get("MASTER_PORT")
@@ -250,17 +255,16 @@ class DistributedManager:
             "PHYSICSNEMO_DISTRIBUTED_INITIALIZATION_METHOD"
         )
         if initialization_method is None:
-            try:
+            if "RANK" in os.environ and "WORLD_SIZE" in os.environ:
                 DistributedManager.initialize_env()
-            except (KeyError, TypeError):
-                if "SLURM_PROCID" in os.environ:
-                    DistributedManager.initialize_slurm(port)
-                else:
-                    warn(
-                        "Could not initialize using ENV or SLURM "
-                        "methods. Assuming this is a single process job"
-                    )
-                    DistributedManager._shared_state["_is_initialized"] = True
+            elif "SLURM_PROCID" in os.environ:
+                DistributedManager.initialize_slurm(port)
+            else:
+                warn(
+                    "Could not initialize using ENV or SLURM "
+                    "methods. Assuming this is a single process job"
+                )
+                DistributedManager._shared_state["_is_initialized"] = True
         elif initialization_method == "ENV":
             DistributedManager.initialize_env()
         elif initialization_method == "SLURM":
@@ -413,7 +417,7 @@ class DistributedManager:
             manager._rank = rank
             manager._world_size = world_size
             if local_rank is None:
-                manager._local_rank = rank % torch.cuda.device_count()
+                manager._local_rank = DistributedManager._local_rank_from_cuda(rank)
             else:
                 manager._local_rank = local_rank
 
