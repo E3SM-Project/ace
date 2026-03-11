@@ -18,8 +18,8 @@ def _run_forward_backward(
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Run a single forward + backward step and return:
-      - loss scalar on this rank
-      - a dict of parameter gradients (cloned) keyed by param name
+      - loss on this rank
+      - global gradient
     """
     dist = Distributed.get_instance()
 
@@ -110,7 +110,7 @@ def test_spatial_parallel_backward_step(img_shape):
     baseline = torch.load(BASELINE_FILE, map_location="cpu")
     assert tuple(baseline["img_shape"]) == tuple(img_shape)
 
-    baseline_loss: torch.Tensor = baseline["loss"]
+    baseline_loss = baseline["loss"].item()
     baseline_grad = baseline["grad"]
 
     # 1) Loss finite and close to baseline.

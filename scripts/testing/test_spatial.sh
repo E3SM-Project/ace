@@ -9,7 +9,6 @@ H=${H_ARG:-${FME_DISTRIBUTED_H:-2}}
 W=${W_ARG:-${FME_DISTRIBUTED_W:-2}}
 
 NP=$((H * W))
-NP=$((H * W))
 
 dir=fme/core/distributed/parallel_tests
 tests=test_backward_step.py::test_spatial_parallel_backward_step 
