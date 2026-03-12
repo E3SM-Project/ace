@@ -9,10 +9,14 @@ non-parallel StepABC tests (which include also cases that don't work in parallel
 
 import dataclasses
 import datetime
+import os
 import pathlib
 import tempfile
 import unittest
 import unittest.mock
+
+# Must be set before CUDA initialization for deterministic cuBLAS.
+os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
 from collections.abc import Callable
 
 import numpy as np
@@ -393,6 +397,34 @@ def cache_step_input(
         )
 
 
+def cache_model_state(state: dict, checkpoint_path: pathlib.Path) -> None:
+    """Cache or compare model state dict (from step.get_state()).
+
+    On first run, saves state and raises AssertionError.
+    On subsequent runs, loads cached state and asserts all tensors match.
+    """
+    if checkpoint_path.exists():
+        expected = torch.load(checkpoint_path, map_location=fme.get_device())
+
+        def _compare(actual: dict, reference: dict, prefix: str = ""):
+            for key in actual:
+                a, r = actual[key], reference[key]
+                if isinstance(a, dict):
+                    _compare(a, r, prefix=f"{prefix}{key}.")
+                elif isinstance(a, torch.Tensor):
+                    torch.testing.assert_close(
+                        a, r, msg=lambda msg: f"{prefix}{key}: {msg}"
+                    )
+
+        _compare(state, expected)
+    else:
+        torch.save(state, checkpoint_path)
+        raise AssertionError(
+            f"Model state checkpoint created at {checkpoint_path}, "
+            "please re-run the test."
+        )
+
+
 def cache_step_output(output_data: TensorDict, checkpoint_path: pathlib.Path):
     if checkpoint_path.exists():
         checkpoint = torch.load(checkpoint_path, map_location=fme.get_device())
@@ -426,8 +458,10 @@ def test_step_regression(
     decomposition, as well as catching any unintended changes to the
     step's behavior.
     """
+    prev_deterministic = torch.are_deterministic_algorithms_enabled()
     dist = Distributed.get_instance()
     torch.manual_seed(0)
+    torch.use_deterministic_algorithms(True)
     img_shape = (20, 40)
     n_samples = 2
     selector = get_config(None)
@@ -456,7 +490,7 @@ def test_step_regression(
     input_data = dist.scatter_spatial(input_data, img_shape)
     next_step_input_data = dist.scatter_spatial(next_step_input_data, img_shape)
 
-    output = step.step(
+    local_output = step.step(
         args=StepArgs(
             input=input_data, next_step_input_data=next_step_input_data, labels=labels
         ),
@@ -464,6 +498,63 @@ def test_step_regression(
     )
 
     # Gather local outputs back to global for comparison
-    output = dist.gather_spatial(output, img_shape)
+    global_output = dist.gather_spatial(local_output, img_shape)
 
-    cache_step_output(output, DATA_DIR / f"{case_name}_output.pt")
+    cache_step_output(global_output, DATA_DIR / f"{case_name}_output.pt")
+
+    # --- Backward pass on local (pre-gather) output to preserve autograd graph ---
+    # Spatial gradient reduction for replicated parameters is handled by hooks
+    # registered in ModelTorchDistributed.wrap_module (no-op for other backends).
+    loss = sum(v.sum() for v in local_output.values())
+    loss.backward()
+
+    # Optimizer step with fixed lr, no momentum for determinism
+    # Use very small lr to avoid NaN from atmosphere corrector's numerical sensitivity
+    optimizer = torch.optim.SGD(step.modules.parameters(), lr=1e-8)
+    optimizer.step()
+    optimizer.zero_grad()
+
+    # Verify model state after backward pass + optimizer step
+    state = step.get_state()
+    # Gather state tensors to global so cache is decomposition-independent
+    global_state = _gather_state(state, dist, img_shape)
+    cache_model_state(global_state, DATA_DIR / f"{case_name}_state_after_backward.pt")
+
+    # Second forward pass with same inputs, verify output regression
+    output2 = step.step(
+        args=StepArgs(
+            input=input_data, next_step_input_data=next_step_input_data, labels=labels
+        ),
+        wrapper=lambda x: x,
+    )
+    global_output2 = dist.gather_spatial(output2, img_shape)
+    cache_step_output(
+        global_output2, DATA_DIR / f"{case_name}_output_after_backward.pt"
+    )
+
+    torch.use_deterministic_algorithms(prev_deterministic)
+
+
+def _gather_state(state: dict, dist: Distributed, img_shape: tuple[int, int]) -> dict:
+    """Recursively gather spatial tensor slices in a state dict."""
+    local_slices = dist.get_local_slices(img_shape)
+    s_h, s_w = local_slices[-2], local_slices[-1]
+    local_h = (s_h.stop if s_h.stop is not None else img_shape[0]) - (
+        s_h.start if s_h.start is not None else 0
+    )
+    local_w = (s_w.stop if s_w.stop is not None else img_shape[1]) - (
+        s_w.start if s_w.start is not None else 0
+    )
+    result = {}
+    for key, value in state.items():
+        if isinstance(value, dict):
+            result[key] = _gather_state(value, dist, img_shape)
+        elif isinstance(value, torch.Tensor) and value.ndim >= 2:
+            # Only gather tensors whose last two dims match the local spatial shape
+            if value.shape[-2] == local_h and value.shape[-1] == local_w:
+                result[key] = dist.gather_spatial({"_t": value}, img_shape)["_t"]
+            else:
+                result[key] = value
+        else:
+            result[key] = value
+    return result
