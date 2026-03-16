@@ -45,8 +45,8 @@ T = TypeVar("T")
 class _ReduceFromParallelRegion(torch.autograd.Function):
     """All-reduce in **both** forward and backward.
 
-    Forward: clone + all-reduce SUM (combine partial sums from spatial ranks).
-    Backward: clone + all-reduce SUM (combine per-rank loss gradients).
+    Forward: all-reduce SUM (combine partial sums from spatial ranks).
+    Backward: all-reduce SUM (combine per-rank loss gradients).
 
     The backward all-reduce is needed because each rank computes gradients
     from its own *local* loss.  When a forward all-reduce feeds into a
@@ -55,23 +55,25 @@ class _ReduceFromParallelRegion(torch.autograd.Function):
     (sum over all ranks) so that every rank obtains the correct
     ``d(total_loss)/d(local_input)``.  Without the backward all-reduce
     the cross-rank gradient contributions through the global mean are lost.
-
-    TODO: consider cloning for extra safety? Or is in-place stuff ok?
     """
 
     @staticmethod
     def forward(ctx, tensor: torch.Tensor, group: Any) -> torch.Tensor:
         ctx.group = group
-        torch.distributed.all_reduce(tensor, group=group)
-        return tensor
+        output = tensor.clone()
+        torch.distributed.all_reduce(output, group=group)
+        return output
 
     @staticmethod
     def backward(ctx, grad_output: torch.Tensor):
-        # TODO: identity backward is technically ok here
-        # TODO: it contributes a small error (that's potentially undetectable)
-        # TODO: this is needed because pos_embed in atmos corrector in test...
-        torch.distributed.all_reduce(grad_output, group=ctx.group)
-        return grad_output, None
+        # Each rank receives d(loss_r)/d(output) from its local loss.
+        # All-reduce sums to d(total_loss)/d(output), which is the correct
+        # upstream gradient for the parameter hooks to then distribute.
+        # Without this, the indirect gradient path (through corrector global
+        # means) would be scaled by (1 - 1/N) instead of 1.
+        grad_input = grad_output.clone()
+        torch.distributed.all_reduce(grad_input, group=ctx.group)
+        return grad_input, None
 
 
 class ModelTorchDistributed(DistributedBackend):

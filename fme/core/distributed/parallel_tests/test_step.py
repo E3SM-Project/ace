@@ -397,16 +397,49 @@ def cache_step_input(
         )
 
 
-def cache_model_state(state: dict, checkpoint_path: pathlib.Path) -> None:
-    """Cache or compare model state dict (from step.get_state()).
+def _save_once(data: dict, checkpoint_path: pathlib.Path) -> None:
+    """Save from rank 0 only, then barrier so all ranks see the file."""
+    dist = Distributed.get_instance()
+    if dist.rank == 0:
+        torch.save(data, checkpoint_path)
+    dist.barrier()
 
-    On first run, saves state and raises AssertionError.
-    On subsequent runs, loads cached state and asserts all tensors match.
+
+def assert_all_ranks_agree(data: dict, prefix: str = "") -> None:
+    """Assert every rank holds the same tensor values after gathering.
+
+    Uses global min/max all-reduce over the world group: if min == max
+    for every element the values are identical across all ranks.
+    No-op when torch.distributed is not initialized (single-process).
     """
+    if not torch.distributed.is_initialized():
+        return
+    for key, value in data.items():
+        name = f"{prefix}{key}"
+        if isinstance(value, dict):
+            assert_all_ranks_agree(value, prefix=f"{name}.")
+        elif isinstance(value, torch.Tensor):
+            t_min = value.clone()
+            t_max = value.clone()
+            torch.distributed.all_reduce(t_min, op=torch.distributed.ReduceOp.MIN)
+            torch.distributed.all_reduce(t_max, op=torch.distributed.ReduceOp.MAX)
+            torch.testing.assert_close(
+                t_min,
+                t_max,
+                msg=lambda msg: f"Ranks disagree on {name}: {msg}",
+            )
+
+
+def cache_model_state(state: dict, checkpoint_path: pathlib.Path) -> None:
+    """Cache or compare model state dict (from step.get_state())."""
     if checkpoint_path.exists():
         expected = torch.load(checkpoint_path, map_location=fme.get_device())
 
         def _compare(actual: dict, reference: dict, prefix: str = ""):
+            assert actual.keys() == reference.keys(), (
+                f"Key mismatch at '{prefix}': "
+                f"actual={set(actual.keys())}, reference={set(reference.keys())}"
+            )
             for key in actual:
                 a, r = actual[key], reference[key]
                 if isinstance(a, dict):
@@ -418,7 +451,7 @@ def cache_model_state(state: dict, checkpoint_path: pathlib.Path) -> None:
 
         _compare(state, expected)
     else:
-        torch.save(state, checkpoint_path)
+        _save_once(state, checkpoint_path)
         raise AssertionError(
             f"Model state checkpoint created at {checkpoint_path}, "
             "please re-run the test."
@@ -432,10 +465,7 @@ def cache_step_output(output_data: TensorDict, checkpoint_path: pathlib.Path):
         for name in output_data.keys():
             torch.testing.assert_close(output_data[name], expected_output[name])
     else:
-        checkpoint = {
-            "output_data": output_data,
-        }
-        torch.save(checkpoint, checkpoint_path)
+        _save_once({"output_data": output_data}, checkpoint_path)
         raise AssertionError(
             f"Step output checkpoint created at {checkpoint_path}, "
             "please re-run the test."
@@ -462,77 +492,94 @@ def test_step_regression(
     dist = Distributed.get_instance()
     torch.manual_seed(0)
     torch.use_deterministic_algorithms(True)
-    img_shape = (20, 40)
-    n_samples = 2
-    selector = get_config(None)
-    if selector.config.get("conditional", False):
-        labels = BatchLabels.new_from_set(
-            {"a", "b"}, n_samples=n_samples, device=fme.get_device()
+    try:
+        img_shape = (20, 40)
+        n_samples = 2
+        selector = get_config(None)
+        if selector.config.get("conditional", False):
+            labels = BatchLabels.new_from_set(
+                {"a", "b"}, n_samples=n_samples, device=fme.get_device()
+            )
+            labels.tensor[:] = torch.as_tensor(
+                np.random.randint(0, 2, (n_samples,)), device=fme.get_device()
+            )
+        else:
+            labels = None
+        step = get_step(selector, img_shape)
+        input_data = get_tensor_dict(step.input_names, img_shape, n_samples)
+        next_step_input_data = get_tensor_dict(
+            step.next_step_input_names, img_shape, n_samples
         )
-        labels.tensor[:] = torch.as_tensor(
-            np.random.randint(0, 2, (n_samples,)), device=fme.get_device()
+        step, input_data, next_step_input_data, labels = cache_step_input(
+            step,
+            input_data,
+            next_step_input_data,
+            labels,
+            DATA_DIR / f"{case_name}_input.pt",
         )
-    else:
-        labels = None
-    step = get_step(selector, img_shape)
-    input_data = get_tensor_dict(step.input_names, img_shape, n_samples)
-    next_step_input_data = get_tensor_dict(
-        step.next_step_input_names, img_shape, n_samples
-    )
-    step, input_data, next_step_input_data, labels = cache_step_input(
-        step,
-        input_data,
-        next_step_input_data,
-        labels,
-        DATA_DIR / f"{case_name}_input.pt",
-    )
-    # Scatter global inputs to local spatial chunks
-    input_data = dist.scatter_spatial(input_data, img_shape)
-    next_step_input_data = dist.scatter_spatial(next_step_input_data, img_shape)
+        # Scatter global inputs to local spatial chunks
+        input_data = dist.scatter_spatial(input_data, img_shape)
+        next_step_input_data = dist.scatter_spatial(next_step_input_data, img_shape)
 
-    local_output = step.step(
-        args=StepArgs(
-            input=input_data, next_step_input_data=next_step_input_data, labels=labels
-        ),
-        wrapper=lambda x: x,
-    )
+        local_output = step.step(
+            args=StepArgs(
+                input=input_data,
+                next_step_input_data=next_step_input_data,
+                labels=labels,
+            ),
+            wrapper=lambda x: x,
+        )
 
-    # Gather local outputs back to global for comparison
-    global_output = dist.gather_spatial(local_output, img_shape)
+        # Gather local outputs back to global for comparison.
+        # Detach to avoid inserting _ReduceFromParallelRegion nodes into
+        # local_output's autograd graph before loss.backward().
+        with torch.no_grad():
+            global_output = dist.gather_spatial(
+                {k: v.detach() for k, v in local_output.items()}, img_shape
+            )
 
-    cache_step_output(global_output, DATA_DIR / f"{case_name}_output.pt")
+        cache_step_output(global_output, DATA_DIR / f"{case_name}_output.pt")
 
-    # --- Backward pass on local (pre-gather) output to preserve autograd graph ---
-    # Spatial gradient reduction for replicated parameters is handled by hooks
-    # registered in ModelTorchDistributed.wrap_module (no-op for other backends).
-    loss = sum(v.sum() for v in local_output.values())
-    loss.backward()
+        # --- Backward pass on local (pre-gather) output ---
+        # Spatial gradient reduction for replicated parameters is handled by
+        # hooks registered in ModelTorchDistributed.wrap_module (identity for
+        # other backends).
+        loss = sum(v.sum() for v in local_output.values())
+        loss.backward()
 
-    # Optimizer step with fixed lr, no momentum for determinism
-    # Use very small lr to avoid NaN from atmosphere corrector's numerical sensitivity
-    optimizer = torch.optim.SGD(step.modules.parameters(), lr=1e-8)
-    optimizer.step()
-    optimizer.zero_grad()
+        # Optimizer step with fixed lr, no momentum for determinism.
+        optimizer = torch.optim.SGD(step.modules.parameters(), lr=1e-12)
+        optimizer.step()
+        optimizer.zero_grad()
 
-    # Verify model state after backward pass + optimizer step
-    state = step.get_state()
-    # Gather state tensors to global so cache is decomposition-independent
-    global_state = _gather_state(state, dist, img_shape)
-    cache_model_state(global_state, DATA_DIR / f"{case_name}_state_after_backward.pt")
+        # Verify model state after backward + optimizer step.
+        with torch.no_grad():
+            state = step.get_state()
+            global_state = _gather_state(state, dist, img_shape)
+        assert_all_ranks_agree(global_state)
+        cache_model_state(
+            global_state, DATA_DIR / f"{case_name}_state_after_backward.pt"
+        )
 
-    # Second forward pass with same inputs, verify output regression
-    output2 = step.step(
-        args=StepArgs(
-            input=input_data, next_step_input_data=next_step_input_data, labels=labels
-        ),
-        wrapper=lambda x: x,
-    )
-    global_output2 = dist.gather_spatial(output2, img_shape)
-    cache_step_output(
-        global_output2, DATA_DIR / f"{case_name}_output_after_backward.pt"
-    )
-
-    torch.use_deterministic_algorithms(prev_deterministic)
+        # Second forward pass with same inputs, verify output regression.
+        output2 = step.step(
+            args=StepArgs(
+                input=input_data,
+                next_step_input_data=next_step_input_data,
+                labels=labels,
+            ),
+            wrapper=lambda x: x,
+        )
+        with torch.no_grad():
+            global_output2 = dist.gather_spatial(
+                {k: v.detach() for k, v in output2.items()}, img_shape
+            )
+        assert_all_ranks_agree(global_output2)
+        cache_step_output(
+            global_output2, DATA_DIR / f"{case_name}_output_after_backward.pt"
+        )
+    finally:
+        torch.use_deterministic_algorithms(prev_deterministic)
 
 
 def _gather_state(state: dict, dist: Distributed, img_shape: tuple[int, int]) -> dict:
