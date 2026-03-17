@@ -19,7 +19,6 @@ import unittest.mock
 os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
 from collections.abc import Callable
 
-import numpy as np
 import pytest
 import torch
 from torch import nn
@@ -34,6 +33,7 @@ from fme.core.distributed.distributed import Distributed
 from fme.core.distributed.non_distributed import DummyWrapper
 from fme.core.labels import BatchLabels
 from fme.core.normalizer import NetworkAndLossNormalizationConfig, NormalizationConfig
+from fme.core.optimization import OptimizationConfig
 from fme.core.registry import ModuleSelector
 from fme.core.step.args import StepArgs
 from fme.core.step.multi_call import MultiCallConfig, MultiCallStepConfig
@@ -428,6 +428,14 @@ def assert_all_ranks_agree(data: dict, prefix: str = "") -> None:
                 t_max,
                 msg=lambda msg: f"Ranks disagree on {name}: {msg}",
             )
+        else:
+            gathered = [None] * torch.distributed.get_world_size()
+            torch.distributed.all_gather_object(gathered, value)
+            for rank_i, val_i in enumerate(gathered):
+                assert val_i == gathered[0], (
+                    f"Ranks disagree on {name}: rank 0 has {gathered[0]!r}, "
+                    f"rank {rank_i} has {val_i!r}"
+                )
 
 
 def cache_model_state(state: dict, checkpoint_path: pathlib.Path) -> None:
@@ -448,6 +456,11 @@ def cache_model_state(state: dict, checkpoint_path: pathlib.Path) -> None:
                     torch.testing.assert_close(
                         a, r, msg=lambda msg: f"{prefix}{key}: {msg}"
                     )
+                else:
+                    assert type(a) is type(
+                        r
+                    ), f"Type mismatch at '{prefix}{key}': {type(a)} vs {type(r)}"
+                    assert a == r, f"Value mismatch at '{prefix}{key}': {a!r} != {r!r}"
 
         _compare(state, expected)
     else:
@@ -458,12 +471,24 @@ def cache_model_state(state: dict, checkpoint_path: pathlib.Path) -> None:
         )
 
 
-def cache_step_output(output_data: TensorDict, checkpoint_path: pathlib.Path):
+def cache_step_output(
+    output_data: TensorDict,
+    checkpoint_path: pathlib.Path,
+    atol: float | None = None,
+    rtol: float | None = None,
+):
     if checkpoint_path.exists():
         checkpoint = torch.load(checkpoint_path, map_location=fme.get_device())
         expected_output = checkpoint["output_data"]
+        kwargs: dict = {}
+        if atol is not None:
+            kwargs["atol"] = atol
+        if rtol is not None:
+            kwargs["rtol"] = rtol
         for name in output_data.keys():
-            torch.testing.assert_close(output_data[name], expected_output[name])
+            torch.testing.assert_close(
+                output_data[name], expected_output[name], **kwargs
+            )
     else:
         _save_once({"output_data": output_data}, checkpoint_path)
         raise AssertionError(
@@ -500,8 +525,8 @@ def test_step_regression(
             labels = BatchLabels.new_from_set(
                 {"a", "b"}, n_samples=n_samples, device=fme.get_device()
             )
-            labels.tensor[:] = torch.as_tensor(
-                np.random.randint(0, 2, (n_samples,)), device=fme.get_device()
+            labels.tensor[:] = torch.randint(
+                0, 2, (n_samples,), device=fme.get_device()
             )
         else:
             labels = None
@@ -547,10 +572,22 @@ def test_step_regression(
         loss = sum(v.sum() for v in local_output.values())
         loss.backward()
 
-        # Optimizer step with fixed lr, no momentum for determinism.
-        optimizer = torch.optim.SGD(step.modules.parameters(), lr=1e-12)
-        optimizer.step()
-        optimizer.zero_grad()
+        # Check gradient agreement across ranks before optimizer step.
+        with torch.no_grad():
+            grad_dict = {
+                name: p.grad
+                for name, p in step.modules.named_parameters()
+                if p.grad is not None
+            }
+        assert_all_ranks_agree(grad_dict, prefix="grad.")
+
+        # Optimizer step using the repo's standard OptimizationConfig helper.
+        # lr=1e-6 keeps Adam's first-step updates (~±lr) small enough that
+        # sign-flip noise in near-zero gradients stays within assert_close
+        # tolerance (2·lr = 2e-6 < atol = 1e-5).
+        optimization = OptimizationConfig(lr=1e-6).build(step.modules, max_epochs=1)
+        optimization.optimizer.step()
+        optimization.optimizer.zero_grad()
 
         # Verify model state after backward + optimizer step.
         with torch.no_grad():
@@ -575,8 +612,13 @@ def test_step_regression(
                 {k: v.detach() for k, v in output2.items()}, img_shape
             )
         assert_all_ranks_agree(global_output2)
+        # Relaxed tolerance: the optimizer step introduces device-dependent
+        # parameter perturbations (~lr) that the network amplifies ~25x.
         cache_step_output(
-            global_output2, DATA_DIR / f"{case_name}_output_after_backward.pt"
+            global_output2,
+            DATA_DIR / f"{case_name}_output_after_backward.pt",
+            atol=1e-4,
+            rtol=1e-4,
         )
     finally:
         torch.use_deterministic_algorithms(prev_deterministic)
