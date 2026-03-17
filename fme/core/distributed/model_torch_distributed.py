@@ -372,21 +372,28 @@ class ModelTorchDistributed(DistributedBackend):
         return DummyWrapper(module)
 
     def _register_spatial_grad_hooks(self, module: torch.nn.Module) -> None:
-        """Register hooks to all-reduce gradients across spatial ranks.
+        """Register hooks to all-reduce and average gradients across spatial ranks.
 
         Each trainable parameter gets a backward hook that calls
-        ``spatial_reduce_sum`` on its gradient. This is a no-op when
+        ``all_reduce(SUM)`` followed by division by the number of spatial
+        ranks on its gradient.  This produces the correct gradient for
+        ``reduction="mean"`` losses whose local element count is
+        ``1/n_spatial_ranks`` of the global count.  It is a no-op when
         ``h_size == w_size == 1`` (no spatial parallelism).
         """
         if self._h_size <= 1 and self._w_size <= 1:
             return
         spatial_group = self._spatial_group
+        n_spatial = self._h_size * self._w_size
         for param in module.parameters():
             if param.requires_grad:
 
-                def reduce_hook(grad: torch.Tensor, grp=spatial_group) -> torch.Tensor:
+                def reduce_hook(
+                    grad: torch.Tensor, grp=spatial_group, n=n_spatial
+                ) -> torch.Tensor:
                     g = grad.contiguous()
                     torch.distributed.all_reduce(g, group=grp)
+                    g /= n
                     return g
 
                 param.register_hook(reduce_hook)

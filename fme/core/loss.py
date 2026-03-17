@@ -6,6 +6,7 @@ import torch
 import torch.linalg
 
 from fme.core.device import get_device
+from fme.core.distributed.distributed import Distributed
 from fme.core.ensemble import get_crps, get_energy_score
 from fme.core.gridded_ops import GriddedOperations
 from fme.core.normalizer import StandardNormalizer
@@ -395,6 +396,11 @@ class LossConfig:
                 the loss function requires use of the horizontal dimensions.
         """
         if self.type == "LpLoss":
+            Distributed.get_instance().require_no_spatial_parallelism(
+                "LpLoss computes norms over flattened spatial elements; "
+                "under spatial parallelism the local norm != global norm. "
+                "Use MSE or AreaWeightedMSE instead."
+            )
             main_loss = LpLoss(**self.kwargs)
         elif self.type == "L1":
             main_loss = torch.nn.L1Loss(reduction=reduction)

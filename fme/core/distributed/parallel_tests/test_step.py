@@ -33,6 +33,7 @@ from fme.core.dataset_info import DatasetInfo
 from fme.core.distributed.distributed import Distributed
 from fme.core.distributed.non_distributed import DummyWrapper
 from fme.core.labels import BatchLabels
+from fme.core.loss import StepLossConfig
 from fme.core.normalizer import NetworkAndLossNormalizationConfig, NormalizationConfig
 from fme.core.registry import ModuleSelector
 from fme.core.step.args import StepArgs
@@ -264,6 +265,29 @@ def get_step(
         all_labels=all_labels,
     )
     return selector.get_step(dataset_info, init_weights)
+
+
+def get_step_and_info(
+    selector: StepSelector,
+    img_shape: tuple[int, int],
+    init_weights: Callable[[list[nn.Module]], None] = lambda _: None,
+    all_labels: set[str] | None = None,
+) -> tuple[StepABC, DatasetInfo]:
+    device = fme.get_device()
+    horizontal_coordinate = LatLonCoordinates(
+        lat=torch.zeros(img_shape[0], device=device),
+        lon=torch.zeros(img_shape[1], device=device),
+    )
+    vertical_coordinate = HybridSigmaPressureCoordinate(
+        ak=torch.arange(7, device=device), bk=torch.arange(7, device=device)
+    )
+    dataset_info = DatasetInfo(
+        horizontal_coordinates=horizontal_coordinate,
+        vertical_coordinate=vertical_coordinate,
+        timestep=TIMESTEP,
+        all_labels=all_labels,
+    )
+    return selector.get_step(dataset_info, init_weights), dataset_info
 
 
 @pytest.mark.parametrize("config", SELECTOR_CONFIG_CASES)
@@ -505,7 +529,7 @@ def test_step_regression(
             )
         else:
             labels = None
-        step = get_step(selector, img_shape)
+        step, dataset_info = get_step_and_info(selector, img_shape)
         input_data = get_tensor_dict(step.input_names, img_shape, n_samples)
         next_step_input_data = get_tensor_dict(
             step.next_step_input_names, img_shape, n_samples
@@ -540,11 +564,18 @@ def test_step_regression(
 
         cache_step_output(global_output, DATA_DIR / f"{case_name}_output.pt")
 
-        # --- Backward pass on local (pre-gather) output ---
-        # Spatial gradient reduction for replicated parameters is handled by
-        # hooks registered in ModelTorchDistributed.wrap_module (identity for
-        # other backends).
-        loss = sum(v.sum() for v in local_output.values())
+        # --- Backward pass using real StepLossConfig (MSE, reduction="mean") ---
+        # This exercises the MEAN gradient hook in the spatial all-reduce,
+        # matching the actual training pipeline.
+        loss_config = StepLossConfig(type="MSE")
+        loss_fn = loss_config.build(
+            gridded_ops=dataset_info.gridded_operations,
+            out_names=step.loss_names,
+            normalizer=step.get_loss_normalizer(),
+        )
+        target = {k: torch.zeros_like(local_output[k]) for k in step.loss_names}
+        predict = {k: local_output[k] for k in step.loss_names}
+        loss = loss_fn(predict, target, step=0)
         loss.backward()
 
         # Optimizer step with fixed lr, no momentum for determinism.
