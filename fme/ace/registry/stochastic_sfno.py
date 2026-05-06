@@ -42,7 +42,8 @@ def isotropic_noise(
     l_slice, m_slice = Distributed.get_instance().get_local_slices((lmax, mmax))
     alm = alm[..., l_slice, m_slice]
 
-    return isht(alm)
+    with torch.amp.autocast(device_type=device.type, enabled=False):
+        return isht(alm.to(torch.complex64))
 
 
 class NoiseConditionedModel(torch.nn.Module):
