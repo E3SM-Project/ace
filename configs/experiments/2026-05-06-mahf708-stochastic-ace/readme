@@ -1,0 +1,21 @@
+Got two nodes with:
+```
+salloc --nodes 2 --qos interactive --time 04:00:00 --constraint gpu --account=e3sm_g --gpus-per-node=4
+```
+
+Ran interactively with in repo root:
+```
+CONFIG_PATH=configs/experiments/2026-05-06-mahf708-stochastic-ace/pm_config_train.yaml
+MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n1)
+
+export FME_DISTRIBUTED_BACKEND=model
+export FME_DISTRIBUTED_H=2
+export FME_DISTRIBUTED_W=2
+
+srun uv run torchrun \
+  --nnodes=$SLURM_NNODES \
+  --nproc_per_node=4 \
+  --rdzv-backend=c10d \
+  --rdzv-endpoint=$MASTER_ADDR:29500 \
+  -m fme.ace.train $CONFIG_PATH
+```
