@@ -134,10 +134,16 @@ def get_gridded_data(
         prefetch_factor=config.prefetch_factor,
     )
 
+    horizontal_coordinates = properties.horizontal_coordinates
+    global_shape = horizontal_coordinates.shape
     return GriddedData(
         loader=dataloader,
         properties=properties,
         modifier=config.augmentation.build_modifier(),
+        post_scatter_modifier=config.roundtrip.build_modifier(
+            global_shape=(global_shape[-2], global_shape[-1]),
+            default_grid=horizontal_coordinates.grid,
+        ),
     )
 
 

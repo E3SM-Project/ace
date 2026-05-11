@@ -36,6 +36,7 @@ class GriddedData(GriddedDataABC[BatchData]):
         loader: DataLoaderABC,
         properties: DatasetProperties,
         modifier: BatchModifierABC = NullModifier(),
+        post_scatter_modifier: BatchModifierABC = NullModifier(),
     ):
         """
         Args:
@@ -43,7 +44,12 @@ class GriddedData(GriddedDataABC[BatchData]):
                 Data can be on any device (but will typically be on CPU).
             properties: Batch-constant properties for the dataset, such as variable
                 metadata and coordinate information. Data can be on any device.
-            modifier: Modifier for the data loader.
+            modifier: Modifier for the data loader applied to the full
+                (un-scattered) batch on its current device.
+            post_scatter_modifier: Modifier applied after the batch has been
+                moved to the device and scattered along the spatial dims. Use
+                this slot for transforms whose distributed implementation
+                operates on local tiles (e.g. spherical-harmonic roundtrip).
 
         Note:
             While input data can be on any device, all data exposed from this class
@@ -57,6 +63,7 @@ class GriddedData(GriddedDataABC[BatchData]):
         self._timestep = self._properties.timestep
         self._vertical_coordinate = self._properties.vertical_coordinate
         self._modifier = modifier
+        self._post_scatter_modifier = post_scatter_modifier
         self._batch_size: int | None = None
 
     @property
@@ -75,7 +82,8 @@ class GriddedData(GriddedDataABC[BatchData]):
     ) -> DataLoader[BatchData]:
         def modify_and_on_device(batch: BatchData) -> BatchData:
             batch = self._modifier(batch)
-            return batch.to_device().scatter_spatial(self._global_img_shape)
+            batch = batch.to_device().scatter_spatial(self._global_img_shape)
+            return self._post_scatter_modifier(batch)
 
         return SizedMap(modify_and_on_device, base_loader)
 

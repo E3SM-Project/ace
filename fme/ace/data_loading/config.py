@@ -1,7 +1,7 @@
 import dataclasses
 from collections.abc import Sequence
 
-from fme.ace.data_loading.augmentation import AugmentationConfig
+from fme.ace.data_loading.augmentation import AugmentationConfig, RoundtripConfig
 from fme.core.dataset.concat import ConcatDatasetConfig
 from fme.core.dataset.dataset import DatasetABC
 from fme.core.dataset.merged import MergeDatasetConfig
@@ -25,6 +25,9 @@ class DataLoaderConfig:
         prefetch_factor: how many batches a single data worker will attempt to
             hold in host memory at a given time.
         augmentation: Configuration for data augmentation.
+        roundtrip: Configuration for an optional runtime spherical-harmonics
+            roundtrip filter applied to each batch (post-scatter under spatial
+            parallelism). Disabled by default.
         sample_with_replacement: If provided, the dataset will be
             sampled randomly with replacement to the given size each period,
             instead of retrieving each sample once (either shuffled or not).
@@ -54,6 +57,9 @@ class DataLoaderConfig:
     prefetch_factor: int | None = None
     augmentation: AugmentationConfig = dataclasses.field(
         default_factory=lambda: AugmentationConfig()
+    )
+    roundtrip: RoundtripConfig = dataclasses.field(
+        default_factory=lambda: RoundtripConfig()
     )
     sample_with_replacement: int | None = None
     time_buffer: int = 0
