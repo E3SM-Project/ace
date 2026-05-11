@@ -1,0 +1,4 @@
+These configs assume a container version of ACE. To create it I did this:
+
+podman-hpc build -f docker/Dockerfile -t e3sm-ace:653607f3 --target production .
+podman-hpc migrate e3sm-ace:653607f3
