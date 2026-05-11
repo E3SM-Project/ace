@@ -300,7 +300,7 @@ def _open_xr_dataset(path: str, *args, **kwargs):
         *args,
         decode_times=CFDatetimeCoder(use_cftime=True),
         decode_timedelta=False,
-        mask_and_scale=False,
+        mask_and_scale=True,
         cache=False,
         chunks=None,
         **kwargs,
