@@ -1230,3 +1230,125 @@ def test_dataset_properties_update_masks(mock_monthly_netcdfs):
     existing_mask = MaskProvider(masks={"mask_0": torch.ones(4, 8)})
     data_properties.update_mask_provider(existing_mask)
     assert "mask_0" in dataset.properties.mask_provider.masks
+
+
+def test_xarray_data_config_rename_validates_trivial_mapping():
+    with pytest.raises(ValueError, match="trivial mapping"):
+        XarrayDataConfig(data_path="/tmp", rename={"foo": "foo"})
+
+
+def test_xarray_data_config_rename_validates_duplicate_source():
+    with pytest.raises(ValueError, match="duplicate source names"):
+        XarrayDataConfig(
+            data_path="/tmp",
+            rename={"foo": "shared", "bar": "shared"},
+        )
+
+
+def test_xarray_data_config_rename_empty_default():
+    # The default empty rename must not raise.
+    config = XarrayDataConfig(data_path="/tmp")
+    assert dict(config.rename) == {}
+
+
+@pytest.fixture(scope="session")
+def mock_monthly_netcdfs_underscore_names(tmp_path_factory) -> MockData:
+    """Source dataset whose variable names contain ``_<int>`` suffixes — the
+    motivating case for ``rename`` (FME parses such suffixes as level indices).
+    """
+    return get_mock_monthly_netcdfs(
+        tmp_path_factory,
+        "month_underscore_names",
+        var_names=["foo_at_5_km", "bar_at_10_m"],
+    )
+
+
+def test_xarray_dataset_rename_netcdf(mock_monthly_netcdfs_underscore_names):
+    mock_data: MockData = mock_monthly_netcdfs_underscore_names
+    config = XarrayDataConfig(
+        data_path=mock_data.tmpdir,
+        rename={"foo5km": "foo_at_5_km", "bar10m": "bar_at_10_m"},
+    )
+    dataset = xarray_dataset_constructor(config, ["foo5km", "bar10m"], 2)
+    data, _, _, _ = dataset[0]
+    assert set(data.keys()) >= {"foo5km", "bar10m"}
+    assert "foo_at_5_km" not in data
+    assert "bar_at_10_m" not in data
+    # sanity check the renamed data is non-empty and lat/lon shaped
+    assert data["foo5km"].shape[-2:] == (4, 8)
+
+
+def test_xarray_dataset_rename_netcdf_matches_unrenamed_values(
+    mock_monthly_netcdfs_underscore_names,
+):
+    """Reading via rename should yield bit-identical tensors to reading by the
+    source name directly."""
+    mock_data: MockData = mock_monthly_netcdfs_underscore_names
+    direct = xarray_dataset_constructor(
+        XarrayDataConfig(data_path=mock_data.tmpdir),
+        ["foo_at_5_km", "bar_at_10_m"],
+        2,
+    )
+    renamed = xarray_dataset_constructor(
+        XarrayDataConfig(
+            data_path=mock_data.tmpdir,
+            rename={"foo5km": "foo_at_5_km", "bar10m": "bar_at_10_m"},
+        ),
+        ["foo5km", "bar10m"],
+        2,
+    )
+    d_data, _, _, _ = direct[0]
+    r_data, _, _, _ = renamed[0]
+    assert torch.equal(d_data["foo_at_5_km"], r_data["foo5km"])
+    assert torch.equal(d_data["bar_at_10_m"], r_data["bar10m"])
+
+
+@pytest.fixture(scope="session")
+def mock_monthly_zarr_underscore_names(
+    tmp_path_factory, mock_monthly_netcdfs_underscore_names
+) -> MockData:
+    zarr_parent = tmp_path_factory.mktemp("zarr_underscore")
+    filename = "data.zarr"
+    data = load_files_without_dask(
+        mock_monthly_netcdfs_underscore_names.tmpdir.glob("*.nc")
+    )
+    data.to_zarr(zarr_parent / filename)
+    return MockData(
+        zarr_parent,
+        mock_monthly_netcdfs_underscore_names.obs_times,
+        mock_monthly_netcdfs_underscore_names.start_times,
+        mock_monthly_netcdfs_underscore_names.start_indices,
+        mock_monthly_netcdfs_underscore_names.var_names,
+    )
+
+
+def test_xarray_dataset_rename_zarr(mock_monthly_zarr_underscore_names):
+    """The async zarr loader path takes names directly; ensure rename plumbing
+    translates FME -> src on read and back on the return dict."""
+    mock_data: MockData = mock_monthly_zarr_underscore_names
+    config = XarrayDataConfig(
+        data_path=mock_data.tmpdir,
+        file_pattern="*.zarr",
+        engine="zarr",
+        rename={"foo5km": "foo_at_5_km", "bar10m": "bar_at_10_m"},
+    )
+    dataset = xarray_dataset_constructor(config, ["foo5km", "bar10m"], 2)
+    data, _, _, _ = dataset[0]
+    assert "foo5km" in data
+    assert "bar10m" in data
+    assert "foo_at_5_km" not in data
+    assert "bar_at_10_m" not in data
+
+
+def test_xarray_dataset_rename_unknown_source_raises_clear_error(
+    mock_monthly_netcdfs_underscore_names,
+):
+    """If a rename source isn't in the file, the downstream variable-not-found
+    error fires (rename does not silently invent the FME name)."""
+    mock_data: MockData = mock_monthly_netcdfs_underscore_names
+    config = XarrayDataConfig(
+        data_path=mock_data.tmpdir,
+        rename={"missing": "not_in_file"},
+    )
+    with pytest.raises(KeyError, match="missing"):
+        xarray_dataset_constructor(config, ["missing"], 2)

@@ -433,6 +433,12 @@ class XarrayDataConfig(DatasetConfigABC):
             is used specifically for selecting times. Horizontal dimensions are
             also not currently supported.
         labels: Optional list of labels to be returned with the data.
+        rename: Optional mapping of FME-internal variable name to its name in the
+            on-disk dataset, e.g. ``{"myField5km": "my_field_at_5_km"}``. The
+            rename is applied at dataset-open time so the rest of FME (variable
+            requirements, normalization, roundtrip variables, etc.) refers to
+            the FME-internal name everywhere. Useful when on-disk names contain
+            ``_<int>`` suffixes that FME parses as vertical level indices.
 
     Examples:
         If data is stored in a directory with multiple netCDF files which can be
@@ -464,6 +470,7 @@ class XarrayDataConfig(DatasetConfigABC):
     fill_nans: FillNaNsConfig | None = None
     isel: Mapping[str, Slice | int] = dataclasses.field(default_factory=dict)
     labels: list[str] | None = None
+    rename: Mapping[str, str] = dataclasses.field(default_factory=dict)
 
     def _default_file_pattern_check(self):
         if self.engine == "zarr" and self.file_pattern == "*.nc":
@@ -507,6 +514,23 @@ class XarrayDataConfig(DatasetConfigABC):
             )
         self.torch_dtype  # check it can be retrieved
         self._default_file_pattern_check()
+        self._check_rename()
+
+    def _check_rename(self):
+        if not self.rename:
+            return
+        for fme_name, src_name in self.rename.items():
+            if fme_name == src_name:
+                raise ValueError(
+                    "XarrayDataConfig.rename has trivial mapping "
+                    f"{fme_name!r} -> {src_name!r}; remove it."
+                )
+        src_names = list(self.rename.values())
+        if len(set(src_names)) != len(src_names):
+            raise ValueError(
+                "XarrayDataConfig.rename has duplicate source names: "
+                f"{dict(self.rename)}"
+            )
 
     @property
     def zarr_engine_used(self) -> bool:
@@ -549,6 +573,10 @@ class XarrayDataset(DatasetABC):
         self.spatial_dimensions = config.spatial_dimensions
         self.fill_nans = config.fill_nans
         self.subset_config = config.subset
+        # FME name -> on-disk source name (empty if no rename configured)
+        self._rename: dict[str, str] = dict(config.rename)
+        # on-disk source name -> FME name; passed to ``xr.Dataset.rename``
+        self._inverse_rename: dict[str, str] = {v: k for k, v in self._rename.items()}
         self._raw_paths = get_raw_paths(self.path, self.file_pattern)
         if len(self._raw_paths) == 0:
             raise ValueError(
@@ -561,12 +589,14 @@ class XarrayDataset(DatasetABC):
             config.infer_timestep,
             max_sample_n_times=n_timesteps.max_value,
         )
-        first_dataset = xr.open_dataset(
-            self.full_paths[0],
-            decode_times=False,
-            decode_timedelta=False,
-            engine=self.engine,
-            chunks=None,
+        first_dataset = self._apply_rename(
+            xr.open_dataset(
+                self.full_paths[0],
+                decode_times=False,
+                decode_timedelta=False,
+                engine=self.engine,
+                chunks=None,
+            )
         )
         self._mask_provider = _get_mask_provider(first_dataset, self.dtype)
         (
@@ -751,6 +781,7 @@ class XarrayDataset(DatasetABC):
         # fields a time dimension. We assume that all fields are present in the
         # netcdf file corresponding to the first chunk of time.
         with _open_xr_dataset(self.full_paths[0], engine=self.engine) as ds:
+            ds = self._apply_rename(ds)
             for name in self._names:
                 if name in StaticDerivedData.names:
                     static_derived_names.append(name)
@@ -815,7 +846,24 @@ class XarrayDataset(DatasetABC):
 
     def _open_file(self, idx):
         logger.debug(f"Opening file {self.full_paths[idx]}")
-        return _open_file_fh_cached(self.full_paths[idx], engine=self.engine)
+        return self._apply_rename(
+            _open_file_fh_cached(self.full_paths[idx], engine=self.engine)
+        )
+
+    def _apply_rename(self, ds: xr.Dataset) -> xr.Dataset:
+        """Rename on-disk variables to their FME-internal names.
+
+        Only renames variables that are present in ``ds``; missing source names
+        are deferred to downstream checks (``_group_variable_names_by_time_type``
+        raises a clear "Required variable not found" error if a name still
+        cannot be resolved).
+        """
+        if not self._inverse_rename:
+            return ds
+        present = {
+            src: fme for src, fme in self._inverse_rename.items() if src in ds.variables
+        }
+        return ds.rename(present) if present else ds
 
     @property
     def sample_start_times(self) -> xr.CFTimeIndex:
@@ -893,16 +941,24 @@ class XarrayDataset(DatasetABC):
             shape = [n_steps] + self._shape_excluding_time_after_selection
             total_steps += n_steps
             if self.engine == "zarr":
-                tensor_dict = load_series_data_zarr_async(
+                # The async zarr loader reads variables by their on-disk names,
+                # so translate FME -> src on the way in and src -> FME on the
+                # way out. No-op when ``rename`` is empty.
+                src_names = [self._rename.get(n, n) for n in self._time_dependent_names]
+                tensor_dict_src = load_series_data_zarr_async(
                     idx=start,
                     n_steps=n_steps,
                     path=self.full_paths[file_idx],
-                    names=self._time_dependent_names,
+                    names=src_names,
                     final_dims=self.dims,
                     final_shape=shape,
                     fill_nans=self.fill_nans,
                     nontime_selection=self._isel_tuple,
                 )
+                tensor_dict = {
+                    self._inverse_rename.get(k, k): v
+                    for k, v in tensor_dict_src.items()
+                }
             else:
                 ds = self._open_file(file_idx)
                 ds = ds.isel(**self.isel)
