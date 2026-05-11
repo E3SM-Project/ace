@@ -74,7 +74,7 @@ train_loader:
           stop_time: '2013-12-31'
 validation_loader:
   batch_size: 32
-  num_data_workers: 16
+  num_data_workers: 1
   dataset:
     data_path: /traindata/traindata
     subset:

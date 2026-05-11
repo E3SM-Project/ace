@@ -7,7 +7,7 @@ set -x
 export FME_IMAGE=e3sm-ace:653607f3
 
 # wandb config
-export WANDB_NAME=training1-10year
+export WANDB_NAME=training2-10year
 export WANDB_RUN_GROUP=MayHackathon-e3smACE-stochastic-training-amip101
 
 # directories for input data (training, validation, stats)
