@@ -6,7 +6,6 @@ validate_using_ema: true
 max_epochs: 80
 ema:
   decay: 0.999
-n_forward_steps: 2
 inference:
   n_forward_steps: 7300
   forward_steps_in_memory: 10
@@ -64,6 +63,7 @@ optimization:
     weight_decay: 0.01
   use_gradient_accumulation: true
 stepper_training:
+  n_forward_steps: 2
   loss:
     type: MSE
     weights:
