@@ -148,6 +148,7 @@ def build_trainer(builder: TrainBuilders, config: TrainConfig) -> "Trainer":
             aggregator=aggregator,
             diagnostics_subdir=f"epoch_{epoch:04d}",
             record_logs=lambda logs: None,
+            log_progress=True,
         )
         return logs, logs["val/mean/loss"]
 
