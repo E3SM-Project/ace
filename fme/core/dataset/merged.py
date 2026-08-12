@@ -447,6 +447,8 @@ def _infer_available_variables(config: XarrayDataConfig):
         engine=config.engine,
         chunks=None,
     )
+    if config.rename:
+        dataset = dataset.rename(config.rename)
     return dataset.data_vars
 
 

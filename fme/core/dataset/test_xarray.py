@@ -837,6 +837,49 @@ def test_overwrite(mock_monthly_netcdfs):
     assert torch.equal(dataset_overwrite["bar"], dataset["bar"] * multiple)
 
 
+@pytest.mark.parametrize(
+    "mock_data_fixture, engine, file_pattern",
+    [
+        ("mock_monthly_netcdfs", "netcdf4", "*.nc"),
+        ("mock_monthly_zarr", "zarr", "*.zarr"),
+    ],
+)
+def test_rename(mock_data_fixture, engine, file_pattern, request):
+    """Renamed variables are requested and returned under their new names."""
+    mock_data: MockData = request.getfixturevalue(mock_data_fixture)
+    rename = {"foo": "renamed_foo", "constant_var": "renamed_constant_var"}
+    names = [rename.get(name, name) for name in mock_data.var_names.all_names]
+
+    config = XarrayDataConfig(
+        data_path=mock_data.tmpdir,
+        engine=engine,
+        file_pattern=file_pattern,
+        rename=rename,
+    )
+    dataset = xarray_dataset_constructor(config, names, 2)
+    data, _, _, _, _ = dataset[0]
+
+    reference_config = XarrayDataConfig(
+        data_path=mock_data.tmpdir, engine=engine, file_pattern=file_pattern
+    )
+    reference = xarray_dataset_constructor(
+        reference_config, mock_data.var_names.all_names, 2
+    )
+    reference_data, _, _, _, _ = reference[0]
+
+    assert set(data) == set(names)
+    for name in mock_data.var_names.all_names:
+        assert torch.equal(data[rename.get(name, name)], reference_data[name])
+
+
+def test_rename_missing_variable_raises(mock_monthly_netcdfs):
+    config = XarrayDataConfig(
+        data_path=mock_monthly_netcdfs.tmpdir, rename={"not_a_variable": "foo"}
+    )
+    with pytest.raises(ValueError, match="not_a_variable"):
+        xarray_dataset_constructor(config, ["foo"], 2)
+
+
 def test_repeated_interval_boolean_mask_subset(mock_monthly_netcdfs):
     config = XarrayDataConfig(data_path=mock_monthly_netcdfs.tmpdir)
     names = mock_monthly_netcdfs.var_names.all_names
@@ -981,6 +1024,50 @@ def test__get_vertical_coordinate_hybrid_sigma_pressure():
     assert vertical_coordinate.bk[0] == 0.5
 
 
+def test__get_vertical_coordinate_reference_pressure():
+    """Dimensionless ak coefficients are scaled to Pa by the reference pressure."""
+    data = xr.Dataset(
+        {"ak_0": 0.25, "bk_0": 0.0, "ak_1": 0.5, "bk_1": 1.0, "P0": 100000.0}
+    )
+    vertical_coordinate = _get_vertical_coordinate(
+        data, dtype=torch.float32, reference_pressure_name="P0"
+    )
+    assert isinstance(vertical_coordinate, HybridSigmaPressureCoordinate)
+    assert vertical_coordinate.ak[0] == 25000.0
+    assert vertical_coordinate.ak[1] == 50000.0
+    assert vertical_coordinate.bk[1] == 1.0
+
+    surface_pressure = torch.tensor([100000.0])
+    interface_pressure = vertical_coordinate.interface_pressure(surface_pressure)
+    torch.testing.assert_close(interface_pressure, torch.tensor([[25000.0, 150000.0]]))
+
+
+@pytest.mark.parametrize(
+    "data_vars, match",
+    [
+        pytest.param(
+            {"ak_0": 0.01, "bk_0": 0.0},
+            "not found in the dataset",
+            id="missing_reference_pressure",
+        ),
+        pytest.param(
+            {"ak_0": 0.01, "bk_0": 0.0, "P0": ("lat", [1.0, 2.0])},
+            "must be a scalar",
+            id="non_scalar_reference_pressure",
+        ),
+        pytest.param(
+            {"idepth_0": 1.0, "idepth_1": 2.0, "P0": 100000.0},
+            "does not have a hybrid sigma-pressure",
+            id="depth_coordinate",
+        ),
+    ],
+)
+def test__get_vertical_coordinate_reference_pressure_raises(data_vars, match):
+    data = xr.Dataset(data_vars)
+    with pytest.raises(ValueError, match=match):
+        _get_vertical_coordinate(data, dtype=None, reference_pressure_name="P0")
+
+
 @pytest.mark.parametrize("has_deptho", [False, True], ids=["no_deptho", "with_deptho"])
 def test__get_vertical_coordinate_depth_no_mask(has_deptho):
     data_vars: dict = {"idepth_0": 1.0, "idepth_1": 2.0}
@@ -1064,6 +1151,9 @@ def test__get_vertical_coordinate_depth_with_time_dependent_mask():
             {"n_repeats": 2, "infer_timestep": False}, id="n_repeats_infer_timestep"
         ),
         pytest.param({"dtype": "foo"}, id="invalid_dtype"),
+        pytest.param({"rename": {"time": "valid_time"}}, id="rename_time"),
+        pytest.param({"rename": {"foo": "time"}}, id="rename_to_time"),
+        pytest.param({"rename": {"foo": "baz", "bar": "baz"}}, id="rename_duplicate"),
     ],
 )
 def test_invalid_config_field_raises_error(kwargs):

@@ -60,7 +60,9 @@ VariableNames = namedtuple(
 
 
 def _get_vertical_coordinate(
-    ds: xr.Dataset, dtype: torch.dtype | None
+    ds: xr.Dataset,
+    dtype: torch.dtype | None,
+    reference_pressure_name: str | None = None,
 ) -> VerticalCoordinate:
     """
     Get vertical coordinate from a dataset.
@@ -75,6 +77,12 @@ def _get_vertical_coordinate(
         ds: Dataset to get vertical coordinates from.
         dtype: Data type of the returned tensors. If None, the dtype is not
             changed from the original in ds.
+        reference_pressure_name: If provided, the name of a scalar variable in
+            ``ds`` holding a reference pressure in Pa. The `ak_N` coefficients
+            are then taken to be dimensionless and are multiplied by this
+            reference pressure, i.e. interface pressures are computed as
+            ``p_N = ak_N * P0 + bk_N * PS``. If None, the `ak_N` coefficients
+            are taken to already be in Pa.
     """
     ak_mapping = {
         int(v[3:]): torch.as_tensor(ds[v].values)
@@ -101,6 +109,26 @@ def _get_vertical_coordinate(
             "Dataset contains both hybrid sigma-pressure and depth coordinates. "
             "Can only provide one, or else the vertical coordinate is ambiguous."
         )
+
+    reference_pressure: float | None = None
+    if reference_pressure_name is not None:
+        if len(ak_list) == 0 or len(bk_list) == 0:
+            raise ValueError(
+                f"A reference pressure variable '{reference_pressure_name}' was "
+                "configured, but the dataset does not have a hybrid sigma-pressure "
+                "vertical coordinate. It is only used to scale ak coefficients."
+            )
+        if reference_pressure_name not in ds.variables:
+            raise ValueError(
+                f"Reference pressure variable '{reference_pressure_name}' was not "
+                "found in the dataset."
+            )
+        if ds[reference_pressure_name].size != 1:
+            raise ValueError(
+                f"Reference pressure variable '{reference_pressure_name}' must be a "
+                f"scalar, but it has shape {ds[reference_pressure_name].shape}."
+            )
+        reference_pressure = float(ds[reference_pressure_name].values.item())
 
     coordinate: VerticalCoordinate
     deptho = None
@@ -135,8 +163,11 @@ def _get_vertical_coordinate(
             torch.as_tensor(idepth_list, dtype=dtype), mask, deptho
         )
     elif len(ak_list) > 0 and len(bk_list) > 0:
+        ak = torch.as_tensor(ak_list, dtype=dtype)
+        if reference_pressure is not None:
+            ak = ak * reference_pressure
         coordinate = HybridSigmaPressureCoordinate(
-            ak=torch.as_tensor(ak_list, dtype=dtype),
+            ak=ak,
             bk=torch.as_tensor(bk_list, dtype=dtype),
         )
     else:
@@ -428,6 +459,18 @@ class XarrayDataConfig(DatasetConfigABC):
             to be able to infer the full time coordinate.
         dtype: Data type to cast the data to. If None, no casting is done. It is
             required that 'torch.{dtype}' is a valid dtype.
+        rename: Mapping from variable names as they appear on disk to the names
+            used by FME, e.g. ``{"PRECT": "surface_precipitation_rate"}``. This
+            follows the same convention as ``xarray.Dataset.rename``. It is
+            applied when the data is opened, so every other name in the
+            configuration (including ``overwrite`` and
+            ``reference_pressure_name``) refers to the renamed variables.
+        reference_pressure_name: Name of a scalar variable holding a reference
+            pressure in Pa, e.g. ``"P0"``. If provided, the hybrid
+            sigma-pressure ``ak_N`` coefficients in the dataset are taken to be
+            dimensionless and interface pressures are computed as
+            ``p_N = ak_N * P0 + bk_N * PS``. If None (the default), the ``ak_N``
+            coefficients are taken to already be in Pa.
         overwrite: Optional OverwriteConfig to overwrite loaded field values.
         fill_nans: Optional FillNaNsConfig to fill NaNs with a constant value.
         isel: Optional xarray isel arguments to be passed to the dataset. Will
@@ -462,6 +505,8 @@ class XarrayDataConfig(DatasetConfigABC):
     )
     infer_timestep: bool = True
     dtype: str | None = "float32"
+    rename: Mapping[str, str] = dataclasses.field(default_factory=dict)
+    reference_pressure_name: str | None = None
     overwrite: OverwriteConfig = dataclasses.field(default_factory=OverwriteConfig)
     fill_nans: FillNaNsConfig | None = None
     isel: Mapping[str, Slice | int] = dataclasses.field(default_factory=dict)
@@ -506,6 +551,18 @@ class XarrayDataConfig(DatasetConfigABC):
             raise ValueError(
                 f"unexpected spatial_dimensions {self.spatial_dimensions},"
                 " should be one of 'latlon' or 'healpix'"
+            )
+        if "time" in set(self.rename) | set(self.rename.values()):
+            raise ValueError(
+                "XarrayDataConfig.rename cannot rename the time coordinate, "
+                f"but got {dict(self.rename)}."
+            )
+        renamed_to = list(self.rename.values())
+        duplicates = {name for name in renamed_to if renamed_to.count(name) > 1}
+        if duplicates:
+            raise ValueError(
+                "XarrayDataConfig.rename maps multiple variables to the same "
+                f"name(s): {sorted(duplicates)}."
             )
         self.torch_dtype  # check it can be retrieved
         self._default_file_pattern_check()
@@ -558,6 +615,9 @@ class XarrayDataset(DatasetABC):
         self.spatial_dimensions = config.spatial_dimensions
         self.fill_nans = config.fill_nans
         self.subset_config = config.subset
+        self._rename = dict(config.rename)
+        self._rename_inverse = {v: k for k, v in self._rename.items()}
+        self._reference_pressure_name = config.reference_pressure_name
         self._raw_paths = get_raw_paths(self.path, self.file_pattern)
         if len(self._raw_paths) == 0:
             raise ValueError(
@@ -570,12 +630,14 @@ class XarrayDataset(DatasetABC):
             config.infer_timestep,
             max_sample_n_times=n_timesteps.max_value,
         )
-        first_dataset = xr.open_dataset(
-            self.full_paths[0],
-            decode_times=False,
-            decode_timedelta=False,
-            engine=self.engine,
-            chunks=None,
+        first_dataset = self._apply_rename(
+            xr.open_dataset(
+                self.full_paths[0],
+                decode_times=False,
+                decode_timedelta=False,
+                engine=self.engine,
+                chunks=None,
+            )
         )
         self._spatial_mask_provider = _get_spatial_mask_provider(
             first_dataset, self.dtype
@@ -598,7 +660,9 @@ class XarrayDataset(DatasetABC):
         self._missing_names = frozenset(set(names) - set(self._names))
         self._get_variable_metadata(first_dataset)
 
-        self._vertical_coordinate = _get_vertical_coordinate(first_dataset, self.dtype)
+        self._vertical_coordinate = _get_vertical_coordinate(
+            first_dataset, self.dtype, self._reference_pressure_name
+        )
         self.overwrite = config.overwrite
 
         self._nonspacetime_dims = get_nonspacetime_dimensions(
@@ -761,7 +825,8 @@ class XarrayDataset(DatasetABC):
         # Don't use open_mfdataset here, because it will give time-invariant
         # fields a time dimension. We assume that all fields are present in the
         # netcdf file corresponding to the first chunk of time.
-        with _open_xr_dataset(self.full_paths[0], engine=self.engine) as ds:
+        with _open_xr_dataset(self.full_paths[0], engine=self.engine) as raw_ds:
+            ds = self._apply_rename(raw_ds)
             for name in self._names:
                 if name in StaticDerivedData.names:
                     static_derived_names.append(name)
@@ -823,9 +888,17 @@ class XarrayDataset(DatasetABC):
         else:
             return self._timestep
 
+    def _apply_rename(self, ds: xr.Dataset) -> xr.Dataset:
+        """Rename on-disk variable names to the names used by FME."""
+        if not self._rename:
+            return ds
+        return ds.rename(self._rename)
+
     def _open_file(self, idx):
         logger.debug(f"Opening file {self.full_paths[idx]}")
-        return _open_file_fh_cached(self.full_paths[idx], engine=self.engine)
+        return self._apply_rename(
+            _open_file_fh_cached(self.full_paths[idx], engine=self.engine)
+        )
 
     @property
     def sample_start_times(self) -> xr.CFTimeIndex:
@@ -903,16 +976,28 @@ class XarrayDataset(DatasetABC):
             shape = [n_steps] + self._shape_excluding_time_after_selection
             total_steps += n_steps
             if self.engine == "zarr":
-                tensor_dict = load_series_data_zarr_async(
+                # this path reads arrays from the store directly, so it must ask
+                # for the on-disk names and rename the result itself
+                on_disk_names = [
+                    self._rename_inverse.get(name, name)
+                    for name in self._time_dependent_names
+                ]
+                loaded = load_series_data_zarr_async(
                     idx=start,
                     n_steps=n_steps,
                     path=self.full_paths[file_idx],
-                    names=self._time_dependent_names,
+                    names=on_disk_names,
                     final_dims=self.dims,
                     final_shape=shape,
                     fill_nans=self.fill_nans,
                     nontime_selection=self._isel_tuple,
                 )
+                tensor_dict = {
+                    name: loaded[on_disk_name]
+                    for name, on_disk_name in zip(
+                        self._time_dependent_names, on_disk_names
+                    )
+                }
             else:
                 ds = self._open_file(file_idx)
                 ds = ds.isel(**self.isel)
