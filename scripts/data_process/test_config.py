@@ -28,6 +28,7 @@ IGNORE_CONFIGS_WITH_SUFFIX = [
     "-coupled.yaml",
     "-vertical-coarsen.yaml",
     "-coupled-ic.yaml",
+    "-restart-ic.yaml",
 ]
 COUPLED_IC_CONFIG_YAMLS = [
     os.path.join(DIRNAME + "/configs", f)

@@ -41,3 +41,73 @@ The output will be written to the `/climate-default` file directory on weka.
 Example bare usage: `cd full-model/scripts/data_process && make healpix_ace_dataset`. You may also want to run in the background using nohup: `nohup make healpix_ace_dataset > compute_hpx.log 2>&1 &`.
 
 Example bare session creation (use your own ssh secrets): `beaker session create --name annad/dlwp-ace-datapipe --image beaker://annad/dlwp-datapipe --remote --cluster ai2/phobos-cirrascale --bare --mount src=weka,ref=climate-default,dst=/climate-default  --mount src=weka,ref=climate-default,subpath=annad,dst=/root --workdir=/root --mount src=secret,ref=ssh-key,dst=/secret-files/.ssh/id_ed25519     --mount src=secret,ref=git-config,dst=/secret-files/.gitconfig --budget ai2/atec-climate --shared-memory 120GiB`
+## SamudrACE-E3SMv3 initial conditions from E3SM restarts
+
+`create_e3sm_restart_ic.py` turns E3SM restart output into the initial condition
+pair that `fme.coupled.inference` expects, for the
+[SamudrACE-E3SMv3](https://huggingface.co/allenai/SamudrACE-E3SMv3) checkpoint.
+Each restart directory must contain one each of `*.eam.i.*.nc`,
+`*.mpaso.rst.*.nc` and `*.mpassi.rst.*.nc`:
+
+```
+python create_e3sm_restart_ic.py --config configs/e3smv3-restart-ic.yaml
+```
+
+Only the 38 atmosphere and 80 ocean *prognostic* variables are written; the
+forcing and time-invariant fields (`LANDFRAC`, `PHIS`, `SOLIN`, `ak_*`, `bk_*`,
+`idepth_*`, `mask_*`, ...) come from the forcing dataset published alongside the
+checkpoint. Set `stack: true` to get one file pair with one time per restart,
+which is what `initial_condition.start_indices.n_initial_conditions` in the
+inference config consumes.
+
+### Required remap weights
+
+The ocean map (`map_IcoswISC30E3r5_to_gaussian_180by360_shifted.nc`) and the
+target grid are published under
+`https://web.lcrc.anl.gov/public/e3sm/inputdata/fme/`. The atmosphere map is
+not, because the EAM restart state lives on the spectral-element GLL grid rather
+than the `ne30pg2` physics grid the history files use. Build it once:
+
+```bash
+# 1. Extract the ACE target grid (shifted gaussian 180x360) from any published
+#    map file, so the destination is bit-identical to the training data's.
+python -c "
+import numpy as np, xarray as xr
+m = xr.open_dataset('map_ne30pg2_to_gaussian_180by360_shifted.nc', decode_cf=False)
+xr.Dataset({
+    'grid_dims': ('grid_rank', m.dst_grid_dims.values.astype('i4')),
+    'grid_center_lat': ('grid_size', m.yc_b.values),
+    'grid_center_lon': ('grid_size', m.xc_b.values),
+    'grid_corner_lat': (('grid_size', 'grid_corners'), m.yv_b.values),
+    'grid_corner_lon': (('grid_size', 'grid_corners'), m.xv_b.values),
+    'grid_imask': ('grid_size', np.ones(m.sizes['n_b'], dtype='i4')),
+    'grid_area': ('grid_size', m.area_b.values),
+}).to_netcdf('dst_gaussian_180by360_shifted.scrip.nc')
+"
+
+# 2. Fetch the ne30np4 GLL dual grid (48602 cells, matching eam.i's ncol_d).
+curl -O https://web.lcrc.anl.gov/public/e3sm/inputdata/share/meshes/homme/ne30np4_pentagons.091226.nc
+
+# 3. Generate the conservative map (takes seconds).
+ncremap -s ne30np4_pentagons.091226.nc \
+        -g dst_gaussian_180by360_shifted.scrip.nc \
+        -m map_ne30np4_to_gaussian_180by360_shifted.nc
+```
+
+### Fields E3SM restarts do not carry
+
+Two prognostics have to be derived rather than read, and one has to be
+approximated. All three are documented at their implementation site:
+
+- **Ocean velocity.** MPAS-Ocean checkpoints only `normalVelocity` on edges, so
+  `reconstruct_cell_velocity` solves an edge-length-weighted least squares
+  problem per cell and level. It reproduces MPAS's own
+  `surfaceVelocityZonal`/`surfaceVelocityMeridional` to a correlation of 1.0000
+  and an RMSE of 5e-4 m/s.
+- **`ssh`.** Diagnosed as `sum(layerThickness) - bottomDepth`, which reproduces
+  the coupler's `o2x_ox_So_ssh` to round-off, then corrected for the ice-shelf
+  draft and the sea ice load (see the comment in `build_ocean_native`).
+- **`Tat2m`, `Qat2m`, `Uat10m`, `Vat10m`, and the land tile of `TS`.** EAM
+  computes these inside its surface-layer scheme and never checkpoints them, so
+  they are approximated from the lowest model level. They are prognostic in the
+  emulator but tightly constrained by the rest of the state.

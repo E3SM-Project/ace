@@ -1,0 +1,74 @@
+# Build SamudrACE-E3SMv3 initial conditions from E3SM restart files.
+#
+# Usage:
+#   python create_e3sm_restart_ic.py --config configs/e3smv3-restart-ic.yaml
+#
+# Only the prognostic variables of the two component steppers are written; all
+# forcing and time-invariant fields come from the forcing dataset published with
+# the checkpoint.
+
+# Each directory must contain one each of *.eam.i.*.nc, *.mpaso.rst.*.nc and
+# *.mpassi.rst.*.nc. Use restart_glob to sweep a whole archive.
+restart_glob: /Users/mahf708/samudrace_ic/restart_dirs/*
+
+output_directory: /Users/mahf708/samudrace_ic/out
+output_prefix: e3smv3-historical
+# true: one pair of files with one time per restart (matches
+#       initial_condition.start_indices.n_initial_conditions in the inference
+#       config). false: one pair of files per restart.
+stack: true
+overwrite: true
+
+maps:
+  # Generate once with:
+  #   ncremap -s ne30np4_pentagons.091226.nc \
+  #           -g dst_gaussian_180by360_shifted.scrip.nc \
+  #           -m map_ne30np4_to_gaussian_180by360_shifted.nc
+  # where the destination SCRIP grid is the shifted-gaussian 180x360 ACE grid.
+  atmosphere: /Users/mahf708/samudrace_ic/maps/map_ne30np4_to_gaussian_180by360_shifted.nc
+  ocean: /Users/mahf708/samudrace_ic/maps/map_IcoswISC30E3r5_to_gaussian_180by360_shifted.nc
+
+masks:
+  # The ocean forcing file shipped with the checkpoint carries the exact
+  # wetmasks and sea_surface_fraction the model was trained with.
+  path: /Users/mahf708/samudrace_ic/hf/forcing_data/ocean-forcing-1yr.nc
+  apply_ocean_masks: true
+  use_for_surface_blend: true
+
+atmosphere:
+  # 8 coarse layers over EAM's 80 levels, matching the checkpoint.
+  vertical_coarsening_indices:
+    - [0, 25]
+    - [25, 38]
+    - [38, 46]
+    - [46, 52]
+    - [52, 56]
+    - [56, 61]
+    - [61, 69]
+    - [69, 80]
+  water_species: [Q, CLDLIQ, CLDICE, RAINQM]
+  # E3SM does not checkpoint EAM's diagnostic 2m/10m fields; approximate them
+  # with the lowest model level. See the dataclass docstring.
+  near_surface_from_lowest_level: true
+
+ocean:
+  # 20 interfaces bounding the 19 coarse layers; compare with idepth_* in the
+  # ocean forcing file.
+  target_interface_levels:
+    [0, 20, 30, 40, 50, 80, 110, 140, 170, 230, 410, 530, 1020, 1080, 1720,
+     1980, 2820, 3380, 4620, 6380]
+  reconstruct_velocity: true
+  # The published training config enables a scale-4 filter while its dataset is
+  # named "no-smoothing"; left off here. Set to 4 to match a filtered dataset.
+  spatial_filter_scale: null
+
+time:
+  # "restart" reads the MPAS xtime stamp. Use "explicit" with one timestamp per
+  # restart directory when the forcing dataset's dates do not line up with the
+  # restart dates (e.g. historical restarts against piControl forcing).
+  source: restart
+  calendar: noleap
+  units: days since 0001-01-01
+
+work_directory: /Users/mahf708/samudrace_ic/work
+keep_intermediate: false
