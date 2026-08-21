@@ -3,6 +3,7 @@
 import dataclasses
 import datetime
 import os
+import pathlib
 from collections import namedtuple
 from collections.abc import Iterable, Sequence
 
@@ -30,6 +31,7 @@ from fme.core.dataset.xarray import (
     XarrayDataConfig,
     XarrayDataset,
     XarraySubset,
+    _combine_expression,
     _get_cumulative_timesteps,
     _get_file_local_index,
     _get_raw_times,
@@ -866,6 +868,87 @@ def test_keep_nans(mock_monthly_netcdfs_with_nans):
     assert torch.all(torch.isnan(data_with_nan["constant_var"][:, 0, 0]))
 
 
+def _write_netcdf_with_fill_value(tmp_path, fill_value: float = 1e20):
+    """Write a netCDF whose land points are flagged with CF _FillValue.
+
+    This mirrors raw model output (e.g. MPAS remapped files), as opposed to the
+    preprocessed zarr stores which carry NaN directly.
+    """
+    n_time, n_lat, n_lon = 4, 4, 8
+    foo = np.random.randn(n_time, n_lat, n_lon).astype(np.float32)
+    foo[:, 0, :] = fill_value  # first latitude row is "land"
+    bar = np.random.randn(n_lat, n_lon).astype(np.float32)
+    bar[0, :] = fill_value  # same "land" row, but time-invariant
+    ds = xr.Dataset(
+        data_vars={
+            "foo": xr.DataArray(foo, dims=("time", "lat", "lon")),
+            "bar": xr.DataArray(bar, dims=("lat", "lon")),
+        },
+        coords={
+            "time": xr.DataArray(
+                xr.date_range("2000-01-01", periods=n_time, freq="6h", use_cftime=True),
+                dims=("time",),
+            ),
+            "lat": xr.DataArray(np.arange(n_lat, dtype=np.float32), dims=("lat",)),
+            "lon": xr.DataArray(np.arange(n_lon, dtype=np.float32), dims=("lon",)),
+        },
+    )
+    ds["foo"].attrs["_FillValue"] = np.float32(fill_value)
+    ds["bar"].attrs["_FillValue"] = np.float32(fill_value)
+    path = tmp_path / "20000101.nc"
+    ds.to_netcdf(path, unlimited_dims=["time"], format="NETCDF4")
+    return path
+
+
+def test_mask_and_scale_decodes_fill_value(tmp_path):
+    """_FillValue must become NaN when mask_and_scale is enabled.
+
+    Without this the sentinel (e.g. 1e20) is loaded verbatim, which silently
+    poisons losses: spatial output masking writes NaN over the same points
+    while the target keeps the sentinel, so the loss's NaN guard (which keys
+    off the target) never fires.
+    """
+    _write_netcdf_with_fill_value(tmp_path)
+
+    default_config = XarrayDataConfig(data_path=str(tmp_path))
+    default_data, _, _, _, _ = xarray_dataset_constructor(default_config, ["foo"], 2)[0]
+    assert not torch.isnan(default_data["foo"]).any()
+    assert torch.all(default_data["foo"][:, 0, :] == 1e20)
+
+    decoded_config = XarrayDataConfig(data_path=str(tmp_path), mask_and_scale=True)
+    decoded_data, _, _, _, _ = xarray_dataset_constructor(decoded_config, ["foo"], 2)[0]
+    assert torch.all(torch.isnan(decoded_data["foo"][:, 0, :]))
+    assert not torch.isnan(decoded_data["foo"][:, 1:, :]).any()
+
+
+def test_mask_and_scale_applies_to_time_invariant_variables(tmp_path):
+    """Time-invariant variables are read on a separate path that must decode too.
+
+    They are loaded once in ``_load_time_invariant_tensors`` and broadcast over
+    the sample, rather than being read per sample like time-dependent ones. That
+    path opens the file itself, so it has to honour mask_and_scale as well --
+    otherwise a static field such as a land mask keeps its raw sentinel while
+    the time-dependent fields beside it decode to NaN.
+    """
+    _write_netcdf_with_fill_value(tmp_path)
+
+    config = XarrayDataConfig(data_path=str(tmp_path), mask_and_scale=True)
+    data, _, _, _, _ = xarray_dataset_constructor(config, ["foo", "bar"], 2)[0]
+    assert torch.all(torch.isnan(data["bar"][:, 0, :]))
+    assert not torch.isnan(data["bar"][:, 1:, :]).any()
+
+
+def test_mask_and_scale_composes_with_fill_nans(tmp_path):
+    """fill_nans only works once _FillValue has been decoded to NaN."""
+    _write_netcdf_with_fill_value(tmp_path)
+    config = XarrayDataConfig(
+        data_path=str(tmp_path), mask_and_scale=True, fill_nans=FillNaNsConfig()
+    )
+    data, _, _, _, _ = xarray_dataset_constructor(config, ["foo"], 2)[0]
+    assert not torch.isnan(data["foo"]).any()
+    assert torch.all(data["foo"][:, 0, :] == 0)
+
+
 def test_overwrite(mock_monthly_netcdfs):
     const = -10
     multiple = 3.5
@@ -895,6 +978,399 @@ def test_overwrite(mock_monthly_netcdfs):
         dataset_overwrite["foo"], torch.ones_like(dataset["foo"]) * const
     )
     assert torch.equal(dataset_overwrite["bar"], dataset["bar"] * multiple)
+
+
+def test_overwrite_add_scalar(mock_monthly_netcdfs):
+    """add_scalar applies an offset, and composes with multiply_scalar as a*x+b."""
+    multiple = 3.5
+    addend = 273.15
+
+    config = XarrayDataConfig(data_path=mock_monthly_netcdfs.tmpdir)
+    names = mock_monthly_netcdfs.var_names.all_names
+    reference = xarray_dataset_constructor(config, names, 2)[0][0]
+
+    config_overwrite = XarrayDataConfig(
+        data_path=mock_monthly_netcdfs.tmpdir,
+        overwrite=OverwriteConfig(
+            add_scalar={"foo": addend},
+            multiply_scalar={"bar": multiple},
+        ),
+    )
+    overwritten = xarray_dataset_constructor(config_overwrite, names, 2)[0][0]
+    assert overwritten["foo"].dtype == reference["foo"].dtype
+    torch.testing.assert_close(overwritten["foo"], reference["foo"] + addend)
+
+    config_affine = XarrayDataConfig(
+        data_path=mock_monthly_netcdfs.tmpdir,
+        overwrite=OverwriteConfig(
+            multiply_scalar={"foo": multiple}, add_scalar={"foo": addend}
+        ),
+    )
+    affine = xarray_dataset_constructor(config_affine, names, 2)[0][0]
+    torch.testing.assert_close(affine["foo"], reference["foo"] * multiple + addend)
+
+
+def test_get_raw_times_is_memoized_and_serial(tmp_path, monkeypatch):
+    """Repeated calls for the same file list must not re-read the files.
+
+    Dataset construction asks for the same stream once per dataset (train
+    windows, validation, each inference block). Re-reading every time made
+    setup slow enough to trip the NCCL watchdog, and the parallel workarounds
+    that hid the cost were unsafe (fork deadlock, then HDF5 heap corruption).
+    """
+    from fme.core.dataset import xarray as xarray_module
+
+    n_files = 13
+    times = xr.date_range("2000", freq="6h", periods=2 * n_files, use_cftime=True)
+    paths = []
+    for i in range(n_files):
+        path = os.path.join(tmp_path, f"file_{i}.nc")
+        sel = times[2 * i : 2 * i + 2]
+        xr.DataArray(
+            range(len(sel)), dims=["time"], coords=[sel], name="foo"
+        ).to_dataset().to_netcdf(path)
+        paths.append(path)
+
+    xarray_module._get_raw_times_cached.cache_clear()
+    reads = []
+    original = xarray_module._get_raw_times_single_file
+
+    def counting(path, engine=None):
+        reads.append(path)
+        return original(path, engine=engine)
+
+    monkeypatch.setattr(xarray_module, "_get_raw_times_single_file", counting)
+
+    first = xarray_module._get_raw_times(paths, "netcdf4")
+    assert len(reads) == n_files
+    second = xarray_module._get_raw_times(paths, "netcdf4")
+    assert len(reads) == n_files, "second call re-read the files"
+    assert all(np.array_equal(a, b) for a, b in zip(first, second))
+    # the caller gets its own list, so mutating it cannot poison the cache
+    first.append("sentinel")
+    assert len(xarray_module._get_raw_times(paths, "netcdf4")) == n_files
+    xarray_module._get_raw_times_cached.cache_clear()
+
+
+def test_get_raw_paths_local_matches_fsspec(mock_monthly_netcdfs):
+    """The local fast path must return exactly what the fsspec path returns."""
+    import fsspec
+
+    from fme.core.dataset.xarray import get_raw_paths
+
+    tmpdir = str(mock_monthly_netcdfs.tmpdir)
+    fast = get_raw_paths(tmpdir, "*.nc")
+    reference = sorted(fsspec.filesystem("file").glob(os.path.join(tmpdir, "*.nc")))
+    assert fast == reference
+    assert len(fast) > 0
+    # patterns that match nothing still agree
+    assert get_raw_paths(tmpdir, "*.zarr") == sorted(
+        fsspec.filesystem("file").glob(os.path.join(tmpdir, "*.zarr"))
+    )
+
+
+def test_combine_rejects_chained_and_overwritten_targets():
+    """Chained combines and overwrite-on-a-target are silent no-ops, so reject."""
+    with pytest.raises(ValueError, match="combine targets"):
+        XarrayDataConfig(
+            data_path="path",
+            combine={"a": {"x": 1.0}, "b": {"a": 1.0, "y": 1.0}},
+        )
+    with pytest.raises(ValueError, match="silently do nothing"):
+        XarrayDataConfig(
+            data_path="path",
+            combine={"total": {"x": 1.0, "y": 1.0}},
+            overwrite=OverwriteConfig(multiply_scalar={"total": 2.0}),
+        )
+
+
+def test_mask_and_scale_rejected_for_zarr():
+    """The zarr read path skips CF decoding, so the flag would half-apply."""
+    with pytest.raises(ValueError, match="not supported with"):
+        XarrayDataConfig(
+            data_path="path",
+            file_pattern="x.zarr",
+            engine="zarr",
+            mask_and_scale=True,
+        )
+
+
+def test_combine_source_missing_raises_even_when_missing_allowed(
+    mock_monthly_netcdfs,
+):
+    """A combine target cannot be built from a source that is not on disk.
+
+    Without this the dataset builds and then raises KeyError from inside a
+    dataloader worker on the first batch.
+    """
+    config = XarrayDataConfig(
+        data_path=mock_monthly_netcdfs.tmpdir,
+        combine={"total": {"foo": 1.0, "not_on_disk": 1.0}},
+    )
+    with pytest.raises(ValueError, match="Cannot build combine target"):
+        XarrayDataset(
+            config,
+            ["total"],
+            IntSchedule.from_constant(2),
+            allow_missing_variables=True,
+        )
+
+
+def test_combine_sums_fields(mock_monthly_netcdfs):
+    """A target field can be defined as a linear combination of loaded fields.
+
+    Needed because raw model output may split a field the model wants whole,
+    e.g. MPAS carries rainFlux and snowFlux but no total precipitation.
+    """
+    names = mock_monthly_netcdfs.var_names.all_names
+    reference = xarray_dataset_constructor(
+        XarrayDataConfig(data_path=mock_monthly_netcdfs.tmpdir), names, 2
+    )[0][0]
+
+    config = XarrayDataConfig(
+        data_path=mock_monthly_netcdfs.tmpdir,
+        combine={"total": {"foo": 1.0, "bar": 1.0}},
+    )
+    data = xarray_dataset_constructor(config, ["total"], 2)[0][0]
+    # sources were loaded to build the target but not requested, so not returned
+    assert set(data) == {"total"}
+    torch.testing.assert_close(data["total"], reference["foo"] + reference["bar"])
+
+
+def test_combine_supports_coefficients_and_keeps_requested_sources(
+    mock_monthly_netcdfs,
+):
+    """Coefficients allow differences; explicitly requested sources are kept."""
+    names = mock_monthly_netcdfs.var_names.all_names
+    reference = xarray_dataset_constructor(
+        XarrayDataConfig(data_path=mock_monthly_netcdfs.tmpdir), names, 2
+    )[0][0]
+
+    config = XarrayDataConfig(
+        data_path=mock_monthly_netcdfs.tmpdir,
+        combine={"diff": {"foo": 1.0, "bar": -1.0}},
+    )
+    data = xarray_dataset_constructor(config, ["diff", "foo"], 2)[0][0]
+    assert set(data) == {"diff", "foo"}
+    torch.testing.assert_close(data["diff"], reference["foo"] - reference["bar"])
+
+
+def test_combine_applies_after_overwrite(mock_monthly_netcdfs):
+    """overwrite runs first, so unit and sign fixes compose with combine."""
+    names = mock_monthly_netcdfs.var_names.all_names
+    reference = xarray_dataset_constructor(
+        XarrayDataConfig(data_path=mock_monthly_netcdfs.tmpdir), names, 2
+    )[0][0]
+
+    config = XarrayDataConfig(
+        data_path=mock_monthly_netcdfs.tmpdir,
+        overwrite=OverwriteConfig(multiply_scalar={"foo": 1000.0}),
+        combine={"total": {"foo": 1.0, "bar": 1.0}},
+    )
+    data = xarray_dataset_constructor(config, ["total"], 2)[0][0]
+    torch.testing.assert_close(
+        data["total"], reference["foo"] * 1000.0 + reference["bar"]
+    )
+
+
+def test_combine_target_metadata_describes_the_combination(mock_monthly_netcdfs):
+    """The target's long_name states how it was built, not the first source's.
+
+    Inheriting a source's long_name verbatim mislabels the result, which then
+    propagates into inference output and plots.
+    """
+    config = XarrayDataConfig(
+        data_path=mock_monthly_netcdfs.tmpdir,
+        combine={"total": {"foo": 1.0, "bar": 1.0}},
+    )
+    dataset = xarray_dataset_constructor(config, ["total"], 2)
+    metadata = dataset.properties.variable_metadata
+    assert metadata["total"].long_name == "foo + bar"
+    # both sources have no units recorded, so neither does the target
+    assert metadata["total"].units is None
+
+
+def _rewrite_mock_netcdfs(source_dir, destination_dir, edit):
+    """Copy a mock dataset, applying ``edit`` to each file's xr.Dataset."""
+    for path in sorted(pathlib.Path(source_dir).glob("*.nc")):
+        with xr.open_dataset(path) as opened:
+            ds = opened.load()
+        edit(ds)
+        ds.to_netcdf(pathlib.Path(destination_dir) / path.name)
+    return str(destination_dir)
+
+
+def test_combine_target_drops_units_when_sources_disagree(
+    mock_monthly_netcdfs, tmp_path
+):
+    """A combination of differently-united fields has no unit to inherit."""
+
+    def relabel(ds):
+        ds["foo"].attrs["units"] = "m"
+        ds["bar"].attrs["units"] = "K"
+
+    path = _rewrite_mock_netcdfs(mock_monthly_netcdfs.tmpdir, tmp_path, relabel)
+    config = XarrayDataConfig(
+        data_path=path, combine={"diff": {"foo": 1.0, "bar": -1.0}}
+    )
+    metadata = xarray_dataset_constructor(
+        config, ["diff"], 2
+    ).properties.variable_metadata
+    assert metadata["diff"].units is None
+    assert metadata["diff"].long_name == "foo - bar"
+
+
+@pytest.mark.parametrize(
+    "sources, expected",
+    [
+        ({"a": 1.0, "b": 1.0}, "a + b"),
+        ({"a": 1.0, "b": -1.0}, "a - b"),
+        ({"a": -1.0, "b": 2.0}, "-a + 2*b"),
+        ({"a": 0.5}, "0.5*a"),
+    ],
+)
+def test_combine_expression(sources, expected):
+    assert _combine_expression(sources) == expected
+
+
+def test_combine_target_shadowing_on_disk_variable_raises(mock_monthly_netcdfs):
+    """A computed target that also exists on disk would silently win.
+
+    Worse, it would only win for the datasets that request it, so two loads of
+    the same config could disagree about what the name means.
+    """
+    config = XarrayDataConfig(
+        data_path=mock_monthly_netcdfs.tmpdir,
+        combine={"foo": {"bar": 1.0, "constant_var": 1.0}},
+    )
+    with pytest.raises(ValueError, match="also variables in"):
+        xarray_dataset_constructor(config, ["foo"], 2)
+
+
+def test_combine_config_validation():
+    with pytest.raises(ValueError):  # empty source mapping
+        XarrayDataConfig(data_path="path", combine={"total": {}})
+    with pytest.raises(ValueError):  # target is also a source
+        XarrayDataConfig(data_path="path", combine={"foo": {"foo": 1.0, "bar": 1.0}})
+
+
+def test_combine_target_routes_to_correct_merge_member(mock_monthly_netcdfs):
+    """A merged dataset must route a combine target to the member producing it."""
+    from fme.core.dataset.merged import MergeDatasetConfig, get_per_dataset_names
+
+    producer = XarrayDataConfig(
+        data_path=mock_monthly_netcdfs.tmpdir,
+        combine={"total": {"foo": 1.0, "bar": 1.0}},
+    )
+    plain = XarrayDataConfig(data_path=mock_monthly_netcdfs.tmpdir)
+    # the producer is listed second, so routing cannot succeed by position alone
+    merged = MergeDatasetConfig(merge=[plain, producer])
+    per_dataset = get_per_dataset_names(merged, ["constant_var", "total"])
+    assert per_dataset == [["constant_var"], ["total"]]
+
+
+def test_overwrite_skips_absent_variables(mock_monthly_netcdfs):
+    """A config may name variables a given load did not request.
+
+    The coupled loader builds several datasets from one XarrayDataConfig, each
+    holding only a subset of the names, so overwrite must not raise on the
+    names that subset lacks.
+    """
+    config = XarrayDataConfig(
+        data_path=mock_monthly_netcdfs.tmpdir,
+        overwrite=OverwriteConfig(multiply_scalar={"foo": 2.0, "bar": 3.0}),
+    )
+    # request only "foo"; "bar" is named by the overwrite config but not loaded
+    subset_data = xarray_dataset_constructor(config, ["foo"], 2)[0][0]
+    assert set(subset_data) == {"foo"}
+
+    reference = xarray_dataset_constructor(
+        XarrayDataConfig(data_path=mock_monthly_netcdfs.tmpdir), ["foo"], 2
+    )[0][0]
+    torch.testing.assert_close(subset_data["foo"], reference["foo"] * 2.0)
+
+
+def test_mask_decoded_to_nan_raises(mock_monthly_netcdfs, tmp_path):
+    """mask_and_scale must not be allowed to punch NaN holes in a mask.
+
+    A mask carrying a _FillValue decodes to NaN at those points, which inverts
+    the masking there. The data this was written for has no such mask, but the
+    failure would otherwise be silent.
+    """
+
+    def add_mask(ds):
+        mask = xr.zeros_like(ds["constant_var"]) + 1.0
+        mask[0, 0] = 1.0e20
+        mask.attrs["_FillValue"] = 1.0e20
+        ds["mask_2d"] = mask
+
+    path = _rewrite_mock_netcdfs(mock_monthly_netcdfs.tmpdir, tmp_path, add_mask)
+
+    # without decoding, the sentinel is just an odd value and loading succeeds
+    xarray_dataset_constructor(XarrayDataConfig(data_path=path), ["foo"], 2)
+
+    with pytest.raises(ValueError, match="contains NaN"):
+        xarray_dataset_constructor(
+            XarrayDataConfig(data_path=path, mask_and_scale=True), ["foo"], 2
+        )
+
+
+def test_overwrite_unknown_variable_raises(mock_monthly_netcdfs):
+    """A name in no file at all can never take effect, so it is a typo."""
+    config = XarrayDataConfig(
+        data_path=mock_monthly_netcdfs.tmpdir,
+        overwrite=OverwriteConfig(multiply_scalar={"foo": 2.0, "fooo": 3.0}),
+    )
+    with pytest.raises(ValueError, match="which do not exist in"):
+        xarray_dataset_constructor(config, ["foo"], 2)
+
+
+def test_overwrite_constant_and_add_scalar_conflict():
+    with pytest.raises(ValueError):
+        OverwriteConfig(constant={"foo": 1.0}, add_scalar={"foo": 2.0})
+
+
+@pytest.mark.parametrize(
+    "mock_data_fixture, engine, file_pattern",
+    [
+        ("mock_monthly_netcdfs", "netcdf4", "*.nc"),
+        ("mock_monthly_zarr", "zarr", "*.zarr"),
+    ],
+)
+def test_rename(mock_data_fixture, engine, file_pattern, request):
+    """Renamed variables are requested and returned under their new names."""
+    mock_data: MockData = request.getfixturevalue(mock_data_fixture)
+    rename = {"foo": "renamed_foo", "constant_var": "renamed_constant_var"}
+    names = [rename.get(name, name) for name in mock_data.var_names.all_names]
+
+    config = XarrayDataConfig(
+        data_path=mock_data.tmpdir,
+        engine=engine,
+        file_pattern=file_pattern,
+        rename=rename,
+    )
+    dataset = xarray_dataset_constructor(config, names, 2)
+    data, _, _, _, _ = dataset[0]
+
+    reference_config = XarrayDataConfig(
+        data_path=mock_data.tmpdir, engine=engine, file_pattern=file_pattern
+    )
+    reference = xarray_dataset_constructor(
+        reference_config, mock_data.var_names.all_names, 2
+    )
+    reference_data, _, _, _, _ = reference[0]
+
+    assert set(data) == set(names)
+    for name in mock_data.var_names.all_names:
+        assert torch.equal(data[rename.get(name, name)], reference_data[name])
+
+
+def test_rename_missing_variable_raises(mock_monthly_netcdfs):
+    config = XarrayDataConfig(
+        data_path=mock_monthly_netcdfs.tmpdir, rename={"not_a_variable": "foo"}
+    )
+    with pytest.raises(ValueError, match="not_a_variable"):
+        xarray_dataset_constructor(config, ["foo"], 2)
 
 
 def test_repeated_interval_boolean_mask_subset(mock_monthly_netcdfs):
@@ -1041,6 +1517,50 @@ def test__get_vertical_coordinate_hybrid_sigma_pressure():
     assert vertical_coordinate.bk[0] == 0.5
 
 
+def test__get_vertical_coordinate_reference_pressure():
+    """Dimensionless ak coefficients are scaled to Pa by the reference pressure."""
+    data = xr.Dataset(
+        {"ak_0": 0.25, "bk_0": 0.0, "ak_1": 0.5, "bk_1": 1.0, "P0": 100000.0}
+    )
+    vertical_coordinate = _get_vertical_coordinate(
+        data, dtype=torch.float32, reference_pressure_name="P0"
+    )
+    assert isinstance(vertical_coordinate, HybridSigmaPressureCoordinate)
+    assert vertical_coordinate.ak[0] == 25000.0
+    assert vertical_coordinate.ak[1] == 50000.0
+    assert vertical_coordinate.bk[1] == 1.0
+
+    surface_pressure = torch.tensor([100000.0])
+    interface_pressure = vertical_coordinate.interface_pressure(surface_pressure)
+    torch.testing.assert_close(interface_pressure, torch.tensor([[25000.0, 150000.0]]))
+
+
+@pytest.mark.parametrize(
+    "data_vars, match",
+    [
+        pytest.param(
+            {"ak_0": 0.01, "bk_0": 0.0},
+            "not found in the dataset",
+            id="missing_reference_pressure",
+        ),
+        pytest.param(
+            {"ak_0": 0.01, "bk_0": 0.0, "P0": ("lat", [1.0, 2.0])},
+            "must be a scalar",
+            id="non_scalar_reference_pressure",
+        ),
+        pytest.param(
+            {"idepth_0": 1.0, "idepth_1": 2.0, "P0": 100000.0},
+            "does not have a hybrid sigma-pressure",
+            id="depth_coordinate",
+        ),
+    ],
+)
+def test__get_vertical_coordinate_reference_pressure_raises(data_vars, match):
+    data = xr.Dataset(data_vars)
+    with pytest.raises(ValueError, match=match):
+        _get_vertical_coordinate(data, dtype=None, reference_pressure_name="P0")
+
+
 @pytest.mark.parametrize("has_deptho", [False, True], ids=["no_deptho", "with_deptho"])
 def test__get_vertical_coordinate_depth_no_mask(has_deptho):
     data_vars: dict = {"idepth_0": 1.0, "idepth_1": 2.0}
@@ -1124,6 +1644,9 @@ def test__get_vertical_coordinate_depth_with_time_dependent_mask():
             {"n_repeats": 2, "infer_timestep": False}, id="n_repeats_infer_timestep"
         ),
         pytest.param({"dtype": "foo"}, id="invalid_dtype"),
+        pytest.param({"rename": {"time": "valid_time"}}, id="rename_time"),
+        pytest.param({"rename": {"foo": "time"}}, id="rename_to_time"),
+        pytest.param({"rename": {"foo": "baz", "bar": "baz"}}, id="rename_duplicate"),
     ],
 )
 def test_invalid_config_field_raises_error(kwargs):
@@ -1259,65 +1782,6 @@ def test_concat_of_XarrayConcat(mock_monthly_netcdfs):
     )
     concat2 = XarrayConcat(datasets=[concat, concat])
     assert len(concat2) == 16
-
-
-def test_get_raw_times_is_memoized_and_serial(tmp_path, monkeypatch):
-    """Repeated calls for the same file list must not re-read the files.
-
-    Dataset construction asks for the same stream once per dataset (train
-    windows, validation, each inference block). Re-reading every time made
-    setup slow enough to trip the NCCL watchdog, and the parallel workarounds
-    that hid the cost were unsafe (fork deadlock, then HDF5 heap corruption).
-    """
-    from fme.core.dataset import xarray as xarray_module
-
-    n_files = 13
-    times = xr.date_range("2000", freq="6h", periods=2 * n_files, use_cftime=True)
-    paths = []
-    for i in range(n_files):
-        path = os.path.join(tmp_path, f"file_{i}.nc")
-        sel = times[2 * i : 2 * i + 2]
-        xr.DataArray(
-            range(len(sel)), dims=["time"], coords=[sel], name="foo"
-        ).to_dataset().to_netcdf(path)
-        paths.append(path)
-
-    xarray_module._get_raw_times_cached.cache_clear()
-    reads = []
-    original = xarray_module._get_raw_times_single_file
-
-    def counting(path, engine=None):
-        reads.append(path)
-        return original(path, engine=engine)
-
-    monkeypatch.setattr(xarray_module, "_get_raw_times_single_file", counting)
-
-    first = xarray_module._get_raw_times(paths, "netcdf4")
-    assert len(reads) == n_files
-    second = xarray_module._get_raw_times(paths, "netcdf4")
-    assert len(reads) == n_files, "second call re-read the files"
-    assert all(np.array_equal(a, b) for a, b in zip(first, second))
-    # the caller gets its own list, so mutating it cannot poison the cache
-    first.append("sentinel")
-    assert len(xarray_module._get_raw_times(paths, "netcdf4")) == n_files
-    xarray_module._get_raw_times_cached.cache_clear()
-
-
-def test_get_raw_paths_local_matches_fsspec(mock_monthly_netcdfs):
-    """The local fast path must return exactly what the fsspec path returns."""
-    import fsspec
-
-    from fme.core.dataset.xarray import get_raw_paths
-
-    tmpdir = str(mock_monthly_netcdfs.tmpdir)
-    fast = get_raw_paths(tmpdir, "*.nc")
-    reference = sorted(fsspec.filesystem("file").glob(os.path.join(tmpdir, "*.nc")))
-    assert fast == reference
-    assert len(fast) > 0
-    # patterns that match nothing still agree
-    assert get_raw_paths(tmpdir, "*.zarr") == sorted(
-        fsspec.filesystem("file").glob(os.path.join(tmpdir, "*.zarr"))
-    )
 
 
 def test__get_raw_times_across_many_files(tmpdir):

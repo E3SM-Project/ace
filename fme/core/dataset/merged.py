@@ -447,7 +447,16 @@ def _infer_available_variables(config: XarrayDataConfig):
         engine=config.engine,
         chunks=None,
     )
-    return dataset.data_vars
+    if config.rename:
+        dataset = dataset.rename(config.rename)
+    available = set(dataset.data_vars)
+    # combine targets aren't on disk, but this config can produce them so long
+    # as every source is present -- otherwise the merge would route the target
+    # to a member that cannot build it.
+    for target, sources in config.combine.items():
+        if all(source in available for source in sources):
+            available.add(target)
+    return available
 
 
 def get_per_dataset_names(
