@@ -11,6 +11,11 @@ generated fluxes over the ocean's step window at runtime
 | `config-train-ocn.yaml` | Samudra ocean, 5-day | `mpaso`/`mpassi` `*5D*.remapped.nc` + LANDFRAC |
 | `config-train-cpl.yaml` | coupled finetune | both |
 
+Setting up the environment on OLCF Frontier (AMD MI250X, ROCm + `uv` instead of conda)
+is documented in `NOTES-frontier-env.md`; `frontier-env.sh` loads the modules and
+activates the venv. That covers the environment only — nothing in this directory has
+been trained on Frontier, and the sizing and timing below are Perlmutter measurements.
+
 ### The scripts, and why each one exists
 
 | script | why it can't just be config |
@@ -344,6 +349,10 @@ binding here every rank dies at the first collective with:
 Multi-node NCCL itself is fine — a minimal 8-rank allreduce succeeds when all
 four GPUs are visible per node and the device is set from `SLURM_LOCALID`,
 which is exactly what `torchrun` does via `LOCAL_RANK`.
+
+That is a property of the `--gpus-per-node=4` binding used here, not of the launcher.
+On Frontier the srun path is the right one: one rank per GCD with
+`--gpus-per-task=1 --gpu-bind=closest` makes device 0 correct in every rank.
 
 ## Checkpointing and resuming
 
