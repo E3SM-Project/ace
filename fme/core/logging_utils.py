@@ -90,12 +90,19 @@ class LoggingConfig:
         """
         Configure the global `logging` module based on this LoggingConfig.
         """
+        # force=True because basicConfig is otherwise a no-op once the root
+        # logger already has a handler, which happens as soon as anything calls
+        # the root-logger convenience functions (logging.info/warning) before
+        # this runs -- e.g. a diagnostic in a config's __post_init__, which
+        # executes during dacite parsing. Without force, the requested level is
+        # never applied and every INFO record is dropped for the whole run,
+        # leaving an empty out.log and no progress output.
         if self.log_to_screen and self._dist.is_root():
-            logging.basicConfig(format=self.log_format, level=self.level)
+            logging.basicConfig(format=self.log_format, level=self.level, force=True)
         elif self._dist.is_root():
-            logging.basicConfig(level=logging.WARNING)
+            logging.basicConfig(level=logging.WARNING, force=True)
         else:  # we are not root
-            logging.basicConfig(level=logging.ERROR)
+            logging.basicConfig(level=logging.ERROR, force=True)
         logger = logging.getLogger()
         if self.log_to_file and self._dist.is_root():
             if not is_local(experiment_dir):
