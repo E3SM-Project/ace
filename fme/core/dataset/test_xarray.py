@@ -26,7 +26,6 @@ from fme.core.dataset.schedule import IntSchedule
 from fme.core.dataset.time import RepeatedInterval, TimeSlice
 from fme.core.dataset.utils import FillNaNsConfig
 from fme.core.dataset.xarray import (
-    GET_RAW_TIMES_NUM_FILES_PARALLELIZATION_THRESHOLD,
     OverwriteConfig,
     XarrayDataConfig,
     XarrayDataset,
@@ -1262,9 +1261,68 @@ def test_concat_of_XarrayConcat(mock_monthly_netcdfs):
     assert len(concat2) == 16
 
 
-def test_parallel__get_raw_times(tmpdir):
+def test_get_raw_times_is_memoized_and_serial(tmp_path, monkeypatch):
+    """Repeated calls for the same file list must not re-read the files.
+
+    Dataset construction asks for the same stream once per dataset (train
+    windows, validation, each inference block). Re-reading every time made
+    setup slow enough to trip the NCCL watchdog, and the parallel workarounds
+    that hid the cost were unsafe (fork deadlock, then HDF5 heap corruption).
+    """
+    from fme.core.dataset import xarray as xarray_module
+
+    n_files = 13
+    times = xr.date_range("2000", freq="6h", periods=2 * n_files, use_cftime=True)
+    paths = []
+    for i in range(n_files):
+        path = os.path.join(tmp_path, f"file_{i}.nc")
+        sel = times[2 * i : 2 * i + 2]
+        xr.DataArray(
+            range(len(sel)), dims=["time"], coords=[sel], name="foo"
+        ).to_dataset().to_netcdf(path)
+        paths.append(path)
+
+    xarray_module._get_raw_times_cached.cache_clear()
+    reads = []
+    original = xarray_module._get_raw_times_single_file
+
+    def counting(path, engine=None):
+        reads.append(path)
+        return original(path, engine=engine)
+
+    monkeypatch.setattr(xarray_module, "_get_raw_times_single_file", counting)
+
+    first = xarray_module._get_raw_times(paths, "netcdf4")
+    assert len(reads) == n_files
+    second = xarray_module._get_raw_times(paths, "netcdf4")
+    assert len(reads) == n_files, "second call re-read the files"
+    assert all(np.array_equal(a, b) for a, b in zip(first, second))
+    # the caller gets its own list, so mutating it cannot poison the cache
+    first.append("sentinel")
+    assert len(xarray_module._get_raw_times(paths, "netcdf4")) == n_files
+    xarray_module._get_raw_times_cached.cache_clear()
+
+
+def test_get_raw_paths_local_matches_fsspec(mock_monthly_netcdfs):
+    """The local fast path must return exactly what the fsspec path returns."""
+    import fsspec
+
+    from fme.core.dataset.xarray import get_raw_paths
+
+    tmpdir = str(mock_monthly_netcdfs.tmpdir)
+    fast = get_raw_paths(tmpdir, "*.nc")
+    reference = sorted(fsspec.filesystem("file").glob(os.path.join(tmpdir, "*.nc")))
+    assert fast == reference
+    assert len(fast) > 0
+    # patterns that match nothing still agree
+    assert get_raw_paths(tmpdir, "*.zarr") == sorted(
+        fsspec.filesystem("file").glob(os.path.join(tmpdir, "*.zarr"))
+    )
+
+
+def test__get_raw_times_across_many_files(tmpdir):
     times_per_file = 2
-    n_files = GET_RAW_TIMES_NUM_FILES_PARALLELIZATION_THRESHOLD + 1
+    n_files = 13
     n_times = n_files * times_per_file
 
     times = xr.date_range("2000", freq="6h", periods=n_times, use_cftime=True)
