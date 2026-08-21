@@ -21,6 +21,7 @@ from create_e3sm_restart_ic import (
     _ocean_mask_name,
     _parse_timestamp,
     compute_pressure_thickness,
+    find_unusable_points,
     reconstruct_cell_velocity,
     vertical_coarsen_atmosphere,
     vertical_coarsen_ocean,
@@ -449,3 +450,61 @@ def test_fill_masked_gaps_needs_the_wetmasks(tmp_path):
 def test_ice_shelf_cavities_are_kept_by_default():
     """Excluding them leaves surface points NaN inside mask_2d, which is fatal."""
     assert OceanConfig().exclude_ice_shelf_cavities is False
+
+
+def _clean_atmosphere(shape=(6, 8)):
+    atmosphere = xr.Dataset()
+    for name in ATMOSPHERE_PROGNOSTIC_NAMES:
+        atmosphere[name] = xr.DataArray(
+            np.full(shape, 1.0, dtype=np.float32), dims=["lat", "lon"]
+        )
+    return atmosphere
+
+
+def test_find_unusable_points_passes_a_clean_pair():
+    problems = find_unusable_points(
+        _clean_atmosphere(), _ocean_with_gaps({}), _all_wet_masks()
+    )
+    assert problems == []
+
+
+def test_find_unusable_points_reports_a_wet_ocean_gap():
+    ocean = _ocean_with_gaps({"temperatureCoarsened_3": [(1, 1), (2, 2)]})
+    problems = find_unusable_points(_clean_atmosphere(), ocean, _all_wet_masks())
+    assert problems == ["temperatureCoarsened_3 has 2 missing points inside mask_3"]
+
+
+def test_find_unusable_points_reports_any_atmosphere_gap():
+    """The atmosphere has no wetmask, so every point must have a value."""
+    atmosphere = _clean_atmosphere()
+    atmosphere["PS"][0, 0] = np.nan
+    problems = find_unusable_points(atmosphere, _ocean_with_gaps({}), _all_wet_masks())
+    assert problems == ["PS has 1 missing atmosphere points"]
+
+
+def test_find_unusable_points_uses_each_variables_own_mask():
+    """Regression: sea ice must not be checked against the wider mask_2d.
+
+    mask_ocean_sea_ice_fraction is much narrower than mask_2d, so checking sea
+    ice against mask_2d reports every open-ocean point with no sea ice as a
+    problem. That false positive is what a hand-derived mask name produces.
+    """
+    ocean = _ocean_with_gaps({})
+    masks = _all_wet_masks()
+    narrow = np.zeros((6, 8), dtype=np.float32)
+    narrow[0, :] = 1.0
+    masks["mask_ocean_sea_ice_fraction"] = xr.DataArray(narrow, dims=["lat", "lon"])
+    # Missing everywhere the narrow mask is dry, which mask_2d calls wet.
+    ocean["ocean_sea_ice_fraction"][1:, :] = np.nan
+    assert find_unusable_points(_clean_atmosphere(), ocean, masks) == []
+    # ...but a gap inside the narrow mask is still caught.
+    ocean["ocean_sea_ice_fraction"][0, 0] = np.nan
+    assert find_unusable_points(_clean_atmosphere(), ocean, masks) == [
+        "ocean_sea_ice_fraction has 1 missing points inside mask_ocean_sea_ice_fraction"
+    ]
+
+
+def test_find_unusable_points_reports_a_missing_variable():
+    ocean = _ocean_with_gaps({}).drop_vars("ssh")
+    problems = find_unusable_points(_clean_atmosphere(), ocean, _all_wet_masks())
+    assert problems == ["ssh is missing from the ocean"]

@@ -131,18 +131,24 @@ that, and both are on by default:
   leftover points (~1300 out of 5.2 million for the 1940 historical restart)
   are filled from the layer above, which the nested masks guarantee is wet.
 
-To check a generated file before spending GPU hours on it:
+Both are checked, not assumed: `find_unusable_points` runs on every generated
+pair before it is written, so a config that would produce a NaN-poisoned
+initial condition fails immediately instead of writing a file that only reveals
+itself hours into a forecast. To re-check files already on disk:
 
-```python
-import numpy as np, xarray as xr
-ic = xr.open_dataset("out/..._ocean_ic.nc")
-forcing = xr.open_dataset("forcing_data/ocean-forcing-1yr.nc")
-for name in ic.data_vars:                      # must print nothing
-    mask = forcing.get(f"mask_{name.rsplit('_', 1)[-1]}", forcing["mask_2d"])
-    bad = int(((mask.values > 0) & ~np.isfinite(ic[name].isel(time=0).values)).sum())
-    if bad:
-        print(name, bad)
+```bash
+python create_e3sm_restart_ic.py --config configs/e3smv3-restart-ic.yaml --verify-only
 ```
+
+It lists every offending variable with its point count and exits nonzero, so it
+drops straight into a script or CI job.
+
+Check a variable against the mask `_ocean_mask_name` picks for it, never a mask
+name derived by hand. `mask_2d` covers 44892 cells of the E3SMv3 grid while
+`mask_ocean_sea_ice_fraction` and `mask_iceVolumeTotal` cover 25923, so
+checking sea ice against `mask_2d` reports 18969 points that are not problems
+-- on the initial conditions published with the checkpoint just as much as on a
+generated pair.
 
 ### Lining the time coordinate up with the forcing
 

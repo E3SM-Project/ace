@@ -1145,6 +1145,50 @@ def _write(dataset: xr.Dataset, path: str, config: CreateRestartICConfig) -> Non
     )
 
 
+def find_unusable_points(
+    atmosphere: xr.Dataset, ocean: xr.Dataset, masks: xr.Dataset | None
+) -> list[str]:
+    """Report the missing values that would make an inference run return NaN.
+
+    Initial conditions reach the steppers with no NaN handling, so this is the
+    check worth running before spending time on a forecast: every atmosphere
+    point must have a value, and every ocean point *inside its own wetmask*
+    must have one.
+
+    Each variable is checked against the mask ``_ocean_mask_name`` picks for it,
+    which is the mask the model itself uses. Deriving the name any other way
+    silently mischecks the variables that own a mask: ``mask_2d`` covers 44892
+    cells of the E3SMv3 grid while ``mask_ocean_sea_ice_fraction`` covers
+    25923, so checking sea ice against ``mask_2d`` reports 18969 points that
+    are not actually problems -- on the initial conditions published with the
+    checkpoint just as much as on a generated pair.
+    """
+    problems: list[str] = []
+    for name in ATMOSPHERE_PROGNOSTIC_NAMES:
+        if name not in atmosphere:
+            problems.append(f"{name} is missing from the atmosphere")
+            continue
+        missing = int((~np.isfinite(atmosphere[name].values)).sum())
+        if missing:
+            problems.append(f"{name} has {missing} missing atmosphere points")
+
+    available = {str(name) for name in masks.data_vars} if masks is not None else set()
+    for name in OCEAN_PROGNOSTIC_NAMES:
+        if name not in ocean:
+            problems.append(f"{name} is missing from the ocean")
+            continue
+        if masks is None:
+            continue
+        mask_name = _ocean_mask_name(name, available)
+        if mask_name is None:
+            continue
+        wet = np.asarray(masks[mask_name].values) > 0
+        missing = int((wet & ~np.isfinite(ocean[name].values)).sum())
+        if missing:
+            problems.append(f"{name} has {missing} missing points inside {mask_name}")
+    return problems
+
+
 def run(config: CreateRestartICConfig) -> None:
     directories = config.resolved_restart_directories
     logging.info("Processing %d restart director(ies)", len(directories))
@@ -1174,6 +1218,12 @@ def run(config: CreateRestartICConfig) -> None:
             atmosphere, ocean, time = process_restart(
                 files, config, masks, work_directory, override
             )
+            problems = find_unusable_points(atmosphere, ocean, masks)
+            if problems:
+                raise ValueError(
+                    f"{files.directory} produced an initial condition that would "
+                    f"make inference return NaN:\n  " + "\n  ".join(problems)
+                )
             time_coordinate = xr.DataArray([time], dims=["time"], name="time")
             atmospheres.append(atmosphere.expand_dims(time=time_coordinate))
             oceans.append(ocean.expand_dims(time=time_coordinate))
@@ -1193,6 +1243,41 @@ def run(config: CreateRestartICConfig) -> None:
             config.output_prefix,
             config,
         )
+
+
+def verify_written(config: CreateRestartICConfig) -> list[str]:
+    """Re-check initial conditions already on disk, without regenerating them."""
+    masks = None
+    if config.masks.path is not None:
+        masks = xr.open_dataset(config.masks.path, decode_times=False)
+        masks = masks.isel(time=0, drop=True) if "time" in masks.dims else masks
+        masks = masks.load()
+
+    prefixes = sorted(
+        path[: -len("_ocean_ic.nc")]
+        for path in glob.glob(
+            os.path.join(
+                config.output_directory, f"{config.output_prefix}*_ocean_ic.nc"
+            )
+        )
+    )
+    if not prefixes:
+        raise ValueError(
+            f"No {config.output_prefix}*_ocean_ic.nc found in "
+            f"{config.output_directory}."
+        )
+    problems: list[str] = []
+    for prefix in prefixes:
+        atmosphere = xr.open_dataset(f"{prefix}_atmosphere_ic.nc", decode_times=False)
+        ocean = xr.open_dataset(f"{prefix}_ocean_ic.nc", decode_times=False)
+        found = find_unusable_points(atmosphere, ocean, masks)
+        logging.info(
+            "%s: %s",
+            os.path.basename(prefix),
+            "usable" if not found else f"{len(found)} problem(s)",
+        )
+        problems.extend(f"{os.path.basename(prefix)}: {problem}" for problem in found)
+    return problems
 
 
 def _write_pair(
@@ -1220,12 +1305,20 @@ def _write_pair(
 @click.option("--output-directory", default=None, help="Override output_directory.")
 @click.option("--output-prefix", default=None, help="Override output_prefix.")
 @click.option("--overwrite/--no-overwrite", default=None, help="Override overwrite.")
+@click.option(
+    "--verify-only",
+    is_flag=True,
+    default=False,
+    help="Check the initial conditions already in output_directory instead of "
+    "building them, and exit nonzero if any would make inference return NaN.",
+)
 def main(
     config_path: str,
     restart_glob: str | None,
     output_directory: str | None,
     output_prefix: str | None,
     overwrite: bool | None,
+    verify_only: bool,
 ) -> None:
     """Create SamudrACE-E3SMv3 initial conditions from E3SM restart files."""
     logging.basicConfig(
@@ -1240,6 +1333,15 @@ def main(
         output_prefix=output_prefix,
         overwrite=overwrite,
     )
+    if verify_only:
+        problems = verify_written(config)
+        if problems:
+            raise SystemExit(
+                "These initial conditions would make inference return NaN:\n  "
+                + "\n  ".join(problems)
+            )
+        logging.info("All initial conditions are usable.")
+        return
     run(config)
 
 
