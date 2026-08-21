@@ -1,9 +1,10 @@
 import copy
 import dataclasses
 import datetime
+import logging
 from collections import namedtuple
 from collections.abc import Iterable
-from typing import Literal
+from typing import Any, Literal
 from unittest.mock import Mock
 
 import pytest
@@ -1194,6 +1195,68 @@ class TimesTwo(torch.nn.Module):
         return 2 * x
 
 
+def test_mismatched_flux_names_raise_instead_of_silently_decoupling():
+    """A naming mismatch must fail at construction, not train as one-way coupled.
+
+    Atmosphere->ocean coupling is a name intersection, so an ocean pretrained on
+    MPAS-native flux names paired with an atmosphere emitting EAM names produces
+    an empty exchange. Without an explicit check that configuration runs happily
+    while the ocean is driven from the forcing dataset, and the coupled model
+    cannot free-run.
+    """
+    common: dict[str, Any] = dict(
+        ocean_out_names=["sst"],
+        atmosphere_in_names=["surface_temperature", "ocean_fraction"],
+        atmosphere_out_names=["surface_temperature", "TAUX"],
+    )
+    # sanity: matching names build fine and resolve the exchange
+    ok = get_stepper_config(
+        ocean_in_names=["sst", "TAUX"],
+        ocean_next_step_forcing_names=["TAUX"],
+        **common,
+    )
+    assert ok.atmosphere_to_ocean_forcing_names == ["TAUX"]
+
+    # MPAS-native name for the same physical field -> empty exchange
+    with pytest.raises(ValueError, match="No atmosphere output feeds the ocean"):
+        get_stepper_config(
+            ocean_in_names=["sst", "windStressZonal"],
+            ocean_next_step_forcing_names=["windStressZonal"],
+            **common,
+        )
+
+
+def test_partial_flux_name_mismatch_warns_but_builds(caplog):
+    """A partial naming mismatch must be visible without breaking valid configs.
+
+    Some next-step forcings legitimately come from the ocean's own forcing
+    window, and this validation also runs when loading a trained checkpoint, so
+    a hard failure here would make existing models unloadable.
+    """
+    with caplog.at_level(logging.WARNING):
+        config = get_stepper_config(
+            ocean_in_names=["sst", "TAUX", "windStressMeridional"],
+            ocean_out_names=["sst"],
+            atmosphere_in_names=["surface_temperature", "ocean_fraction"],
+            atmosphere_out_names=["surface_temperature", "TAUX", "TAUY"],
+            ocean_next_step_forcing_names=["TAUX", "windStressMeridional"],
+        )
+    assert config.atmosphere_to_ocean_forcing_names == ["TAUX"]
+    assert "windStressMeridional" in caplog.text
+    assert "read from the ocean" in caplog.text
+
+
+def test_ocean_without_next_step_forcings_may_be_unforced_by_atmosphere():
+    """Static-only ocean forcings are a legitimate empty exchange, not an error."""
+    config = get_stepper_config(
+        ocean_in_names=["sst", "mask_0"],
+        ocean_out_names=["sst"],
+        atmosphere_in_names=["surface_temperature", "ocean_fraction"],
+        atmosphere_out_names=["surface_temperature"],
+    )
+    assert config.atmosphere_to_ocean_forcing_names == []
+
+
 def get_stepper_config(
     ocean_in_names: list[str],
     ocean_out_names: list[str],
@@ -1210,6 +1273,7 @@ def get_stepper_config(
     ocean_prescribed_prognostic_names: list[str] | None = None,
     atmosphere_prescribed_prognostic_names: list[str] | None = None,
     atmosphere_input_dropout: VariableMaskingConfig | None = None,
+    ocean_next_step_forcing_names: list[str] | None = None,
 ):
     # CoupledStepper requires that both component datasets include prognostic
     # surface temperature variables and that the atmosphere data includes an
@@ -1222,7 +1286,10 @@ def get_stepper_config(
 
     ocean_norm_names = set(ocean_in_names + ocean_out_names)
     atmos_norm_names = set(atmosphere_in_names + atmosphere_out_names)
-    next_step_forcing_names = list(set(atmosphere_out_names) & set(ocean_in_names))
+    if ocean_next_step_forcing_names is None:
+        next_step_forcing_names = list(set(atmosphere_out_names) & set(ocean_in_names))
+    else:
+        next_step_forcing_names = list(ocean_next_step_forcing_names)
 
     if atmosphere_builder is None:
         atmosphere_builder = ModuleSelector(

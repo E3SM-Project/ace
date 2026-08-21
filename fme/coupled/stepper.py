@@ -65,6 +65,8 @@ from fme.coupled.requirements import (
 )
 from fme.coupled.typing_ import CoupledNames, CoupledOptionalInt
 
+logger = logging.getLogger(__name__)
+
 
 @dataclasses.dataclass
 class ComponentConfig:
@@ -366,7 +368,69 @@ class CoupledStepperConfig:
                 self.ocean_fraction_prediction.land_fraction_name
             )
 
+        self._validate_atmosphere_to_ocean_coupling()
         self.validate_prescribed_prognostic_names()
+
+    def _validate_atmosphere_to_ocean_coupling(self) -> None:
+        """Raise if no atmosphere output reaches the ocean.
+
+        The atmosphere->ocean exchange is resolved by intersecting the ocean's
+        input-only names with the atmosphere's output names, so a naming
+        mismatch does not raise on its own: the unmatched names simply fall
+        through to ``_ocean_forcing_exogenous_names`` and are read from the
+        forcing dataset instead. Such a configuration trains and runs, but the
+        ocean is driven by prescribed data rather than by the atmosphere, and
+        the coupled model cannot be run beyond the extent of that dataset.
+
+        This bites when a component was pretrained against a different naming
+        convention for the same physical field -- e.g. an ocean forced with
+        MPAS-native names (``windStressZonal``, ``shortWaveHeatFlux``) paired
+        with an atmosphere that outputs the EAM names (``TAUX``, ``FSNS``).
+        Fail loudly at construction instead.
+        """
+        logger.info(
+            "Coupled exchange resolved: atmosphere -> ocean "
+            f"{sorted(self._atmosphere_to_ocean_forcing_names)}; "
+            f"ocean -> atmosphere {sorted(self._ocean_to_atmosphere_forcing_names)}"
+        )
+        next_step = set(self.ocean.stepper.next_step_forcing_names)
+        unmatched = sorted(next_step - set(self.atmosphere.stepper.output_names))
+        if self._atmosphere_to_ocean_forcing_names:
+            if unmatched:
+                # Only a warning: a next-step forcing may legitimately come
+                # from the ocean's own forcing window rather than from the
+                # atmosphere, and this also runs when loading a trained
+                # checkpoint for inference, where raising would make an
+                # existing model unloadable.
+                logger.warning(
+                    f"Ocean next-step forcings {unmatched} are not produced by "
+                    "the atmosphere, so they will be read from the ocean "
+                    "forcing dataset rather than supplied by the atmosphere. "
+                    "That is correct for genuinely exogenous forcings, but it "
+                    "is also what a partial naming mismatch looks like. "
+                    "Atmosphere output names: "
+                    f"{sorted(self.atmosphere.stepper.output_names)}."
+                )
+            return
+        # An ocean whose only input-only names are static geometry (masks, land
+        # fraction) legitimately receives nothing from the atmosphere. Declaring
+        # next-step forcings is the signal that time-varying fields were meant
+        # to arrive each step, which for this stepper means from the atmosphere.
+        if not unmatched:
+            return
+        raise ValueError(
+            "No atmosphere output feeds the ocean, but the ocean declares "
+            f"next-step forcings {unmatched}. The atmosphere -> ocean exchange "
+            "is resolved by intersecting the ocean's input-only names with the "
+            "atmosphere's output names, and that intersection is empty, so "
+            "these forcings would be read from the forcing dataset instead of "
+            "coming from the atmosphere -- the coupled model would train as "
+            "one-way coupled and could not run beyond that dataset. This "
+            "usually means the two components use different names for the same "
+            "physical fields (e.g. MPAS-native 'windStressZonal' and "
+            "'shortWaveHeatFlux' against EAM 'TAUX' and 'FSNS'). Atmosphere "
+            f"output names: {sorted(self.atmosphere.stepper.output_names)}."
+        )
 
     def _ocean_supplied_atmosphere_names(self) -> set[str]:
         """Names written onto the atmosphere forcings from the ocean component
