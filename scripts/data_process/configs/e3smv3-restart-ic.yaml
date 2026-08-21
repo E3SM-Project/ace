@@ -34,6 +34,9 @@ masks:
   path: /Users/mahf708/samudrace_ic/hf/forcing_data/ocean-forcing-1yr.nc
   apply_ocean_masks: true
   use_for_surface_blend: true
+  # Required: initial conditions get no NaN handling on the way into the model,
+  # so a single unset point inside a wetmask makes the whole forecast NaN.
+  fill_masked_gaps: true
 
 atmosphere:
   # 8 coarse layers over EAM's 80 levels, matching the checkpoint.
@@ -58,14 +61,18 @@ ocean:
     [0, 20, 30, 40, 50, 80, 110, 140, 170, 230, 410, 530, 1020, 1080, 1720,
      1980, 2820, 3380, 4620, 6380]
   reconstruct_velocity: true
+  # The training wetmasks cover the sub-ice-shelf cavities, and removing the
+  # landIceDraft load already makes ssh physical there, so keep them.
+  exclude_ice_shelf_cavities: false
   # The published training config enables a scale-4 filter while its dataset is
   # named "no-smoothing"; left off here. Set to 4 to match a filtered dataset.
   spatial_filter_scale: null
 
 time:
-  # "restart" reads the MPAS xtime stamp. Use "explicit" with one timestamp per
-  # restart directory when the forcing dataset's dates do not line up with the
-  # restart dates (e.g. historical restarts against piControl forcing).
+  # "restart" reads the MPAS xtime stamp. The published forcing is a single
+  # piControl year repeated with n_repeats, so a historical restart date will
+  # not be found in it: use "explicit" and give each restart a timestamp that
+  # exists in the forcing (the first is 0425-01-03 12:00:00, every 5 days).
   source: restart
   calendar: noleap
   units: days since 0001-01-01
