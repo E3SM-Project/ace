@@ -58,7 +58,9 @@ VariableNames = namedtuple(
 
 
 def _get_vertical_coordinate(
-    ds: xr.Dataset, dtype: torch.dtype | None
+    ds: xr.Dataset,
+    dtype: torch.dtype | None,
+    reference_pressure_name: str | None = None,
 ) -> VerticalCoordinate:
     """
     Get vertical coordinate from a dataset.
@@ -73,6 +75,12 @@ def _get_vertical_coordinate(
         ds: Dataset to get vertical coordinates from.
         dtype: Data type of the returned tensors. If None, the dtype is not
             changed from the original in ds.
+        reference_pressure_name: If provided, the name of a scalar variable in
+            ``ds`` holding a reference pressure in Pa. The `ak_N` coefficients
+            are then taken to be dimensionless and are multiplied by this
+            reference pressure, i.e. interface pressures are computed as
+            ``p_N = ak_N * P0 + bk_N * PS``. If None, the `ak_N` coefficients
+            are taken to already be in Pa.
     """
     ak_mapping = {
         int(v[3:]): torch.as_tensor(ds[v].values)
@@ -99,6 +107,26 @@ def _get_vertical_coordinate(
             "Dataset contains both hybrid sigma-pressure and depth coordinates. "
             "Can only provide one, or else the vertical coordinate is ambiguous."
         )
+
+    reference_pressure: float | None = None
+    if reference_pressure_name is not None:
+        if len(ak_list) == 0 or len(bk_list) == 0:
+            raise ValueError(
+                f"A reference pressure variable '{reference_pressure_name}' was "
+                "configured, but the dataset does not have a hybrid sigma-pressure "
+                "vertical coordinate. It is only used to scale ak coefficients."
+            )
+        if reference_pressure_name not in ds.variables:
+            raise ValueError(
+                f"Reference pressure variable '{reference_pressure_name}' was not "
+                "found in the dataset."
+            )
+        if ds[reference_pressure_name].size != 1:
+            raise ValueError(
+                f"Reference pressure variable '{reference_pressure_name}' must be a "
+                f"scalar, but it has shape {ds[reference_pressure_name].shape}."
+            )
+        reference_pressure = float(ds[reference_pressure_name].values.item())
 
     coordinate: VerticalCoordinate
     deptho = None
@@ -133,8 +161,11 @@ def _get_vertical_coordinate(
             torch.as_tensor(idepth_list, dtype=dtype), mask, deptho
         )
     elif len(ak_list) > 0 and len(bk_list) > 0:
+        ak = torch.as_tensor(ak_list, dtype=dtype)
+        if reference_pressure is not None:
+            ak = ak * reference_pressure
         coordinate = HybridSigmaPressureCoordinate(
-            ak=torch.as_tensor(ak_list, dtype=dtype),
+            ak=ak,
             bk=torch.as_tensor(bk_list, dtype=dtype),
         )
     else:
@@ -309,7 +340,37 @@ def _get_fs_protocol_kwargs(path):
     return kwargs
 
 
-def _open_xr_dataset(path: str, *args, **kwargs):
+def _expand_combine_sources(
+    names: Sequence[str], combine: Mapping[str, Mapping[str, float]]
+) -> list[str]:
+    """Replace each combine target with the source variables that build it.
+
+    Targets do not exist on disk, so the dataset must load their sources
+    instead. Sources already requested in their own right keep their place.
+    """
+    expanded: list[str] = []
+    for name in names:
+        if name in combine:
+            expanded.extend(s for s in combine[name] if s not in expanded)
+        elif name not in expanded:
+            expanded.append(name)
+    return expanded
+
+
+def _combine_expression(sources: Mapping[str, float]) -> str:
+    """Render a combine target's definition, e.g. ``rainFlux + snowFlux``."""
+    terms: list[str] = []
+    for i, (name, coefficient) in enumerate(sources.items()):
+        magnitude = abs(coefficient)
+        term = name if magnitude == 1 else f"{magnitude:g}*{name}"
+        if i == 0:
+            terms.append(f"-{term}" if coefficient < 0 else term)
+        else:
+            terms.append(f"{'-' if coefficient < 0 else '+'} {term}")
+    return " ".join(terms)
+
+
+def _open_xr_dataset(path: str, *args, mask_and_scale: bool = False, **kwargs):
     # need the path to get protocol specific arguments for the backend
     protocol_kw = _get_fs_protocol_kwargs(path)
     if protocol_kw:
@@ -320,7 +381,7 @@ def _open_xr_dataset(path: str, *args, **kwargs):
         *args,
         decode_times=CFDatetimeCoder(use_cftime=True),
         decode_timedelta=False,
-        mask_and_scale=False,
+        mask_and_scale=mask_and_scale,
         cache=False,
         chunks=None,
         **kwargs,
@@ -384,6 +445,16 @@ def _get_spatial_mask_provider(
     for name in masks:
         if "time" in ds[name].dims:
             raise ValueError("Masks must be time-independent.")
+        # A mask is 0/1 everywhere, so a NaN is never meaningful. It arises when
+        # the mask carries a CF _FillValue and XarrayDataConfig.mask_and_scale
+        # decodes it, which inverts the masking at those points.
+        if bool(torch.isnan(masks[name]).any()):
+            raise ValueError(
+                f"Mask variable '{name}' contains NaN values. If this dataset "
+                "is loaded with mask_and_scale=True, the mask most likely has a "
+                "_FillValue attribute that is being decoded to NaN; drop that "
+                "attribute from the mask variable."
+            )
     spatial_mask_provider = SpatialMaskProvider(masks)
     logging.info(f"Initialized {spatial_mask_provider}.")
     return spatial_mask_provider
@@ -393,38 +464,66 @@ def _get_spatial_mask_provider(
 class OverwriteConfig:
     """Configuration to overwrite field values in XarrayDataset.
 
+    Applied as ``value * multiply_scalar + add_scalar``, so the two can be
+    combined to express an affine unit conversion.
+
     Parameters:
         constant: Fill field with constant value.
         multiply_scalar: Multiply field by scalar value.
+        add_scalar: Add scalar value to field, e.g. 273.15 to convert a
+            temperature from degrees Celsius to Kelvin.
     """
 
     constant: Mapping[str, float] = dataclasses.field(default_factory=dict)
     multiply_scalar: Mapping[str, float] = dataclasses.field(default_factory=dict)
+    add_scalar: Mapping[str, float] = dataclasses.field(default_factory=dict)
 
     def __post_init__(self):
-        key_overlap = set(self.constant.keys()) & set(self.multiply_scalar.keys())
+        key_overlap = set(self.constant.keys()) & (
+            set(self.multiply_scalar.keys()) | set(self.add_scalar.keys())
+        )
         if key_overlap:
             raise ValueError(
                 "OverwriteConfig cannot have the same variable in both constant "
-                f"and multiply_scalar: {key_overlap}"
+                f"and multiply_scalar or add_scalar: {key_overlap}"
             )
 
     def apply(self, tensors: TensorDict) -> TensorDict:
+        # Variables not present are skipped rather than raising: a single
+        # XarrayDataConfig may be loaded several times for different subsets of
+        # its names (the coupled loader splits the atmosphere into separate
+        # forcing and target datasets this way), and each such load only holds
+        # the names it asked for.
         for var, fill_value in self.constant.items():
+            if var not in tensors:
+                continue
             data = tensors[var]
             tensors[var] = torch.ones_like(data) * torch.tensor(
                 fill_value, dtype=data.dtype, device=data.device
             )
         for var, multiplier in self.multiply_scalar.items():
+            if var not in tensors:
+                continue
             data = tensors[var]
             tensors[var] = data * torch.tensor(
                 multiplier, dtype=data.dtype, device=data.device
+            )
+        for var, addend in self.add_scalar.items():
+            if var not in tensors:
+                continue
+            data = tensors[var]
+            tensors[var] = data + torch.tensor(
+                addend, dtype=data.dtype, device=data.device
             )
         return tensors
 
     @property
     def variables(self):
-        return set(self.constant.keys()) | set(self.multiply_scalar.keys())
+        return (
+            set(self.constant.keys())
+            | set(self.multiply_scalar.keys())
+            | set(self.add_scalar.keys())
+        )
 
 
 @dataclasses.dataclass
@@ -456,8 +555,37 @@ class XarrayDataConfig(DatasetConfigABC):
             to be able to infer the full time coordinate.
         dtype: Data type to cast the data to. If None, no casting is done. It is
             required that 'torch.{dtype}' is a valid dtype.
+        rename: Mapping from variable names as they appear on disk to the names
+            used by FME, e.g. ``{"PRECT": "surface_precipitation_rate"}``. This
+            follows the same convention as ``xarray.Dataset.rename``. It is
+            applied when the data is opened, so every other name in the
+            configuration (including ``overwrite`` and
+            ``reference_pressure_name``) refers to the renamed variables.
+        reference_pressure_name: Name of a scalar variable holding a reference
+            pressure in Pa, e.g. ``"P0"``. If provided, the hybrid
+            sigma-pressure ``ak_N`` coefficients in the dataset are taken to be
+            dimensionless and interface pressures are computed as
+            ``p_N = ak_N * P0 + bk_N * PS``. If None (the default), the ``ak_N``
+            coefficients are taken to already be in Pa.
         overwrite: Optional OverwriteConfig to overwrite loaded field values.
         fill_nans: Optional FillNaNsConfig to fill NaNs with a constant value.
+        combine: Mapping from a new variable name to a mapping of source
+            variable name to coefficient, defining the new variable as a
+            linear combination of loaded variables, e.g.
+            ``{"surface_precipitation_rate": {"rainFlux": 1.0, "snowFlux": 1.0}}``.
+            Use this when the data splits a field the model wants whole (or
+            vice versa, via negative coefficients). Applied after ``rename``
+            and ``overwrite``, so unit and sign fixes compose with it. Source
+            variables are loaded automatically; those not requested in their
+            own right are not returned.
+        mask_and_scale: Whether to decode CF ``_FillValue``/``missing_value``
+            and ``scale_factor``/``add_offset`` attributes when opening the
+            data. Defaults to False. Raw model output (e.g. remapped MPAS
+            netCDFs) flags land with a sentinel such as 1e20; leaving this
+            False loads the sentinel verbatim rather than as NaN, which
+            silently corrupts losses because spatial output masking writes
+            NaN over those same points while the target keeps the sentinel.
+            Set True for such data, optionally with ``fill_nans``.
         isel: Optional xarray isel arguments to be passed to the dataset. Will
             raise ValueError if time is included here, since the subset argument
             is used specifically for selecting times. Horizontal dimensions are
@@ -490,8 +618,12 @@ class XarrayDataConfig(DatasetConfigABC):
     )
     infer_timestep: bool = True
     dtype: str | None = "float32"
+    rename: Mapping[str, str] = dataclasses.field(default_factory=dict)
+    reference_pressure_name: str | None = None
     overwrite: OverwriteConfig = dataclasses.field(default_factory=OverwriteConfig)
     fill_nans: FillNaNsConfig | None = None
+    mask_and_scale: bool = False
+    combine: Mapping[str, Mapping[str, float]] = dataclasses.field(default_factory=dict)
     isel: Mapping[str, Slice | int] = dataclasses.field(default_factory=dict)
     labels: list[str] | None = None
 
@@ -535,6 +667,56 @@ class XarrayDataConfig(DatasetConfigABC):
                 f"unexpected spatial_dimensions {self.spatial_dimensions},"
                 " should be one of 'latlon' or 'healpix'"
             )
+        if "time" in set(self.rename) | set(self.rename.values()):
+            raise ValueError(
+                "XarrayDataConfig.rename cannot rename the time coordinate, "
+                f"but got {dict(self.rename)}."
+            )
+        for target, sources in self.combine.items():
+            if not sources:
+                raise ValueError(
+                    f"XarrayDataConfig.combine entry '{target}' has no source "
+                    "variables; provide at least one source and coefficient."
+                )
+            if target in sources:
+                raise ValueError(
+                    f"XarrayDataConfig.combine target '{target}' is also one of "
+                    "its own sources, which would make the result depend on "
+                    "evaluation order."
+                )
+            chained = set(sources) & set(self.combine)
+            if chained:
+                raise ValueError(
+                    f"XarrayDataConfig.combine target '{target}' draws on "
+                    f"{sorted(chained)}, which are themselves combine targets. "
+                    "Combining is applied in a single pass over variables read "
+                    "from disk, so chained definitions are not supported; write "
+                    "the target directly in terms of on-disk variables."
+                )
+        overwritten_targets = self.overwrite.variables & set(self.combine)
+        if overwritten_targets:
+            raise ValueError(
+                "XarrayDataConfig.overwrite names combine targets "
+                f"{sorted(overwritten_targets)}. overwrite is applied to the "
+                "variables read from disk, before combine builds its targets, "
+                "so these entries would silently do nothing. Apply the scaling "
+                "to the combine sources instead."
+            )
+        if self.engine == "zarr" and self.mask_and_scale:
+            raise ValueError(
+                "XarrayDataConfig.mask_and_scale is not supported with "
+                "engine='zarr'. The zarr read path loads time-dependent "
+                "variables directly from the store without CF decoding, so the "
+                "flag would decode only the time-invariant variables and leave "
+                "raw _FillValue sentinels in everything else."
+            )
+        renamed_to = list(self.rename.values())
+        duplicates = {name for name in renamed_to if renamed_to.count(name) > 1}
+        if duplicates:
+            raise ValueError(
+                "XarrayDataConfig.rename maps multiple variables to the same "
+                f"name(s): {sorted(duplicates)}."
+            )
         self.torch_dtype  # check it can be retrieved
         self._default_file_pattern_check()
 
@@ -577,7 +759,16 @@ class XarrayDataset(DatasetABC):
         allow_missing_variables: bool = False,
     ):
         self._horizontal_coordinates: HorizontalCoordinates
-        self._names = names
+        self._requested_names = list(names)
+        # Only build targets that were actually asked for, and load their
+        # sources in their place.
+        self._combine = {
+            target: dict(sources)
+            for target, sources in config.combine.items()
+            if target in self._requested_names
+        }
+        self._names = _expand_combine_sources(self._requested_names, self._combine)
+        self._combine_only_sources = frozenset(self._names) - set(self._requested_names)
         self._allow_missing_variables = allow_missing_variables
         self.path = config.data_path
         self.file_pattern = config.file_pattern
@@ -585,7 +776,11 @@ class XarrayDataset(DatasetABC):
         self.dtype = config.torch_dtype
         self.spatial_dimensions = config.spatial_dimensions
         self.fill_nans = config.fill_nans
+        self.mask_and_scale = config.mask_and_scale
         self.subset_config = config.subset
+        self._rename = dict(config.rename)
+        self._rename_inverse = {v: k for k, v in self._rename.items()}
+        self._reference_pressure_name = config.reference_pressure_name
         self._raw_paths = get_raw_paths(self.path, self.file_pattern)
         if len(self._raw_paths) == 0:
             raise ValueError(
@@ -598,12 +793,15 @@ class XarrayDataset(DatasetABC):
             config.infer_timestep,
             max_sample_n_times=n_timesteps.max_value,
         )
-        first_dataset = xr.open_dataset(
-            self.full_paths[0],
-            decode_times=False,
-            decode_timedelta=False,
-            engine=self.engine,
-            chunks=None,
+        first_dataset = self._apply_rename(
+            xr.open_dataset(
+                self.full_paths[0],
+                decode_times=False,
+                decode_timedelta=False,
+                engine=self.engine,
+                chunks=None,
+                mask_and_scale=self.mask_and_scale,
+            )
         )
         self._spatial_mask_provider = _get_spatial_mask_provider(
             first_dataset, self.dtype
@@ -618,15 +816,60 @@ class XarrayDataset(DatasetABC):
             self._time_invariant_names,
             self._static_derived_names,
         ) = self._group_variable_names_by_time_type()
+        loaded_names = self._names
         self._names = (
             list(self._time_dependent_names)
             + list(self._time_invariant_names)
             + list(self._static_derived_names)
         )
-        self._missing_names = frozenset(set(names) - set(self._names))
+        self._missing_names = frozenset(set(loaded_names) - set(self._names))
+        # A combine target cannot be built from a source that is not on disk.
+        # Without this, allow_missing_variables=True lets construction succeed
+        # and then _apply_combine raises an opaque KeyError inside a dataloader
+        # worker on the first batch.
+        unbuildable = {
+            target: sorted(set(sources) & self._missing_names)
+            for target, sources in self._combine.items()
+            if set(sources) & self._missing_names
+        }
+        if unbuildable:
+            raise ValueError(
+                "Cannot build combine target(s) because their source variables "
+                f"are not present in the dataset: {unbuildable}. Sources of a "
+                "combine target are required even when "
+                "allow_missing_variables is True."
+            )
+        # A target that also exists on disk would be silently shadowed by the
+        # computed value, and only for the datasets that request it, so two
+        # loads of the same config could disagree about what the name means.
+        shadowed = sorted(set(config.combine) & set(first_dataset.variables))
+        if shadowed:
+            raise ValueError(
+                f"XarrayDataConfig.combine target(s) {shadowed} are also "
+                f"variables in {self.full_paths[0]}. The computed value would "
+                "silently shadow the stored one; rename the target, or drop the "
+                "combine entry and read the variable directly."
+            )
+        # overwrite silently skips names it does not find, which is required
+        # because one config may be loaded for several subsets of its names.
+        # A name absent from the data entirely can never take effect, though,
+        # so treat that as the configuration error it is.
+        available = set(first_dataset.variables) | set(StaticDerivedData.names)
+        unknown_overwrites = config.overwrite.variables - available
+        if unknown_overwrites:
+            raise ValueError(
+                f"XarrayDataConfig.overwrite names {sorted(unknown_overwrites)}, "
+                f"which do not exist in {self.full_paths[0]}. overwrite entries "
+                "for variables this dataset does not load are permitted (one "
+                "config may be loaded for several subsets of its names), but a "
+                "name that is in no file at all is a typo: overwrite is applied "
+                "after rename, so use the renamed variable name."
+            )
         self._get_variable_metadata(first_dataset)
 
-        self._vertical_coordinate = _get_vertical_coordinate(first_dataset, self.dtype)
+        self._vertical_coordinate = _get_vertical_coordinate(
+            first_dataset, self.dtype, self._reference_pressure_name
+        )
         self.overwrite = config.overwrite
 
         self._nonspacetime_dims = get_nonspacetime_dimensions(
@@ -664,7 +907,14 @@ class XarrayDataset(DatasetABC):
             return {}
         # opened directly rather than via _open_file so that closing this
         # handle cannot close one shared through the file handle cache
-        ds = _open_xr_dataset(self.full_paths[0], engine=self.engine)
+        ds = _open_xr_dataset(
+            self.full_paths[0],
+            engine=self.engine,
+            mask_and_scale=self.mask_and_scale,
+        )
+        # _time_invariant_names are post-rename names, so the rename has to be
+        # applied before they are looked up.
+        ds = self._apply_rename(ds)
         ds = ds.isel(**self.isel)
         tensors = {}
         for name in self._time_invariant_names:
@@ -763,6 +1013,26 @@ class XarrayDataset(DatasetABC):
             return False
         return True
 
+    def _apply_combine(self, tensors: TensorDict) -> TensorDict:
+        """Build each combine target, then drop sources loaded only for it."""
+        if not self._combine:
+            return tensors
+        combined: TensorDict = {}
+        for target, sources in self._combine.items():
+            total: torch.Tensor | None = None
+            for source, coefficient in sources.items():
+                data = tensors[source]
+                term = data * torch.tensor(
+                    coefficient, dtype=data.dtype, device=data.device
+                )
+                total = term if total is None else total + term
+            assert total is not None  # guaranteed by the empty-sources check
+            combined[target] = total
+        tensors.update(combined)
+        for name in self._combine_only_sources:
+            tensors.pop(name, None)
+        return tensors
+
     def _get_variable_metadata(self, ds):
         result = {}
         for name in self._names:
@@ -770,6 +1040,18 @@ class XarrayDataset(DatasetABC):
                 result[name] = StaticDerivedData.metadata[name]
             else:
                 result[name] = VariableMetadata.from_attrs(ds[name].attrs)
+        for target, sources in self._combine.items():
+            source_metadata = [result[s] for s in sources if s in result]
+            # Units only survive if every source agrees on them; a combination
+            # of differently-united fields has no meaningful unit to inherit.
+            units = source_metadata[0].units if source_metadata else None
+            if any(m.units != units for m in source_metadata):
+                units = None
+            result[target] = VariableMetadata(
+                units=units, long_name=_combine_expression(sources)
+            )
+        for name in self._combine_only_sources:
+            result.pop(name, None)
         self._variable_metadata = result
 
     def _get_files_stats(
@@ -813,7 +1095,12 @@ class XarrayDataset(DatasetABC):
         # Don't use open_mfdataset here, because it will give time-invariant
         # fields a time dimension. We assume that all fields are present in the
         # netcdf file corresponding to the first chunk of time.
-        with _open_xr_dataset(self.full_paths[0], engine=self.engine) as ds:
+        with _open_xr_dataset(
+            self.full_paths[0],
+            engine=self.engine,
+            mask_and_scale=self.mask_and_scale,
+        ) as raw_ds:
+            ds = self._apply_rename(raw_ds)
             for name in self._names:
                 if name in StaticDerivedData.names:
                     static_derived_names.append(name)
@@ -875,9 +1162,21 @@ class XarrayDataset(DatasetABC):
         else:
             return self._timestep
 
+    def _apply_rename(self, ds: xr.Dataset) -> xr.Dataset:
+        """Rename on-disk variable names to the names used by FME."""
+        if not self._rename:
+            return ds
+        return ds.rename(self._rename)
+
     def _open_file(self, idx):
         logger.debug(f"Opening file {self.full_paths[idx]}")
-        return _open_file_fh_cached(self.full_paths[idx], engine=self.engine)
+        return self._apply_rename(
+            _open_file_fh_cached(
+                self.full_paths[idx],
+                engine=self.engine,
+                mask_and_scale=self.mask_and_scale,
+            )
+        )
 
     @property
     def sample_start_times(self) -> xr.CFTimeIndex:
@@ -955,16 +1254,28 @@ class XarrayDataset(DatasetABC):
             shape = [n_steps] + self._shape_excluding_time_after_selection
             total_steps += n_steps
             if self.engine == "zarr":
-                tensor_dict = load_series_data_zarr_async(
+                # this path reads arrays from the store directly, so it must ask
+                # for the on-disk names and rename the result itself
+                on_disk_names = [
+                    self._rename_inverse.get(name, name)
+                    for name in self._time_dependent_names
+                ]
+                loaded = load_series_data_zarr_async(
                     idx=start,
                     n_steps=n_steps,
                     path=self.full_paths[file_idx],
-                    names=self._time_dependent_names,
+                    names=on_disk_names,
                     final_dims=self.dims,
                     final_shape=shape,
                     fill_nans=self.fill_nans,
                     nontime_selection=self._isel_tuple,
                 )
+                tensor_dict = {
+                    name: loaded[on_disk_name]
+                    for name, on_disk_name in zip(
+                        self._time_dependent_names, on_disk_names
+                    )
+                }
             else:
                 ds = self._open_file(file_idx)
                 ds = ds.isel(**self.isel)
@@ -1003,6 +1314,9 @@ class XarrayDataset(DatasetABC):
 
         # Apply field overwrites
         tensors = self.overwrite.apply(tensors)
+
+        # Build combined fields from the (possibly overwritten) sources
+        tensors = self._apply_combine(tensors)
 
         # Fill NaN for missing variables so all samples share the same keys
         missing_names: frozenset[str] | None = None
