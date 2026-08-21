@@ -1,9 +1,8 @@
 import dataclasses
 import datetime
-import functools
+import glob as globlib
 import json
 import logging
-import multiprocessing
 import os
 import re
 import warnings
@@ -46,7 +45,6 @@ from .utils import (
 )
 
 SLICE_NONE = slice(None)
-GET_RAW_TIMES_NUM_FILES_PARALLELIZATION_THRESHOLD = 12
 logger = logging.getLogger(__name__)
 
 VariableNames = namedtuple(
@@ -151,18 +149,40 @@ def _get_raw_times_single_file(path: str, engine: str | None = None) -> np.array
         return ds.time.values
 
 
-def _get_raw_times(paths: list[str], engine: str) -> list[np.ndarray]:
-    function = functools.partial(_get_raw_times_single_file, engine=engine)
+@lru_cache(maxsize=32)
+def _get_raw_times_cached(
+    paths: tuple[str, ...], engine: str
+) -> tuple[np.ndarray, ...]:
+    """Read each file's time coordinate, serially, memoized on the file list.
 
-    # Only parallelize if we are loading from a reasonable number of files; this
-    # helps speed up data loading tests, which otherwise would be slowed by the
-    # overhead of setting up a pool.
-    if len(paths) > GET_RAW_TIMES_NUM_FILES_PARALLELIZATION_THRESHOLD:
-        processes = min(multiprocessing.cpu_count(), len(paths))
-        with multiprocessing.Pool(processes) as pool:
-            return pool.map(function, paths)
-    else:
-        return list(map(function, paths))
+    Deliberately serial. Two faster approaches were tried and both break in
+    production:
+
+    * ``multiprocessing.Pool`` (the original) is created on a rank that has
+      already initialized CUDA and NCCL. Forking such a process deadlocks on
+      pool teardown: the rank wedges in ``Pool.__exit__`` -> ``_terminate_pool``
+      -> ``join`` while its peers sit in DDP's parameter allgather until the
+      30-minute NCCL watchdog fires, reporting a misleading "rank N has
+      inconsistent 0 params".
+    * ``ThreadPoolExecutor`` deadlocks nothing but corrupts the heap, because
+      netCDF4/HDF5 is not thread-safe. It survives small runs and then dies at
+      production width with ``corrupted size vs. prev_size`` and SIGSEGV
+      partway through dataset construction.
+
+    Memoizing is what makes serial affordable: a config opens the same file
+    list once per dataset (train windows, validation, each inference block),
+    so the ~20 calls per rank collapse to one per distinct stream. Reading
+    1501 files takes ~84 s, so this is the difference between ~4 minutes of
+    setup and ~28 minutes.
+
+    The time coordinate of a file cannot change during a run, so the cache
+    cannot go stale.
+    """
+    return tuple(_get_raw_times_single_file(path, engine=engine) for path in paths)
+
+
+def _get_raw_times(paths: list[str], engine: str) -> list[np.ndarray]:
+    return list(_get_raw_times_cached(tuple(paths), engine))
 
 
 def _repeat_and_increment_time(
@@ -327,6 +347,14 @@ def _open_file_fh_cached(path, **kwargs):
 
 
 def get_raw_paths(path, file_pattern):
+    if not _get_protocol(path):
+        path = os.path.expanduser(str(path))
+        # fsspec's glob stats every entry in the directory, which on a model run
+        # directory of ~10k files is ~250x slower than the stdlib (7s vs 0.03s)
+        # for an identical result. That cost is paid once per dataset per rank,
+        # and a rank that falls far enough behind its peers trips the NCCL
+        # watchdog during DDP setup.
+        return sorted(globlib.glob(os.path.join(path, file_pattern), recursive=True))
     fs = _get_fs(path)
     glob_paths = sorted(fs.glob(os.path.join(path, file_pattern)))
     raw_paths = _preserve_protocol(path, glob_paths)
