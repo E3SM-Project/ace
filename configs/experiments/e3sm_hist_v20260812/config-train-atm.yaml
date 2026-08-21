@@ -1,0 +1,383 @@
+# ACE2S pretraining on the E3SMv3 v3.LR.historical_0101.aigo run.
+#
+# The raw EAM history files are read directly (no preprocessed zarr), so the
+# three E3SM-vs-FME mismatches are handled by the loader configuration:
+#   1. PRECT/PRECST are renamed to the names the piControl stats use.
+#   2. PRECT/PRECST are in m/s, so they are scaled by the liquid water density
+#      (1000 kg/m3) to kg/m2/s. Without this the moisture budget corrector is
+#      off by 1e3 relative to DTENDTTW and LHFLX.
+#   3. E3SM writes dimensionless ak coefficients, so reference_pressure_name
+#      makes FME compute p = ak * P0 + bk * PS instead of p = ak + bk * PS.
+#
+# See README.md in this directory for the verified launch recipes, sizing
+# rules (batch_size must equal the rank count for this config) and known
+# gotchas. Quick version -- launch directly from the repo root, no wrapper
+# script, all paths are literal. On one node:
+#
+#   uv run torchrun --nproc_per_node 4 \
+#     -m fme.ace.train configs/experiments/e3sm_hist_v20260812/config-train-atm.yaml \
+#     --override experiment_dir=$PSCRATCH/fme-output/hist-test
+#
+# and across nodes, from inside an salloc:
+#
+#   srun -N 2 --ntasks-per-node 1 --gpus-per-node 4 uv run --no-sync torchrun \
+#     --nnodes 2 --nproc_per_node 4 \
+#     --rdzv-backend=c10d --rdzv-endpoint="$(hostname):29507" \
+#     -m fme.ace.train configs/experiments/e3sm_hist_v20260812/config-train-atm.yaml \
+#     --override experiment_dir=$PSCRATCH/fme-output/hist-test
+#
+# For a quick plumbing test rather than a real run. Dotlist overrides CANNOT
+# index into a yaml list ("Cannot merge DictConfig with ListConfig"), so
+# anything under `inference:` or `concat:` has to be changed with sed, and
+# everything else can be an --override:
+#
+#   sed -e 's/n_forward_steps: 17520/n_forward_steps: 20/' \
+#       -e 's/forward_steps_in_memory: 20/forward_steps_in_memory: 10/' \
+#       -e "s/stop_time: '1990-01-01T00:00:00'/stop_time: '1940-04-01T00:00:00'/" \
+#       -e "s/stop_time: '2040-01-01T00:00:00'/stop_time: '2000-04-01T00:00:00'/" \
+#       config-train.yaml > /tmp/test.yaml
+#
+#   uv run torchrun --nproc_per_node 4 -m fme.ace.train /tmp/test.yaml --override \
+#     experiment_dir=$PSCRATCH/fme-output/hist-test max_epochs=1 \
+#     save_checkpoint=false logging.log_to_wandb=false \
+#     validation.loader.dataset.subset.stop_time=1990-07-01T00:00:00 \
+#     stepper.step.config.builder.config.embed_dim=64 \
+#     stepper.step.config.builder.config.num_layers=2 \
+#     stepper.step.config.builder.config.spectral_layers=1
+#
+# That exact recipe was run on 4 GPUs: train 2.863, valid 3.023, inference
+# error 0.755, ~8 min wall clock (most of it opening the 1501 files, since
+# every loader globs the full record and applies `subset` afterwards).
+#
+# Do not shrink the validation window much further. With `time_buffer: 10` the
+# loader keeps only every 11th start index, so a split needs roughly
+# `11 * batch_size * n_ranks` timesteps to yield even one batch; at 6-hourly
+# that is ~90 days for batch_size 32 on 4 ranks. Below that it fails with
+# "No batches in dataloader: 0 samples".
+#
+# Without the sed, inference alone is 16 initial conditions x 17520 steps
+# (12 years each), so a "quick" test is not quick.
+#
+# Rank counts: `batch_size` and the number of inference initial conditions must
+# both divide the number of ranks. The 16 ICs below cover 1/2/4/8/16 ranks;
+# `batch_size: 8` covers up to 8, so for a 16-rank test also pass
+# `--override train_loader.batch_size=16`. (Dotlist overrides cannot rewrite
+# the IC list itself, which is why it is sized at 16 here.)
+#
+# CO2 and aerosols (the point of training on historical rather than piControl):
+#   - CO2 enters as `global_mean_co2` (renamed from the scalar `co2vmr`, which
+#     the loader broadcasts to the grid). Its normalization is in the stats at
+#     3.658244e-04 / 5.128173e-05 -- mean/std of co2vmr over the 90 training
+#     years. Training range is -1.06 to +2.11 normalized; the 12yr_test rollout
+#     reaches +3.59, i.e. it extrapolates in the forcing as well as the dynamics.
+#   - Aerosol forcings `aerindexall` (aerosol index) and `colccn.3` (column CCN
+#     at S=0.3%) are inputs; cloud diagnostics `lwp`, `lcc`, `cdnc` are outputs,
+#     so the aerosol-cloud response is trained. All five are 2D fields present
+#     in every h0 file, and all have entries in the stats below.
+experiment_dir: /pscratch/sd/m/mahf708/fme-output/hist-train
+save_checkpoint: true
+validate_using_ema: true
+ema:
+  decay: 0.999
+max_epochs: 30
+inference:
+  - name: inference
+    weight: 1.0
+    n_forward_steps: 17520
+    forward_steps_in_memory: 20
+    loader:
+      start_indices:
+        times:
+        - '1940-01-03T12:00:00'
+        - '1945-01-03T12:00:00'
+        - '1950-01-03T12:00:00'
+        - '1955-01-03T12:00:00'
+        - '1960-01-03T12:00:00'
+        - '1965-01-03T12:00:00'
+        - '1970-01-03T12:00:00'
+        - '1975-01-03T12:00:00'
+        - '1980-01-03T12:00:00'
+        - '2000-01-03T12:00:00'
+        - '2005-01-03T12:00:00'
+        - '2010-01-03T12:00:00'
+        - '2015-01-03T12:00:00'
+        - '2020-01-03T12:00:00'
+        - '2025-01-03T12:00:00'
+        - '2030-01-03T12:00:00'
+      dataset: &dataset
+        data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        file_pattern: &file_pattern v3.LR.historical_0101.aigo.eam.h0.*.nc
+        rename: &rename
+          PRECT: surface_precipitation_rate
+          PRECST: frozen_precipitation_rate
+          co2vmr: global_mean_co2
+        reference_pressure_name: &reference_pressure_name P0
+        overwrite: &overwrite
+          multiply_scalar:
+            surface_precipitation_rate: 1000.0
+            frozen_precipitation_rate: 1000.0
+      num_data_workers: 2
+    aggregator:
+      log_histograms: true
+  # held out: initial conditions and the full 12 year rollout are outside the
+  # training subsets
+  - name: 12yr_test
+    weight: 0.0
+    epochs:
+      start: 0
+      step: 5
+    n_forward_steps: 17520
+    forward_steps_in_memory: 20
+    loader:
+      start_indices:
+        times:
+        - '2040-01-03T12:00:00'
+        - '2040-07-03T12:00:00'
+        - '2041-01-03T12:00:00'
+        - '2041-07-03T12:00:00'
+        - '2042-01-03T12:00:00'
+        - '2042-07-03T12:00:00'
+        - '2043-01-03T12:00:00'
+        - '2043-07-03T12:00:00'
+        - '2044-01-03T12:00:00'
+        - '2044-07-03T12:00:00'
+        - '2045-01-03T12:00:00'
+        - '2045-07-03T12:00:00'
+        - '2046-01-03T12:00:00'
+        - '2046-07-03T12:00:00'
+        - '2047-01-03T12:00:00'
+        - '2047-07-03T12:00:00'
+      dataset: *dataset
+      num_data_workers: 2
+    aggregator:
+      log_histograms: true
+logging:
+  log_to_screen: true
+  log_to_wandb: true
+  log_to_file: true
+  project: ace-eamv3
+  entity: ai2cm
+train_loader:
+  batch_size: 8
+  num_data_workers: 2
+  time_buffer: 10
+  prefetch_factor: 1
+  dataset:
+    concat:
+    - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+      file_pattern: *file_pattern
+      rename: *rename
+      reference_pressure_name: *reference_pressure_name
+      overwrite: *overwrite
+      subset:
+        start_time: '1940-01-01T06:00:00'
+        stop_time: '1990-01-01T00:00:00'
+    - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+      file_pattern: *file_pattern
+      rename: *rename
+      reference_pressure_name: *reference_pressure_name
+      overwrite: *overwrite
+      subset:
+        start_time: '2000-01-01T06:00:00'
+        stop_time: '2040-01-01T00:00:00'
+validation:
+  loader:
+    batch_size: 32
+    num_data_workers: 2
+    time_buffer: 10
+    prefetch_factor: 1
+    dataset:
+      data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+      file_pattern: *file_pattern
+      rename: *rename
+      reference_pressure_name: *reference_pressure_name
+      overwrite: *overwrite
+      subset:
+        start_time: '1990-01-01T06:00:00'
+        stop_time: '1995-01-01T00:00:00'
+optimization:
+  enable_automatic_mixed_precision: false
+  lr: 0.0001
+  optimizer_type: FusedAdam
+  use_gradient_accumulation: true
+  kwargs:
+    weight_decay: 0.01
+stepper_training:
+  n_ensemble: 2
+  n_forward_steps: 1
+  optimize_last_step_only: true
+  loss:
+    type: EnsembleLoss
+    weights:
+      T_0: 0.5
+      T_1: 0.5
+      U_0: 0.5
+      V_0: 0.5
+      STW_0: 0.25
+      STW_1: 0.25
+      STW_2: 0.5
+      surface_precipitation_rate: 2
+      FLDS: 2
+      FLUS: 5
+      FSNS: 2
+      FSUTOA: 2
+      DTENDTTW: 0.5
+      PS: 3
+    kwargs:
+      crps_weight: 0.9
+      energy_score_weight: 0.1
+stepper:
+  step:
+    type: single_module
+    config:
+      residual_prediction: false
+      builder:
+        type: NoiseConditionedSFNO
+        config:
+          embed_dim: 512
+          noise_embed_dim: 64
+          noise_type: isotropic
+          filter_type: linear
+          use_mlp: true
+          num_layers: 8
+          operator_type: dhconv
+          separable: false
+          spectral_layers: 3
+          spectral_transform: sht
+          affine_norms: true
+      normalization:
+        network:
+          global_means_path: /pscratch/sd/m/mahf708/2026-08-13-E3SMv3-historical-stats/train-only/atmosphere/centering.nc
+          global_stds_path: /pscratch/sd/m/mahf708/2026-08-13-E3SMv3-historical-stats/train-only/atmosphere/scaling-full-field.nc
+        residual:
+          global_means_path: /pscratch/sd/m/mahf708/2026-08-13-E3SMv3-historical-stats/train-only/atmosphere/centering.nc
+          global_stds_path: /pscratch/sd/m/mahf708/2026-08-13-E3SMv3-historical-stats/train-only/atmosphere/scaling-residual.nc
+      ocean:
+        surface_temperature_name: TS
+        ocean_fraction_name: OCNFRAC
+        interpolate: true
+      corrector:
+        conserve_dry_air: true
+        moisture_budget_correction: advection_and_precipitation
+        force_positive_names:
+        - STW_0
+        - STW_1
+        - STW_2
+        - STW_3
+        - STW_4
+        - STW_5
+        - STW_6
+        - STW_7
+        - surface_precipitation_rate
+        - frozen_precipitation_rate
+        - FLUS
+        - FLUT
+        - FLDS
+        - FSNS
+        - FSUTOA
+        - lwp
+        - lcc
+        - cdnc
+      next_step_forcing_names:
+      - SOLIN
+      in_names:
+      - LANDFRAC
+      - OCNFRAC
+      - ICEFRAC
+      - PHIS
+      - SOLIN
+      - PS
+      - TS
+      - T_0
+      - T_1
+      - T_2
+      - T_3
+      - T_4
+      - T_5
+      - T_6
+      - T_7
+      - STW_0
+      - STW_1
+      - STW_2
+      - STW_3
+      - STW_4
+      - STW_5
+      - STW_6
+      - STW_7
+      - U_0
+      - U_1
+      - U_2
+      - U_3
+      - U_4
+      - U_5
+      - U_6
+      - U_7
+      - V_0
+      - V_1
+      - V_2
+      - V_3
+      - V_4
+      - V_5
+      - V_6
+      - V_7
+      - Qat2m
+      - Uat10m
+      - Vat10m
+      - Tat2m
+      - global_mean_co2
+      - aerindexall
+      - colccn.3
+      out_names:
+      - PS
+      - TS
+      - T_0
+      - T_1
+      - T_2
+      - T_3
+      - T_4
+      - T_5
+      - T_6
+      - T_7
+      - STW_0
+      - STW_1
+      - STW_2
+      - STW_3
+      - STW_4
+      - STW_5
+      - STW_6
+      - STW_7
+      - U_0
+      - U_1
+      - U_2
+      - U_3
+      - U_4
+      - U_5
+      - U_6
+      - U_7
+      - V_0
+      - V_1
+      - V_2
+      - V_3
+      - V_4
+      - V_5
+      - V_6
+      - V_7
+      - LHFLX
+      - SHFLX
+      - surface_precipitation_rate
+      - frozen_precipitation_rate
+      - FLUS
+      - FLUT
+      - FLDS
+      - FSNS
+      - FSUTOA
+      - DTENDTTW
+      - TAUX
+      - TAUY
+      - Qat2m
+      - Uat10m
+      - Vat10m
+      - Tat2m
+      - lwp
+      - lcc
+      - cdnc

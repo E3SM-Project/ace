@@ -1,0 +1,497 @@
+experiment_dir: /pscratch/sd/m/mahf708/fme-output/hist-ocn
+save_checkpoint: true
+validate_using_ema: true
+ema:
+  decay: 0.999
+max_epochs: 150
+inference:
+- name: inference
+  weight: 1.0
+  n_forward_steps: 876
+  forward_steps_in_memory: 20
+  loader:
+    start_indices:
+      times:
+      - '1940-01-06T00:00:00'
+      - '1945-01-06T00:00:00'
+      - '1950-01-06T00:00:00'
+      - '1955-01-06T00:00:00'
+      - '1960-01-06T00:00:00'
+      - '1965-01-06T00:00:00'
+      - '1970-01-06T00:00:00'
+      - '1975-01-06T00:00:00'
+      - '1980-01-06T00:00:00'
+      - '2000-01-06T00:00:00'
+      - '2005-01-06T00:00:00'
+      - '2010-01-06T00:00:00'
+      - '2015-01-06T00:00:00'
+      - '2020-01-06T00:00:00'
+      - '2025-01-06T00:00:00'
+      - '2030-01-06T00:00:00'
+    dataset:
+      merge:
+      - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDepthCoarsening5D.*.remapped.nc
+        mask_and_scale: true
+      - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDerivedFields5D.*.remapped.nc
+        mask_and_scale: true
+        rename: &id001
+          windStressZonal: TAUX
+          windStressMeridional: TAUY
+          shortWaveHeatFlux: FSNS
+          longWaveHeatFluxDown: FLDS
+          longWaveHeatFluxUp: FLUS
+          latentHeatFlux: LHFLX
+          sensibleHeatFlux: SHFLX
+          snowFlux: frozen_precipitation_rate
+        overwrite:
+          multiply_scalar: &id002
+            TAUX: -1.0
+            TAUY: -1.0
+            FLUS: -1.0
+            LHFLX: -1.0
+            SHFLX: -1.0
+          add_scalar:
+            sst: 273.15
+        combine:
+          surface_precipitation_rate:
+            rainFlux: 1.0
+            frozen_precipitation_rate: 1.0
+      - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        file_pattern: v3.LR.historical_0101.aigo.mpassi.hist.am.fmeSeaiceDerivedFields5D.*.remapped.nc
+        mask_and_scale: true
+        rename:
+          iceAreaTotal: ocean_sea_ice_fraction
+      - data_path: /pscratch/sd/m/mahf708/e3sm-hist-aux/landfrac5d
+        file_pattern: landfrac5d.*.nc
+    num_data_workers: 2
+- name: 12yr_test
+  weight: 0.0
+  epochs:
+    start: 0
+    step: 5
+  n_forward_steps: 876
+  forward_steps_in_memory: 20
+  loader:
+    start_indices:
+      times:
+      - '2040-01-06T00:00:00'
+      - '2040-07-05T00:00:00'
+      - '2041-01-06T00:00:00'
+      - '2041-07-05T00:00:00'
+      - '2042-01-06T00:00:00'
+      - '2042-07-05T00:00:00'
+      - '2043-01-06T00:00:00'
+      - '2043-07-05T00:00:00'
+      - '2044-01-06T00:00:00'
+      - '2044-07-05T00:00:00'
+      - '2045-01-06T00:00:00'
+      - '2045-07-05T00:00:00'
+      - '2046-01-06T00:00:00'
+      - '2046-07-05T00:00:00'
+      - '2047-01-06T00:00:00'
+      - '2047-07-05T00:00:00'
+    dataset:
+      merge:
+      - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDepthCoarsening5D.*.remapped.nc
+        mask_and_scale: true
+      - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDerivedFields5D.*.remapped.nc
+        mask_and_scale: true
+        rename: *id001
+        overwrite:
+          multiply_scalar: *id002
+          add_scalar:
+            sst: 273.15
+        combine:
+          surface_precipitation_rate:
+            rainFlux: 1.0
+            frozen_precipitation_rate: 1.0
+      - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        file_pattern: v3.LR.historical_0101.aigo.mpassi.hist.am.fmeSeaiceDerivedFields5D.*.remapped.nc
+        mask_and_scale: true
+        rename:
+          iceAreaTotal: ocean_sea_ice_fraction
+      - data_path: /pscratch/sd/m/mahf708/e3sm-hist-aux/landfrac5d
+        file_pattern: landfrac5d.*.nc
+    num_data_workers: 2
+logging:
+  log_to_screen: true
+  log_to_wandb: true
+  log_to_file: true
+  project: ocean-emulator-e3sm
+  entity: ai2cm
+train_loader:
+  batch_size: 16
+  num_data_workers: 2
+  prefetch_factor: 1
+  dataset:
+    merge:
+    - concat:
+      - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDepthCoarsening5D.*.remapped.nc
+        mask_and_scale: true
+        subset:
+          start_time: '1940-01-06'
+          stop_time: '1990-01-01'
+      - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDepthCoarsening5D.*.remapped.nc
+        mask_and_scale: true
+        subset:
+          start_time: '2000-01-06'
+          stop_time: '2040-01-01'
+    - concat:
+      - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDerivedFields5D.*.remapped.nc
+        mask_and_scale: true
+        rename: *id001
+        overwrite: &id003
+          multiply_scalar: *id002
+          add_scalar:
+            sst: 273.15
+        combine: &id004
+          surface_precipitation_rate:
+            rainFlux: 1.0
+            frozen_precipitation_rate: 1.0
+        subset:
+          start_time: '1940-01-06'
+          stop_time: '1990-01-01'
+      - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDerivedFields5D.*.remapped.nc
+        mask_and_scale: true
+        rename: *id001
+        overwrite: *id003
+        combine: *id004
+        subset:
+          start_time: '2000-01-06'
+          stop_time: '2040-01-01'
+    - concat:
+      - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        file_pattern: v3.LR.historical_0101.aigo.mpassi.hist.am.fmeSeaiceDerivedFields5D.*.remapped.nc
+        mask_and_scale: true
+        rename: &id005
+          iceAreaTotal: ocean_sea_ice_fraction
+        subset:
+          start_time: '1940-01-06'
+          stop_time: '1990-01-01'
+      - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        file_pattern: v3.LR.historical_0101.aigo.mpassi.hist.am.fmeSeaiceDerivedFields5D.*.remapped.nc
+        mask_and_scale: true
+        rename: *id005
+        subset:
+          start_time: '2000-01-06'
+          stop_time: '2040-01-01'
+    - concat:
+      - data_path: /pscratch/sd/m/mahf708/e3sm-hist-aux/landfrac5d
+        file_pattern: landfrac5d.*.nc
+        subset:
+          start_time: '1940-01-06'
+          stop_time: '1990-01-01'
+      - data_path: /pscratch/sd/m/mahf708/e3sm-hist-aux/landfrac5d
+        file_pattern: landfrac5d.*.nc
+        subset:
+          start_time: '2000-01-06'
+          stop_time: '2040-01-01'
+validation:
+  loader:
+    batch_size: 16
+    num_data_workers: 2
+    prefetch_factor: 1
+    dataset:
+      merge:
+      - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDepthCoarsening5D.*.remapped.nc
+        mask_and_scale: true
+        subset:
+          start_time: '1990-01-06'
+          stop_time: '1995-01-01'
+      - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDerivedFields5D.*.remapped.nc
+        mask_and_scale: true
+        rename: *id001
+        overwrite:
+          multiply_scalar: *id002
+          add_scalar:
+            sst: 273.15
+        combine:
+          surface_precipitation_rate:
+            rainFlux: 1.0
+            frozen_precipitation_rate: 1.0
+        subset:
+          start_time: '1990-01-06'
+          stop_time: '1995-01-01'
+      - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        file_pattern: v3.LR.historical_0101.aigo.mpassi.hist.am.fmeSeaiceDerivedFields5D.*.remapped.nc
+        mask_and_scale: true
+        rename:
+          iceAreaTotal: ocean_sea_ice_fraction
+        subset:
+          start_time: '1990-01-06'
+          stop_time: '1995-01-01'
+      - data_path: /pscratch/sd/m/mahf708/e3sm-hist-aux/landfrac5d
+        file_pattern: landfrac5d.*.nc
+        subset:
+          start_time: '1990-01-06'
+          stop_time: '1995-01-01'
+optimization:
+  use_gradient_accumulation: true
+  enable_automatic_mixed_precision: false
+  lr: 0.0001
+  optimizer_type: AdamW
+  kwargs:
+    fused: true
+    weight_decay: 0.01
+stepper_training:
+  n_forward_steps: 4
+  loss:
+    type: MSE
+stepper:
+  input_masking:
+    mask_value: 0
+    fill_value: 0
+    exclude_names_and_prefixes:
+    - LANDFRAC
+  step:
+    type: single_module
+    config:
+      builder:
+        type: Samudra
+        config:
+          ch_width:
+          - 280
+          - 380
+          - 480
+          - 520
+          dilation:
+          - 1
+          - 2
+          - 4
+          - 8
+          n_layers:
+          - 1
+          - 1
+          - 1
+          - 1
+          norm: instance
+          upscale_factor: 2
+          checkpoint_strategy: all
+      normalization:
+        network:
+          global_means_path: /pscratch/sd/m/mahf708/2026-08-13-E3SMv3-historical-stats/train-only/ocean/centering.nc
+          global_stds_path: /pscratch/sd/m/mahf708/2026-08-13-E3SMv3-historical-stats/train-only/ocean/scaling-full-field.nc
+      corrector:
+        type: ocean_corrector
+        config:
+          force_positive_names:
+          - salinityCoarsened_0
+          - salinityCoarsened_1
+          - salinityCoarsened_2
+          - salinityCoarsened_3
+          - salinityCoarsened_4
+          - salinityCoarsened_5
+          - salinityCoarsened_6
+          - salinityCoarsened_7
+          - salinityCoarsened_8
+          - salinityCoarsened_9
+          - salinityCoarsened_10
+          - salinityCoarsened_11
+          - salinityCoarsened_12
+          - salinityCoarsened_13
+          - salinityCoarsened_14
+          - salinityCoarsened_15
+          - salinityCoarsened_16
+          - salinityCoarsened_17
+          - salinityCoarsened_18
+          - iceVolumeTotal
+          sea_ice_fraction_correction:
+            sea_ice_fraction_name: ocean_sea_ice_fraction
+            land_fraction_name: LANDFRAC
+            remove_negative_ocean_fraction: false
+            sea_ice_thickness_name: iceVolumeTotal
+            zero_where_ice_free_names:
+            - iceVolumeTotal
+      next_step_forcing_names:
+      - TAUX
+      - TAUY
+      - surface_precipitation_rate
+      - frozen_precipitation_rate
+      - FLUS
+      - FLDS
+      - FSNS
+      - LHFLX
+      - SHFLX
+      in_names:
+      - LANDFRAC
+      - sea_surface_fraction
+      - TAUX
+      - TAUY
+      - surface_precipitation_rate
+      - frozen_precipitation_rate
+      - FLUS
+      - FLDS
+      - FSNS
+      - LHFLX
+      - SHFLX
+      - sst
+      - ssh
+      - salinityCoarsened_0
+      - salinityCoarsened_1
+      - salinityCoarsened_2
+      - salinityCoarsened_3
+      - salinityCoarsened_4
+      - salinityCoarsened_5
+      - salinityCoarsened_6
+      - salinityCoarsened_7
+      - salinityCoarsened_8
+      - salinityCoarsened_9
+      - salinityCoarsened_10
+      - salinityCoarsened_11
+      - salinityCoarsened_12
+      - salinityCoarsened_13
+      - salinityCoarsened_14
+      - salinityCoarsened_15
+      - salinityCoarsened_16
+      - salinityCoarsened_17
+      - salinityCoarsened_18
+      - temperatureCoarsened_0
+      - temperatureCoarsened_1
+      - temperatureCoarsened_2
+      - temperatureCoarsened_3
+      - temperatureCoarsened_4
+      - temperatureCoarsened_5
+      - temperatureCoarsened_6
+      - temperatureCoarsened_7
+      - temperatureCoarsened_8
+      - temperatureCoarsened_9
+      - temperatureCoarsened_10
+      - temperatureCoarsened_11
+      - temperatureCoarsened_12
+      - temperatureCoarsened_13
+      - temperatureCoarsened_14
+      - temperatureCoarsened_15
+      - temperatureCoarsened_16
+      - temperatureCoarsened_17
+      - temperatureCoarsened_18
+      - velocityZonalCoarsened_0
+      - velocityZonalCoarsened_1
+      - velocityZonalCoarsened_2
+      - velocityZonalCoarsened_3
+      - velocityZonalCoarsened_4
+      - velocityZonalCoarsened_5
+      - velocityZonalCoarsened_6
+      - velocityZonalCoarsened_7
+      - velocityZonalCoarsened_8
+      - velocityZonalCoarsened_9
+      - velocityZonalCoarsened_10
+      - velocityZonalCoarsened_11
+      - velocityZonalCoarsened_12
+      - velocityZonalCoarsened_13
+      - velocityZonalCoarsened_14
+      - velocityZonalCoarsened_15
+      - velocityZonalCoarsened_16
+      - velocityZonalCoarsened_17
+      - velocityZonalCoarsened_18
+      - velocityMeridionalCoarsened_0
+      - velocityMeridionalCoarsened_1
+      - velocityMeridionalCoarsened_2
+      - velocityMeridionalCoarsened_3
+      - velocityMeridionalCoarsened_4
+      - velocityMeridionalCoarsened_5
+      - velocityMeridionalCoarsened_6
+      - velocityMeridionalCoarsened_7
+      - velocityMeridionalCoarsened_8
+      - velocityMeridionalCoarsened_9
+      - velocityMeridionalCoarsened_10
+      - velocityMeridionalCoarsened_11
+      - velocityMeridionalCoarsened_12
+      - velocityMeridionalCoarsened_13
+      - velocityMeridionalCoarsened_14
+      - velocityMeridionalCoarsened_15
+      - velocityMeridionalCoarsened_16
+      - velocityMeridionalCoarsened_17
+      - velocityMeridionalCoarsened_18
+      - ocean_sea_ice_fraction
+      - iceVolumeTotal
+      out_names:
+      - sst
+      - ssh
+      - salinityCoarsened_0
+      - salinityCoarsened_1
+      - salinityCoarsened_2
+      - salinityCoarsened_3
+      - salinityCoarsened_4
+      - salinityCoarsened_5
+      - salinityCoarsened_6
+      - salinityCoarsened_7
+      - salinityCoarsened_8
+      - salinityCoarsened_9
+      - salinityCoarsened_10
+      - salinityCoarsened_11
+      - salinityCoarsened_12
+      - salinityCoarsened_13
+      - salinityCoarsened_14
+      - salinityCoarsened_15
+      - salinityCoarsened_16
+      - salinityCoarsened_17
+      - salinityCoarsened_18
+      - temperatureCoarsened_0
+      - temperatureCoarsened_1
+      - temperatureCoarsened_2
+      - temperatureCoarsened_3
+      - temperatureCoarsened_4
+      - temperatureCoarsened_5
+      - temperatureCoarsened_6
+      - temperatureCoarsened_7
+      - temperatureCoarsened_8
+      - temperatureCoarsened_9
+      - temperatureCoarsened_10
+      - temperatureCoarsened_11
+      - temperatureCoarsened_12
+      - temperatureCoarsened_13
+      - temperatureCoarsened_14
+      - temperatureCoarsened_15
+      - temperatureCoarsened_16
+      - temperatureCoarsened_17
+      - temperatureCoarsened_18
+      - velocityZonalCoarsened_0
+      - velocityZonalCoarsened_1
+      - velocityZonalCoarsened_2
+      - velocityZonalCoarsened_3
+      - velocityZonalCoarsened_4
+      - velocityZonalCoarsened_5
+      - velocityZonalCoarsened_6
+      - velocityZonalCoarsened_7
+      - velocityZonalCoarsened_8
+      - velocityZonalCoarsened_9
+      - velocityZonalCoarsened_10
+      - velocityZonalCoarsened_11
+      - velocityZonalCoarsened_12
+      - velocityZonalCoarsened_13
+      - velocityZonalCoarsened_14
+      - velocityZonalCoarsened_15
+      - velocityZonalCoarsened_16
+      - velocityZonalCoarsened_17
+      - velocityZonalCoarsened_18
+      - velocityMeridionalCoarsened_0
+      - velocityMeridionalCoarsened_1
+      - velocityMeridionalCoarsened_2
+      - velocityMeridionalCoarsened_3
+      - velocityMeridionalCoarsened_4
+      - velocityMeridionalCoarsened_5
+      - velocityMeridionalCoarsened_6
+      - velocityMeridionalCoarsened_7
+      - velocityMeridionalCoarsened_8
+      - velocityMeridionalCoarsened_9
+      - velocityMeridionalCoarsened_10
+      - velocityMeridionalCoarsened_11
+      - velocityMeridionalCoarsened_12
+      - velocityMeridionalCoarsened_13
+      - velocityMeridionalCoarsened_14
+      - velocityMeridionalCoarsened_15
+      - velocityMeridionalCoarsened_16
+      - velocityMeridionalCoarsened_17
+      - velocityMeridionalCoarsened_18
+      - ocean_sea_ice_fraction
+      - iceVolumeTotal
