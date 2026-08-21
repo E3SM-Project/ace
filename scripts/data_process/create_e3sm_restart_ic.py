@@ -66,15 +66,15 @@ ATMOSPHERE_PROGNOSTIC_NAMES = (
     + [f"V_{i}" for i in range(N_ATMOSPHERE_LAYERS)]
     + [f"STW_{i}" for i in range(N_ATMOSPHERE_LAYERS)]
 )
-OCEAN_PROGNOSTIC_NAMES = ["sst", "ssh", "ocean_sea_ice_fraction", "iceVolumeTotal"] + [
-    f"{prefix}_{i}"
-    for prefix in (
-        "temperatureCoarsened",
-        "salinityCoarsened",
-        "velocityZonalCoarsened",
-        "velocityMeridionalCoarsened",
-    )
-    for i in range(N_OCEAN_LAYERS)
+_OCEAN_SURFACE_NAMES = ("sst", "ssh", "ocean_sea_ice_fraction", "iceVolumeTotal")
+_OCEAN_LEVEL_FAMILIES = (
+    "temperatureCoarsened",
+    "salinityCoarsened",
+    "velocityZonalCoarsened",
+    "velocityMeridionalCoarsened",
+)
+OCEAN_PROGNOSTIC_NAMES = list(_OCEAN_SURFACE_NAMES) + [
+    f"{family}_{i}" for family in _OCEAN_LEVEL_FAMILIES for i in range(N_OCEAN_LAYERS)
 ]
 
 # Mapping from an ocean prognostic variable to the wetmask that defines its
@@ -173,11 +173,21 @@ class MasksConfig:
         use_for_surface_blend: Use ``sea_surface_fraction`` from this file when
             blending TS. If False, TS falls back to the lowest-level air
             temperature everywhere.
+        fill_masked_gaps: Give every point inside a wetmask a value. Initial
+            conditions are read straight into the steppers without any NaN
+            handling (``ComponentInitialConditionConfig`` has no ``fill_nans``
+            option), so one missing value inside the mask spreads to the whole
+            globe on the first step and the run returns NaN everywhere. The
+            training masks are marginally wider than what a given restart's
+            bathymetry supports near shelf breaks, which leaves ~1300 such
+            points out of 5.2 million, so they are filled rather than left to
+            poison the forecast. See ``_fill_masked_gaps``.
     """
 
     path: str | None = None
     apply_ocean_masks: bool = True
     use_for_surface_blend: bool = True
+    fill_masked_gaps: bool = True
 
     def validate(self) -> None:
         if self.path is None:
@@ -191,6 +201,11 @@ class MasksConfig:
                 )
         elif not os.path.exists(self.path):
             raise ValueError(f"masks.path does not exist: {self.path}")
+        if self.fill_masked_gaps and not self.apply_ocean_masks:
+            raise ValueError(
+                "masks.fill_masked_gaps needs masks.apply_ocean_masks to be true; "
+                "without the wetmasks there is nothing to define a gap against."
+            )
 
 
 @dataclasses.dataclass
@@ -260,13 +275,14 @@ class OceanConfig:
         exclude_ice_shelf_cavities: Drop cells that sit under an ice shelf,
             identified as ``landIceMask > 0`` or ``landIceDraft < 0``. The
             E3SMv3 ocean mesh (IcoswISC30E3r5) resolves sub-ice-shelf cavities,
-            where the sea surface sits at the ice draft and ``ssh`` reaches
-            -1700 m. The training data excluded them (its ssh spans roughly
-            [-1.3, 1.1] m), so they are excluded here too. ``landIceMask``
-            alone is not enough: it marks only the cells where ice-shelf
-            pressure is currently applied, while several thousand more cells
-            still carry a nonzero ``landIceDraft`` and a correspondingly
-            depressed sea surface.
+            where the raw sea surface sits at the ice draft and reaches
+            -1700 m. Removing the ``landIceDraft`` load (see ``build_ocean_native``)
+            already brings those columns back into the [-1.3, 1.1] m range of
+            the training data, and the training wetmasks cover them, so they
+            are kept by default. Excluding them leaves ~99 surface points NaN
+            inside ``mask_2d``, which is enough to turn the whole coupled
+            forecast into NaN on the first step. Set this to true only for a
+            dataset whose masks genuinely exclude the cavities.
         spatial_filter_scale: If set, apply a boxcar smoothing of this many
             target-grid cells to the remapped 3D ocean fields. The published
             training config (``configs/e3smv3-ocean-1deg.yaml``) enables a
@@ -281,7 +297,7 @@ class OceanConfig:
         4620.0, 6380.0,
     )  # fmt: skip
     reconstruct_velocity: bool = True
-    exclude_ice_shelf_cavities: bool = True
+    exclude_ice_shelf_cavities: bool = False
     spatial_filter_scale: int | None = None
 
     def validate(self) -> None:
@@ -904,6 +920,91 @@ def _ocean_mask_name(variable: str, available: set[str]) -> str | None:
     return "mask_2d" if "mask_2d" in available else None
 
 
+def _fill_horizontal(values: np.ndarray, wanted: np.ndarray) -> np.ndarray:
+    """Grow the valid region outwards until it covers ``wanted``.
+
+    Each pass replaces a missing point by the mean of whichever of its four
+    neighbours are valid, so the valid region spreads by one cell per pass.
+    Longitude wraps; latitude replicates the polar rows. The pass count is
+    bounded by the grid width, which also terminates the loop for a field that
+    is valid nowhere.
+    """
+    filled = values.astype(np.float64, copy=True)
+    for _ in range(values.shape[-1]):
+        missing = wanted & ~np.isfinite(filled)
+        if not missing.any():
+            break
+        total = np.zeros_like(filled)
+        count = np.zeros_like(filled)
+        for neighbour in (
+            np.roll(filled, 1, axis=-1),
+            np.roll(filled, -1, axis=-1),
+            np.concatenate([filled[:1], filled[:-1]], axis=0),
+            np.concatenate([filled[1:], filled[-1:]], axis=0),
+        ):
+            valid = np.isfinite(neighbour)
+            total += np.where(valid, neighbour, 0.0)
+            count += valid
+        with np.errstate(invalid="ignore", divide="ignore"):
+            filled = np.where(missing & (count > 0), total / count, filled)
+    return filled
+
+
+def _fill_masked_gaps(ocean: xr.Dataset, masks: xr.Dataset) -> int:
+    """Give every point inside a wetmask a value, and report how many were set.
+
+    A wetmask point with no value is fatal: the initial condition reaches the
+    steppers untouched, and the ocean model's spectral and convolutional layers
+    spread a single NaN across the globe within one step, so the whole coupled
+    forecast returns NaN. The training wetmasks are nested with depth, so a gap
+    at one level is filled from the layer above, which is guaranteed wet and is
+    the closest water the column has. Anything the column cannot supply -- a
+    gap at the surface, or a dataset whose masks are not nested -- falls back
+    to the nearest valid neighbours on the same level.
+    """
+    available = {str(name) for name in masks.data_vars}
+    filled_total = 0
+
+    def fill(name: str, above: str | None) -> None:
+        nonlocal filled_total
+        mask_name = _ocean_mask_name(name, available)
+        if mask_name is None:
+            return
+        wanted = np.asarray(masks[mask_name].values) > 0
+        values = np.asarray(ocean[name].values, dtype=np.float64)
+        missing = wanted & ~np.isfinite(values)
+        if not missing.any():
+            return
+        gaps = int(missing.sum())
+        if above is not None:
+            values = np.where(
+                missing, np.asarray(ocean[above].values, dtype=np.float64), values
+            )
+            missing = wanted & ~np.isfinite(values)
+        if missing.any():
+            values = _fill_horizontal(values, wanted)
+        remaining = int((wanted & ~np.isfinite(values)).sum())
+        if remaining:
+            raise ValueError(
+                f"{remaining} of {gaps} masked points in {name} could not be "
+                f"filled; {mask_name} may not describe this grid."
+            )
+        ocean[name] = ocean[name].copy(data=values.astype(np.float32))
+        filled_total += gaps
+
+    for family in _OCEAN_LEVEL_FAMILIES:
+        for level in range(N_OCEAN_LAYERS):
+            name = f"{family}_{level}"
+            if name not in ocean:
+                continue
+            above = f"{family}_{level - 1}" if level else None
+            fill(name, above if above is not None and above in ocean else None)
+    for name in _OCEAN_SURFACE_NAMES:
+        if name in ocean:
+            fill(name, None)
+    return filled_total
+
+
 def finalize(
     atmosphere: xr.Dataset,
     ocean: xr.Dataset,
@@ -958,6 +1059,13 @@ def finalize(
                 logging.warning("No wetmask found for %s; leaving unmasked.", name)
                 continue
             ocean[name] = ocean[name].where(masks[mask_name] > 0)
+
+        if config.masks.fill_masked_gaps:
+            gaps = _fill_masked_gaps(ocean, masks)
+            if gaps:
+                logging.info(
+                    "Filled %d masked ocean points the restart does not cover", gaps
+                )
 
     missing_atmosphere = [n for n in ATMOSPHERE_PROGNOSTIC_NAMES if n not in atmosphere]
     missing_ocean = [n for n in OCEAN_PROGNOSTIC_NAMES if n not in ocean]

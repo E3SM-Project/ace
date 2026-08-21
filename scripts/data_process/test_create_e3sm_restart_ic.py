@@ -15,6 +15,8 @@ from create_e3sm_restart_ic import (
     RestartFiles,
     TimeConfig,
     _conservative_depth_weights,
+    _fill_horizontal,
+    _fill_masked_gaps,
     _mask_below_bathymetry,
     _ocean_mask_name,
     _parse_timestamp,
@@ -262,7 +264,11 @@ def _write_maps(tmp_path) -> MapsConfig:
 
 
 def _masks_off() -> MasksConfig:
-    return MasksConfig(apply_ocean_masks=False, use_for_surface_blend=False)
+    return MasksConfig(
+        apply_ocean_masks=False,
+        use_for_surface_blend=False,
+        fill_masked_gaps=False,
+    )
 
 
 def _make_restart_directory(tmp_path, name: str) -> str:
@@ -353,3 +359,93 @@ def test_shipped_config_parses():
         field
         for field in CreateRestartICConfig.__dataclass_fields__  # type: ignore[attr-defined]
     }
+
+
+def _ocean_with_gaps(gaps: dict[str, list[tuple[int, int]]], shape=(6, 8)):
+    """Ocean fields that are valid everywhere except at the listed points."""
+    ocean = xr.Dataset()
+    for name in OCEAN_PROGNOSTIC_NAMES:
+        values = np.full(shape, 10.0, dtype=np.float32)
+        for row, column in gaps.get(name, []):
+            values[row, column] = np.nan
+        ocean[name] = xr.DataArray(values, dims=["lat", "lon"])
+    return ocean
+
+
+def _all_wet_masks(shape=(6, 8)):
+    masks = xr.Dataset()
+    for name in ["mask_2d"] + [f"mask_{level}" for level in range(19)]:
+        masks[name] = xr.DataArray(
+            np.ones(shape, dtype=np.float32), dims=["lat", "lon"]
+        )
+    return masks
+
+
+def test_fill_horizontal_spreads_across_the_longitude_seam():
+    """Longitude is periodic, so column 0 may be filled from the last column."""
+    values = np.full((3, 4), np.nan)
+    values[:, -1] = 4.0
+    wanted = np.zeros((3, 4), dtype=bool)
+    wanted[:, 0] = True
+    filled = _fill_horizontal(values, wanted)
+    np.testing.assert_allclose(filled[:, 0], 4.0)
+
+
+def test_fill_horizontal_leaves_points_outside_the_mask_alone():
+    values = np.full((3, 4), np.nan)
+    values[1, 1] = 7.0
+    wanted = np.zeros((3, 4), dtype=bool)
+    wanted[1, 2] = True
+    filled = _fill_horizontal(values, wanted)
+    assert filled[1, 2] == pytest.approx(7.0)
+    assert np.isnan(filled[0, 0])
+
+
+def test_fill_masked_gaps_takes_a_deep_gap_from_the_layer_above():
+    """Masks are nested with depth, so the layer above is wet and is nearest."""
+    ocean = _ocean_with_gaps({"temperatureCoarsened_5": [(2, 3)]})
+    ocean["temperatureCoarsened_4"][2, 3] = 3.5
+    filled = _fill_masked_gaps(ocean, _all_wet_masks())
+    assert filled == 1
+    assert ocean["temperatureCoarsened_5"].values[2, 3] == pytest.approx(3.5)
+
+
+def test_fill_masked_gaps_falls_back_to_neighbours_at_the_surface():
+    """There is no layer above level 0, so the gap is filled horizontally."""
+    ocean = _ocean_with_gaps({"salinityCoarsened_0": [(2, 3)], "sst": [(1, 1)]})
+    filled = _fill_masked_gaps(ocean, _all_wet_masks())
+    assert filled == 2
+    assert ocean["salinityCoarsened_0"].values[2, 3] == pytest.approx(10.0)
+    assert ocean["sst"].values[1, 1] == pytest.approx(10.0)
+
+
+def test_fill_masked_gaps_leaves_dry_points_missing():
+    """Only points inside the wetmask are filled; land must stay NaN."""
+    ocean = _ocean_with_gaps({"sst": [(1, 1), (4, 4)]})
+    masks = _all_wet_masks()
+    masks["mask_2d"][4, 4] = 0.0
+    _fill_masked_gaps(ocean, masks)
+    assert ocean["sst"].values[1, 1] == pytest.approx(10.0)
+    assert np.isnan(ocean["sst"].values[4, 4])
+
+
+def test_fill_masked_gaps_reports_a_field_it_cannot_fill():
+    """A mask that covers a field valid nowhere is a configuration error."""
+    ocean = _ocean_with_gaps({})
+    ocean["sst"] = xr.DataArray(
+        np.full((6, 8), np.nan, dtype=np.float32), dims=["lat", "lon"]
+    )
+    with pytest.raises(ValueError, match="could not be filled"):
+        _fill_masked_gaps(ocean, _all_wet_masks())
+
+
+def test_fill_masked_gaps_needs_the_wetmasks(tmp_path):
+    with pytest.raises(ValueError, match="needs masks.apply_ocean_masks"):
+        MasksConfig(
+            path=None, apply_ocean_masks=False, use_for_surface_blend=False
+        ).validate()
+
+
+def test_ice_shelf_cavities_are_kept_by_default():
+    """Excluding them leaves surface points NaN inside mask_2d, which is fatal."""
+    assert OceanConfig().exclude_ice_shelf_cavities is False

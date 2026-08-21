@@ -111,3 +111,60 @@ approximated. All three are documented at their implementation site:
   computes these inside its surface-layer scheme and never checkpoints them, so
   they are approximated from the lowest model level. They are prognostic in the
   emulator but tightly constrained by the rest of the state.
+
+### Every wetmask point must have a value
+
+Initial conditions are handed to the steppers exactly as they are read:
+`ComponentInitialConditionConfig` has no `fill_nans` option, and unlike
+`XarrayDataConfig` it does no NaN handling. A single missing value *inside* an
+ocean wetmask therefore spreads across the globe within one step, and the run
+returns NaN everywhere -- in both components, since the ocean state feeds the
+atmosphere through the coupler. Two things in this script exist only to prevent
+that, and both are on by default:
+
+- `ocean.exclude_ice_shelf_cavities: false`. The E3SMv3 mesh resolves
+  sub-ice-shelf cavities and the training wetmasks cover them, so they must be
+  kept. Their raw `ssh` reaches -1700 m, but removing the `landIceDraft` load
+  already brings them back into range.
+- `masks.fill_masked_gaps: true`. The training wetmasks are marginally wider
+  than what a given restart's bathymetry supports near shelf breaks. The
+  leftover points (~1300 out of 5.2 million for the 1940 historical restart)
+  are filled from the layer above, which the nested masks guarantee is wet.
+
+To check a generated file before spending GPU hours on it:
+
+```python
+import numpy as np, xarray as xr
+ic = xr.open_dataset("out/..._ocean_ic.nc")
+forcing = xr.open_dataset("forcing_data/ocean-forcing-1yr.nc")
+for name in ic.data_vars:                      # must print nothing
+    mask = forcing.get(f"mask_{name.rsplit('_', 1)[-1]}", forcing["mask_2d"])
+    bad = int(((mask.values > 0) & ~np.isfinite(ic[name].isel(time=0).values)).sum())
+    if bad:
+        print(name, bad)
+```
+
+### Lining the time coordinate up with the forcing
+
+Inference selects forcing by timestamp, so every initial condition time must
+exist in the forcing dataset. The published forcing is one piControl year
+(starting `0425-01-03 12:00:00`, ocean steps every 5 days) played back
+`n_repeats` times, so a historical restart date such as `1940-01-01` is simply
+not in it. Use `time.source: explicit` with one timestamp per restart drawn
+from the forcing calendar; `time.source: restart` (the default) is only right
+when the forcing actually spans the restart dates.
+
+### Verifying end to end
+
+The checkpoint needs `ZonallyPeriodicBilinearUpsample`, added in #1316, so it
+cannot be loaded by an older `fme`. With a current checkout, two coupled steps
+on CPU take a few minutes and are enough to confirm an initial condition is
+sound:
+
+```bash
+FME_FORCE_CPU=1 python -m fme.coupled.inference inference-config.yaml
+```
+
+A healthy ocean run holds its NaN fraction at exactly the land fraction (0.3072
+for `sst`) at every step; the atmosphere stays at 0.0000. Any step at 1.0000
+means a missing value reached the model.
