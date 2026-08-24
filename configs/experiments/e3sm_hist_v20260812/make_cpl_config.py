@@ -22,6 +22,9 @@ unchanged (coupled realms train from scratch).
 
 import argparse
 import copy
+import difflib
+import pathlib
+import sys
 
 import yaml
 
@@ -36,12 +39,25 @@ ap.add_argument(
     default=None,
     help="stepper checkpoint (best_ckpt.tar) to initialize the ocean from",
 )
+ap.add_argument(
+    "--out",
+    default=None,
+    help="write here instead of overwriting the committed config-train-cpl.yaml",
+)
+ap.add_argument(
+    "--check",
+    action="store_true",
+    help="do not write; exit non-zero with a diff if the committed coupled "
+    "config is out of sync with the atm and ocn configs",
+)
 args = ap.parse_args()
 
-D = "configs/experiments/e3sm_hist_v20260812"
-atm = yaml.safe_load(open(f"{D}/config-train-atm.yaml"))
-ocn = yaml.safe_load(open(f"{D}/config-train-ocn.yaml"))
-OUT = f"{D}/config-train-cpl.yaml"
+D = pathlib.Path(__file__).resolve().parent
+with open(D / "config-train-atm.yaml") as f:
+    atm = yaml.safe_load(f)
+with open(D / "config-train-ocn.yaml") as f:
+    ocn = yaml.safe_load(f)
+OUT = args.out or str(D / "config-train-cpl.yaml")
 
 atm_stepper = copy.deepcopy(atm["stepper"])
 ocn_stepper = copy.deepcopy(ocn["stepper"])
@@ -118,6 +134,12 @@ TRAIN_WINDOWS = [
 ]
 VAL_A = {"start_time": "1990-01-06", "stop_time": "1995-01-01"}
 IC = [f"{y}-01-06T00:00:00" for y in [1945, 1955, 1965, 1975, 2005, 2015, 2025, 2035]]
+# Held-out initial conditions, mirroring the 12yr_test block the atm and ocn
+# configs carry. Every IC above falls inside a training window, so without this
+# the coupled finetune has no out-of-sample monitoring at all. These start after
+# the second training window ends (2040-01-01) and are on the ocean's 5-day
+# axis; a 876-step (12-year) rollout from 2047 ends in 2059, inside the record.
+IC_TEST = [f"{y}-01-06T00:00:00" for y in range(2040, 2048)]
 
 cfg = {
     "experiment_dir": "/pscratch/sd/m/mahf708/fme-output/hist-cpl",
@@ -140,7 +162,25 @@ cfg = {
                 "start_indices": {"times": IC},
             },
             "aggregator": {"log_zonal_mean_images": False, "log_histograms": False},
-        }
+        },
+        {
+            # weight 0.0: monitored, never used to select the best checkpoint.
+            # Run every 4th epoch so it lands on the first and last of the 5.
+            "name": "12yr_test",
+            "weight": 0.0,
+            "epochs": {"start": 0, "step": 4},
+            "n_coupled_steps": 876,
+            "coupled_steps_in_memory": 2,
+            "loader": {
+                "num_data_workers": 2,
+                "dataset": {
+                    "ocean": strip_subset(ocn_inf),
+                    "atmosphere": atmos(keep_subset=False),
+                },
+                "start_indices": {"times": IC_TEST},
+            },
+            "aggregator": {"log_zonal_mean_images": False, "log_histograms": False},
+        },
     ],
     "logging": {
         "log_to_screen": True,
@@ -198,10 +238,13 @@ cfg = {
                 "outcomes": [
                     {"steps": s, "probability": p}
                     for s, p in [
+                        # Must sum to 1.0: TimeLengthProbabilities renormalizes
+                        # silently, so literals that do not sum to 1 mean the
+                        # realized distribution is not the one written here.
                         (0, 0.025),
-                        (1, 0.29),
-                        (2, 0.29),
-                        (4, 0.29),
+                        (1, 0.275),
+                        (2, 0.275),
+                        (4, 0.275),
                         (21, 0.1),
                         (41, 0.05),
                     ]
@@ -228,7 +271,24 @@ if args.atm_ckpt:
         "weights_path": args.atm_ckpt
     }
 
-yaml.safe_dump(
-    cfg, open(OUT, "w"), sort_keys=False, default_flow_style=False, width=100
-)
+rendered = yaml.safe_dump(cfg, sort_keys=False, default_flow_style=False, width=100)
+
+if args.check:
+    existing = pathlib.Path(OUT).read_text() if pathlib.Path(OUT).exists() else ""
+    if existing == rendered:
+        print(f"{OUT} is up to date")
+        sys.exit(0)
+    print(f"{OUT} is STALE -- regenerate it by running this script with no flags")
+    sys.stdout.writelines(
+        difflib.unified_diff(
+            existing.splitlines(keepends=True),
+            rendered.splitlines(keepends=True),
+            fromfile=f"{OUT} (committed)",
+            tofile="(generated)",
+        )
+    )
+    sys.exit(1)
+
+with open(OUT, "w") as f:
+    f.write(rendered)
 print("wrote", OUT)

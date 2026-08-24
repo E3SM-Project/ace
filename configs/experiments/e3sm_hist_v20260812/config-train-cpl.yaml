@@ -75,6 +75,78 @@ inference:
   aggregator:
     log_zonal_mean_images: false
     log_histograms: false
+- name: 12yr_test
+  weight: 0.0
+  epochs:
+    start: 0
+    step: 4
+  n_coupled_steps: 876
+  coupled_steps_in_memory: 2
+  loader:
+    num_data_workers: 2
+    dataset:
+      ocean:
+        merge:
+        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+          file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDepthCoarsening5D.*.remapped.nc
+          mask_and_scale: true
+        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+          file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDerivedFields5D.*.remapped.nc
+          mask_and_scale: true
+          rename:
+            windStressZonal: TAUX
+            windStressMeridional: TAUY
+            shortWaveHeatFlux: FSNS
+            longWaveHeatFluxDown: FLDS
+            longWaveHeatFluxUp: FLUS
+            latentHeatFlux: LHFLX
+            sensibleHeatFlux: SHFLX
+            snowFlux: frozen_precipitation_rate
+          overwrite:
+            multiply_scalar:
+              TAUX: -1.0
+              TAUY: -1.0
+              FLUS: -1.0
+              LHFLX: -1.0
+              SHFLX: -1.0
+            add_scalar:
+              sst: 273.15
+          combine:
+            surface_precipitation_rate:
+              rainFlux: 1.0
+              frozen_precipitation_rate: 1.0
+        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+          file_pattern: v3.LR.historical_0101.aigo.mpassi.hist.am.fmeSeaiceDerivedFields5D.*.remapped.nc
+          mask_and_scale: true
+          rename:
+            iceAreaTotal: ocean_sea_ice_fraction
+        - data_path: /pscratch/sd/m/mahf708/e3sm-hist-aux/landfrac5d
+          file_pattern: landfrac5d.*.nc
+      atmosphere:
+        data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
+        rename:
+          PRECT: surface_precipitation_rate
+          PRECST: frozen_precipitation_rate
+          co2vmr: global_mean_co2
+        reference_pressure_name: P0
+        overwrite:
+          multiply_scalar:
+            surface_precipitation_rate: 1000.0
+            frozen_precipitation_rate: 1000.0
+    start_indices:
+      times:
+      - '2040-01-06T00:00:00'
+      - '2041-01-06T00:00:00'
+      - '2042-01-06T00:00:00'
+      - '2043-01-06T00:00:00'
+      - '2044-01-06T00:00:00'
+      - '2045-01-06T00:00:00'
+      - '2046-01-06T00:00:00'
+      - '2047-01-06T00:00:00'
+  aggregator:
+    log_zonal_mean_images: false
+    log_histograms: false
 logging:
   log_to_screen: true
   log_to_wandb: true
@@ -321,11 +393,11 @@ stepper_training:
       - steps: 0
         probability: 0.025
       - steps: 1
-        probability: 0.29
+        probability: 0.275
       - steps: 2
-        probability: 0.29
+        probability: 0.275
       - steps: 4
-        probability: 0.29
+        probability: 0.275
       - steps: 21
         probability: 0.1
       - steps: 41

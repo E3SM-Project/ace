@@ -667,9 +667,18 @@ def main() -> int:
     else:
         # Fail now rather than after an hour of reading: when this runs under
         # srun the partials must land on a shared filesystem, not on a
-        # per-node /tmp.
-        with open(args.partials, "wb"):
-            pass
+        # per-node /tmp. Create the file exclusively so that probing for
+        # writability can never truncate partials from a previous run -- those
+        # cost ~23 minutes on three nodes to regenerate.
+        try:
+            fd = os.open(args.partials, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+        except FileExistsError:
+            sys.exit(
+                f"{args.partials} already exists. Pass --reuse-partials to "
+                f"aggregate it, or choose another --partials path; refusing to "
+                f"overwrite it."
+            )
+        os.close(fd)
         shard = None
         if args.shard:
             index, count = args.shard.split("/")
