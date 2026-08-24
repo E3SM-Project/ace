@@ -98,9 +98,16 @@ These replace the piControl-derived stats the configs currently point at
 Each stream contributes two kinds of entry.
 
 **(a) Loader names.**  Every name the three configs ask for, under the name and
-with the value the data loader delivers (see the next section).  56 for the
-atmosphere -- the 55 config names plus `global_mean_co2` -- and 91 for the ocean,
-exactly the config names.
+with the value the data loader delivers (see the next section).  61 for the
+atmosphere and 91 for the ocean, exactly the config names in each case.
+
+Note the atmosphere count was 56 when these statistics were computed, before
+the CO2/aerosol channels were added on 2026-08-14.  Five names --
+`aerindexall`, `colccn.3`, `lwp`, `lcc`, `cdnc` -- therefore appear in the
+tables below under (b), as raw extras, even though the configs now reference
+them directly.  The **files are unaffected**: coverage is a deliberate superset
+and every one of those names is present with a finite, non-zero scale.  Only
+the (a)/(b) bookkeeping below is stale.
 
 **(b) Every other variable in the files, under its raw name.**  A variable
 qualifies when it is a floating-point field on (time, lat, lon) or on the time
@@ -203,11 +210,17 @@ divisor; it is never used, since residual scales apply to prognostic names only.
 | `train-only/` | 3.658244e-04 | 5.128173e-05 |
 | full record | 3.950886e-04 | 7.442359e-05 |
 
-The `train-only/` numbers reproduce the 3.658872e-04 / 5.131649e-05 quoted in
-`config-train-atm.yaml` to 0.02% and 0.07% -- an independent check both that this
-pipeline agrees with how those numbers were originally obtained and that the
-training window is being selected correctly.  The full-record scale is 31%
-larger because CO2 keeps rising to 2065.
+When these statistics were computed, `config-train-atm.yaml` quoted
+3.658872e-04 / 5.131649e-05, derived by a completely different route; the
+`train-only/` numbers reproduced those to 0.02% and 0.07%.  That was a genuine
+independent check both that this pipeline agrees with how those numbers were
+originally obtained and that the training window is selected correctly.
+
+**The config has since been updated to quote the values in this table
+verbatim, so re-deriving the comparison today is circular.**  The original
+figures are kept above as the record of the check that was actually performed.
+
+The full-record scale is 31% larger because CO2 keeps rising to 2065.
 
 ## Choosing between the two sets
 
