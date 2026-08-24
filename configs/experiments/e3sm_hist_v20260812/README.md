@@ -501,7 +501,7 @@ Headlines (details in `NOTES-historical-stats.md`):
   loader order, so the sign flips, the `sst` Kelvin offset and
   `surface_precipitation_rate = rainFlux + snowFlux` are baked in. A sum of two
   fields cannot be reconstructed from the two fields' separate statistics.
-* **Unweighted** over (time, lat, lon), matching `get_stats.py` and the
+* **Unweighted** over (time, lat, lon), matching `scripts/data_process/get_stats.py` and the
   existing files. When sanity-checking a value: unweighted global-mean `TS` is
   **279.5 K**, not the 287 K you get area-weighted. That is the convention.
 * Coverage is a deliberate **superset** — 83 atmosphere and 127 ocean entries,
