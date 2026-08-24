@@ -83,7 +83,13 @@ def main():
         help="glob for the years to keep, e.g. '194[0-5]'",
     )
     ap.add_argument("--epochs", type=int, default=2)
-    ap.add_argument("--batch-size", type=int, default=4)
+    ap.add_argument(
+        "--batch-size",
+        type=int,
+        default=4,
+        help="global batch size; must be divisible by the rank count you "
+        "intend to run on, so the default 4 will not run on 8 ranks",
+    )
     ap.add_argument("--experiment-dir", default=None)
     ap.add_argument(
         "--full-data",
@@ -101,17 +107,23 @@ def main():
     if not args.full_data:
         _rewrite_patterns(cfg, args.years)
 
-    years = "*" if args.full_data else args.years
-    ocn = _times(f"*fmeDerivedFields5D.{years}*.remapped.nc")
-    if len(ocn) < 60:
-        sys.exit(f"only {len(ocn)} ocean times matched --years {args.years}")
-    # Windows start on the ocean axis so the coupled realms align.
-    a, b = len(ocn) // 2, int(len(ocn) * 0.75)
-    train = [
-        {"start_time": ocn[0], "stop_time": ocn[a // 2]},
-        {"start_time": ocn[a // 2], "stop_time": ocn[a]},
-    ]
-    val = {"start_time": ocn[a], "stop_time": ocn[b]}
+    # --full-data keeps the production windows and initial conditions, so none
+    # of the derived windows below are used. Reading the time coordinate of all
+    # ~1500 files to compute and then discard them costs minutes.
+    ocn: list[str] = []
+    train: list[dict] = []
+    val: dict = {}
+    if not args.full_data:
+        ocn = _times(f"*fmeDerivedFields5D.{args.years}*.remapped.nc")
+        if len(ocn) < 60:
+            sys.exit(f"only {len(ocn)} ocean times matched --years {args.years}")
+        # Windows start on the ocean axis so the coupled realms align.
+        a, b = len(ocn) // 2, int(len(ocn) * 0.75)
+        train = [
+            {"start_time": ocn[0], "stop_time": ocn[a // 2]},
+            {"start_time": ocn[a // 2], "stop_time": ocn[a]},
+        ]
+        val = {"start_time": ocn[a], "stop_time": ocn[b]}
 
     for section, window in (("train_loader", None), ("validation", val)):
         loader = cfg[section] if section == "train_loader" else cfg[section]["loader"]
@@ -158,6 +170,14 @@ def main():
             "times": ocn[first_ic : first_ic + N_INITIAL_CONDITIONS]
         }
 
+    if args.batch_size % 4 != 0 and args.batch_size not in (1, 2):
+        print(
+            f"note: batch_size {args.batch_size} only divides rank counts "
+            f"{[n for n in (1, 2, 4, 8, 16) if args.batch_size % n == 0]}; "
+            f"fme rejects a batch size that the rank count does not divide.",
+            file=sys.stderr,
+        )
+
     cfg["max_epochs"] = args.epochs
     cfg["save_checkpoint"] = False
     cfg["logging"]["log_to_wandb"] = False
@@ -168,12 +188,22 @@ def main():
         cfg, open(args.out, "w"), sort_keys=False, default_flow_style=False, width=100
     )
     print(f"wrote {args.out}")
-    print(f"  train   {train[0]['start_time']} .. {train[-1]['stop_time']}")
-    print(f"  val     {val['start_time']} .. {val['stop_time']}")
-    print(
-        f"  inf ICs {len(inf['loader']['start_indices']['times'])} starting "
-        f"{inf['loader']['start_indices']['times'][0]}"
-    )
+    if args.full_data:
+        # Report what the config actually says, not windows that were never
+        # applied -- a summary that describes a different config is worse than
+        # no summary.
+        print(
+            "  production globs, train/validation windows and inference "
+            "initial conditions kept as-is"
+        )
+        print(f"  epochs {args.epochs}, batch_size {args.batch_size}")
+    else:
+        print(f"  train   {train[0]['start_time']} .. {train[-1]['stop_time']}")
+        print(f"  val     {val['start_time']} .. {val['stop_time']}")
+        print(
+            f"  inf ICs {len(inf['loader']['start_indices']['times'])} starting "
+            f"{inf['loader']['start_indices']['times'][0]}"
+        )
 
 
 if __name__ == "__main__":
