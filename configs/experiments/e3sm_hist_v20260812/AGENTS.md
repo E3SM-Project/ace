@@ -36,7 +36,7 @@ Ran on 4 nodes × 4 A100-80GB, Perlmutter's post-update stack.
 | atm smoke, 6-yr window, 2 epochs | 8 GPU / 2 nodes | **exit 0**, 3169 s, loss 1.18 → 0.32, 61.8 GB/GPU |
 | **cpl smoke, 6-yr window, 2 epochs, production rollouts** | 8 GPU / 2 nodes | **exit 0**, 7035 s, 77.1 GB/GPU peak |
 | atm, `checkpointing: 3`, 6-yr window | 8 GPU / 2 nodes | **28.4 GB/GPU vs 61.8 GB baseline**, 1.48 s/batch vs 2.11 |
-| production launch chain (`requeueable-train.sh`) | 8 GPU / 2 nodes | exercised end to end |
+| production launch chain (`requeueable-train.sh`) | 8 GPU / 2 nodes | **exit 0**, `DONE ---- rank 0` |
 
 **The coupled per-epoch cost is now measured, not extrapolated.** That run used
 the *production* training rollouts — `n_coupled_steps: 4`, atmosphere `n_steps`
@@ -84,6 +84,12 @@ set `checkpointing >= 1` is suspect.**
   and there is no conda env to activate on the compute node. Fixed the comment
   citing `e3sm_piControl_v20260602`, which does not exist
   (`e3sm_piControl_v20260507`, on the `e3sm/exps/hist` branch).
+* `make_smoke_config.py`: `--full-data` scanned the time coordinate of all
+  ~1500 ocean files to build windows it then discarded, costing over two
+  minutes (now 5 s), and its summary printed windows and initial conditions
+  that were never written into the output config. Also added a note when
+  `--batch-size` does not divide plausible rank counts — the script warned
+  about initial-condition divisibility but not the parameter it sets itself.
 * `stage-shared-data.sh` added, to move the statistics and LANDFRAC inputs off
   personal scratch onto group-readable CFS and repoint the configs. Note the
   destination is group-readable but **not** world-readable: NERSC guidance is to
@@ -114,9 +120,11 @@ Also removed the claim that the `fme/` changes were uncommitted and unreviewed
 `global_mean_co2` "independent check": the config was later updated to quote
 the stats values verbatim, so the comparison is now circular.
 
-**Test status:** `fme/core/dataset/ fme/coupled/
-fme/core/models/conditional_sfno/ fme/ace/inference/data_writer/` under
-`FME_FORCE_CPU=1` → **684 passed, 3 skipped, 0 failed**.
+**Test status:** `fme/core/ fme/coupled/ fme/ace/inference/` under
+`FME_FORCE_CPU=1` → **1921 passed, 10 skipped, 1 failed**. The single failure is
+`test_optimization.py::test_gradient_clipping_with_amp`, which is environmental
+(AMP on CPU) and reproduces with `origin/main`'s copy of that file, verified
+directly.
 
 **Still open:**
 
