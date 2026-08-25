@@ -325,6 +325,23 @@ saving as solid.
 This makes the coupled model fit with wide headroom, and it is the reason not
 to spend scientific capital shrinking the model.
 
+**The coupled fit is measured, not extrapolated** (2026-08-25): a 6-year-window
+coupled run with `checkpointing: 3` and the worst case *forced* — the
+atmosphere's 41-step outcome and the ocean's 4-step outcome both at
+probability 1.0, so every batch drew the maximum rollout — completed a full
+epoch plus validation plus the 876-step inference, exit 0, at a flat
+**43.3–44.1 GB/GPU during training and 45.6 GB peak during EMA validation**
+across all 8 ranks. Same window without checkpointing: 77.1 GB (96% of the
+card). Forced-worst-case batches cost ~75 s each vs 61.3 s under the natural
+draw distribution.
+
+An isolated production-width benchmark (fwd+bwd+fused-AdamW step, effective
+batch 2, no I/O) puts the tradeoff at **−64% peak memory (46.6 → 16.8 GB) for
++33% step compute**, with gradients bit-identical across levels (max abs diff
+exactly 0.0 over all 135 parameter tensors). Levels 1 and 2 are not worth it:
+level 1 saves ~0.5 GB and level 2 ~7.7 GB at the same kind of recompute churn —
+use 3 or nothing.
+
 > **This required a bug fix, included on this branch.** The four
 > `torch.utils.checkpoint` call sites omitted `use_reentrant=False`. The
 > reentrant implementation returns an output with no `grad_fn` when no *input*
@@ -355,14 +372,23 @@ width and depth, not rollout — which is exactly why checkpointing works so wel
 
 ### Other levers, and why they rank lower
 
-* **bf16 autocast** (`enable_automatic_mixed_precision: true`) — ~12–16 GB
-  saving. The spectral path already forces fp32, so the risky part is
-  protected. No recorded reason for the current `false`; would need a loss-curve
-  A/B. Try this *after* checkpointing so effects are attributable.
+* **bf16 autocast** (`enable_automatic_mixed_precision: true`) — a *speed*
+  lever, not a memory lever. Measured in isolation: it saves only ~4.3 GB
+  uncheckpointed and ~0.4 GB after `checkpointing: 3`, because the spectral
+  path upcasts to fp32 internally (`s2convolutions.py` calls `x.float()`
+  before the SHT), so the dominant spectral activations stay fp32 under
+  autocast. It is, however, **11–13% faster per step**, which claws back a
+  third of checkpointing's compute cost. Two cautions: it has no loss-curve
+  A/B yet, and in the *coupled* trainer autocast wraps the loss and the
+  per-step `backward()` too (`fme/coupled/stepper.py`), an untested
+  combination — enable it on the single-realm pretrains first if at all.
 * **Shrinking `embed_dim`/`num_layers`** — real capacity cut requiring a full
-  retrain to evaluate. Only if the two above fail. Note that
-  `filter_num_groups`/`spectral_ratio` cut parameters 3.4× but leave
-  activations *unchanged*, so they are a poor memory lever.
+  retrain to evaluate. Only if the two above fail. `filter_num_groups` cuts
+  filter parameters without touching activations (the group reshape is a
+  view). `spectral_ratio < 1` cuts both parameters *and* the spectral-domain
+  activations roughly in proportion — but it changes the model class
+  (`pre_proj`/`post_proj` projections, l=0 mode no longer exactly preserved),
+  so it is a retrain-and-evaluate decision, not a free memory knob.
 * **Dropping the 41-step atmosphere outcome** — removes the peak, but costs the
   only ≥10-day coupled horizon, and buys only ~3.5% walltime. Emergency use only.
 * **Spatial/model parallelism** — not viable for this campaign. The backward
@@ -594,6 +620,30 @@ The upstreamable library work is a clean, reviewable delta — 9 files,
 outstanding task.
 
 ---
+
+## Two settings that are modeling decisions in disguise
+
+Both live in `config-train-cpl.yaml` and look like optimizer plumbing. They are
+not; know what they mean before changing (or keeping) them.
+
+* **`use_gradient_accumulation: true` severs the atmosphere↔ocean gradient.**
+  In the coupled path this flag makes `accumulate_loss` call `backward()` per
+  realm-step immediately, and the stepper then *detaches* the atmosphere
+  outputs before they are stacked into the ocean's forcings
+  (`fme/coupled/stepper.py:1288`) and detaches both realms' carry-over states
+  between outer coupled steps (`:1338`, `:1351`). As shipped, each model
+  trains on its own loss with the coupling treated as constant forcing — no
+  gradient ever crosses realms (the atmosphere additionally runs non-optimized
+  steps under `no_grad` via `optimize_last_step_only: true`). This is likely
+  the right memory/stability tradeoff, but it is a scientific choice, not an
+  implementation detail. Setting it `false` restores one joint graph until
+  `step_weights()` — at a large memory cost that was part of the original
+  77 GB peak.
+* **The coupled ocean's `EnsembleLoss` with `n_ensemble: 2` degenerates.**
+  `Samudra.forward` takes no noise input, so both ensemble members are
+  identical: the energy-score term is identically zero and CRPS collapses to
+  MAE at twice the ocean forward cost. Either give the ocean a stochastic
+  step or set its loss to MAE with `n_ensemble: 1` and save the compute.
 
 ## Gotchas
 

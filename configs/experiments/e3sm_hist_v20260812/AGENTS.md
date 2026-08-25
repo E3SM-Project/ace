@@ -16,6 +16,87 @@ history, kept so decisions do not have to be rediscovered.
 * Judge a run by `REAL_EXIT=0` and `DONE ---- rank 0`, never by the log tail —
   successful runs print alarming teardown tracebacks.
 
+## 2026-08-25 — independent verification of the checkpointing claims
+
+Second review campaign, run blind against the 2026-08-24 numbers on two fresh
+4-node A100-80GB allocations. Everything below was re-measured from scratch,
+not carried over.
+
+**The `use_reentrant` bug and fix, verified both ways.** The regression tests
+in `test_sfnonet.py` were run on GPU against the pre-fix tree (`c5d39a0fa~1`
+in a worktree): all 6 fail, with exactly `encoder.0.weight`, `encoder.0.bias`,
+`encoder.2.weight` at `grad=None` for every level 1/2/3 and nothing louder
+than a `UserWarning`. At HEAD all 6 pass, and the full sfnonet file passes on
+GPU (34 passed, 1 skipped).
+
+**Isolated sweep at production width** (fwd+bwd+fused-AdamW, effective batch 2
+to match `n_ensemble: 2`, fixed input, one process per config, A100-80GB):
+
+| level | peak alloc | median s/step |
+|---|---|---|
+| 0 | 46.58 GB | 0.868 |
+| 1 | 46.09 GB | 0.870 |
+| 2 | 38.86 GB | 0.893 |
+| 3 | **16.81 GB** | 1.153 |
+
+−64% memory for +33% compute at level 3; levels 1–2 are not worth having.
+Gradients bit-identical across all levels (max abs diff exactly 0.0 over all
+135 parameter tensors). Static memory 9.07 GB = params 2.98 + AdamW states
+5.96, consistent with the 61.8 GB end-to-end figure once EMA, DDP grads and
+NCCL are added.
+
+**bf16 autocast measured, README corrected.** The old "~12–16 GB saving"
+estimate was wrong: measured **4.3 GB** saving uncheckpointed and **0.4 GB**
+after `checkpointing: 3`, because `SpectralConvS2.forward` upcasts to fp32
+before the SHT, so the dominant spectral activations never shrink under
+autocast. bf16 *is* 11–13% faster per step. Also noted: the coupled trainer
+wraps loss and per-step `backward()` in autocast (`fme/coupled/stepper.py:2285`),
+unlike the ACE path which scopes it to the forward — untested combination.
+
+**Coupled worst case measured to completion.** The gap the 2026-08-24 pass
+left open. A 6-yr-window coupled config with `checkpointing: 3` and the worst
+case *forced* (atm `steps: 41` at p=1.0, ocn `steps: 4` at p=1.0, local batch
+1, 8 ranks) ran a full epoch + validation + 876-step inference, exit 0:
+
+* training: **flat 43.3–44.1 GB/GPU** (p50 = p99 = max on every rank)
+* peak: **45.6 GB during EMA validation** — `validate_using_ema` clones every
+  parameter (`ema.py store()`), so validation briefly holds params ×3
+* 54 batches at ~75 s/batch forced-worst (vs 61.3 s/batch natural draws)
+* the 12-yr inference (16 ICs, `coupled_steps_in_memory: 2`) took 3.4 min
+
+Without checkpointing the same window peaks at 77.1 GB. Measurement note:
+5-second `nvidia-smi` sampling produced isolated single-sample garbage (62.9,
+70.5 GiB readings with ~44 GiB neighbors, including during dataset setup) —
+use p50/p99 of the series, never the raw max.
+
+**Code-claim audit (file:line verified).** Samudra's `checkpoint_strategy`
+already passes `use_reentrant=False` everywhere — never affected.
+`_AutogradAllReduce.backward` returning `grad_output` unchanged: confirmed
+verbatim on this branch; the fix exists on unmerged
+`feature/model-parallel-backward-pass`; the identity backward is wrong only
+for the corrector global-mean path (scaled by 1−1/N). No FSDP/ZeRO anywhere.
+DDP is built without `gradient_as_bucket_view` — an unexploited ~3 GB saving
+for the 800M model. EMA is an unconditional fp32 GPU copy (+3.2 GB) with no
+disable flag. `OptimizationConfig.checkpoint` (rollout-level checkpointing via
+`after_n_forward_steps`) exists as a further lever, orthogonal to
+`SFNONetConfig.checkpointing`. `spectral_ratio` *does* cut spectral-domain
+activations (README corrected — the old "activations unchanged" claim was
+true only for `filter_num_groups`). `FusedAdam` now maps to
+`AdamW(fused=True)` with a deprecation warning; atm and cpl configs still say
+`FusedAdam`, ocn says `AdamW` — harmless, mildly inconsistent.
+
+**Gradient-accumulation finding promoted to the README.** `use_gradient_
+accumulation: true` in the coupled config detaches the atmosphere fluxes fed
+to the ocean (`fme/coupled/stepper.py:1288`) and the carry-over states between
+outer steps — the coupled finetune passes no gradient between realms. Written
+up in the README as a modeling decision in disguise, together with the
+degenerate ocean `EnsembleLoss` at `n_ensemble: 2`.
+
+**Staging still pending.** `stage-shared-data.sh` remains unrun — CFS writes
+are blocked in the agent sandbox (verified again). The destination
+`/global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/` now exists
+(empty). This is the one manual step left.
+
 ## 2026-08-24 — production-readiness pass
 
 Ran on 4 nodes × 4 A100-80GB, Perlmutter's post-update stack.
