@@ -97,6 +97,25 @@ are blocked in the agent sandbox (verified again). The destination
 `/global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/` now exists
 (empty). This is the one manual step left.
 
+**E4/E5 (atmosphere A/B + coupled control) were killed with the session;
+partial data recovered.** Launched 05:51 PDT on allocation 57585167
+(nid008208,008540,008648,008652): E4a = 6-yr atmosphere A/B
+`checkpointing: 0`, E4b = same with `checkpointing: 3` (4 ranks, batch 4 each),
+E5 = the unmodified coupled config (8 ranks, the ~77 GB control). All three
+`srun` steps were killed at 06:03:38 PDT — the exact moment the launching
+session died. The `srun` processes died with the process group, so the E3
+precedent (steps surviving orphaning) does not generalize: for multi-hour
+verifications, submit with `sbatch` or check job survival after any
+interruption. Recovered from the logs and the final ~100 s of each memory
+series:
+
+* E4a (ckpt0): flat **58.4 GiB/GPU** in-trainer; E4b (ckpt3): flat
+  **28.6 GiB/GPU** — the same −51% as the 24 Aug campaign (61.8 → 28.4 GB)
+* Step-100 throughput: 1.10 vs 1.38 s/step — +25% at 4 ranks, trending to the
+  +33% isolated cost; neither run reached steady state
+* E5 never left dataset construction — the 77.1 GB as-shipped coupled peak
+  stands on the 24 Aug measurement
+
 ## 2026-08-24 — production-readiness pass
 
 Ran on 4 nodes × 4 A100-80GB, Perlmutter's post-update stack.
