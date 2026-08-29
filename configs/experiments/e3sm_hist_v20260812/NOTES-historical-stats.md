@@ -1,6 +1,10 @@
 # Normalization statistics computed from the historical run
 
-Output: `/pscratch/sd/m/mahf708/2026-08-13-E3SMv3-historical-stats/`
+Produced into `/pscratch/sd/m/mahf708/2026-08-13-E3SMv3-historical-stats/`
+and staged for the group on 2026-08-29 at
+`/global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/stats-2026-08-13/`,
+which is what every config points at. The scratch copy is the build
+directory and is purge-eligible; do not reference it from a config.
 
     train-only/atmosphere/  centering.nc  scaling-full-field.nc  scaling-residual.nc
     train-only/ocean/       centering.nc  scaling-full-field.nc
@@ -248,8 +252,8 @@ and 6569 / 9125), which is what 90 of 125 years should give.
 
 ### What the choice costs
 
-Of the 350 numbers in the five files, 102 move by more than 1% between the two
-sets, 48 by more than 2%, and 10 by more than 10%.  The large relative movers are
+Of the 503 numbers in the five files, 174 move by more than 1% between the two
+sets, 93 by more than 2%, and 22 by more than 10%.  The large relative movers are
 almost all near-zero means of near-zero-mean fields, where the shift is
 irrelevant once divided by the field's own scale (`V_2` moves 124% but 0.0004
 sigma; ocean `TAUY` 74% but 0.0014 sigma).  The entries that actually matter:

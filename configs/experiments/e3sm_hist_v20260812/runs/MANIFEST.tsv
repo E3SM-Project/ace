@@ -1,0 +1,34 @@
+priority	runid	realm	nodes	ranks	batch	seed	note
+P1	E01.aug26.atm.A0_B16_C0_O5_W0_X0.S01	atm	4	16	16	S01	baseline: no CO2, no aerosol, equal weights
+P1	E02.aug26.atm.A0_B16_C1_O5_W0_X0.S01	atm	4	16	16	S01	+ CO2
+P1	E05.aug26.atm.A3_B16_C1_O5_W0_X0.S01	atm	4	16	16	S01	+ aerosol input back: both inputs and outputs
+P1	E11.aug26.ocn.A0_B16_C0_O5_W0_X0.S01	ocn	2	8	16	S01	baseline
+P2	E03.aug26.atm.A1_B16_C1_O5_W0_X0.S01	atm	4	16	16	S01	+ aerosol input (vs E02)
+P2	E04.aug26.atm.A2_B16_C1_O5_W0_X0.S01	atm	4	16	16	S01	- aerosol input + aerosol output (vs E03)
+P2	E06.aug26.atm.A3_B16_C0_O5_W0_X0.S01	atm	4	16	16	S01	- CO2 (vs E05: how aerosols and GHGs interplay)
+P2	E07.aug26.atm.A3_B16_C1_O5_W1_X0.S01	atm	4	16	16	S01	+ CO2 + flux-upweighted loss (vs E05, to probe weights)
+P2	E08.aug26.atm.A3_B16_C1_O5_W2_X0.S01	atm	4	16	16	S01	away-from-surface weight dilution
+P2	E09.aug26.atm.A3_B16_C1_O5_W4_X0.S01	atm	4	16	16	S01	zero STW_0
+P2	E10.aug26.atm.A3_B16_C1_O5_W0_X1.S01	atm	4	16	16	S01	+ AMP (bf16 autocast)
+P2	E15.aug26.atm.A3_B16_C1_O5_W3_X0.S01	atm	4	16	16	S01	zero STW_1, the level below E09's STW_0
+P2	E12.aug26.ocn.A0_B16_C0_O5_W1_X0.S01	ocn	2	8	16	S01	interface-upweighted loss
+P2	E13.aug26.ocn.A0_B16_C0_O5_W2_X0.S01	ocn	2	8	16	S01	away-from-surface weight dilution
+P2	E14.aug26.ocn.A0_B16_C0_O5_W4_X0.S01	ocn	2	8	16	S01	zero the deepest meridional velocity
+P2	E16.aug26.ocn.A0_B16_C0_O5_W3_X0.S01	ocn	2	8	16	S01	zero iceVolumeTotal, structurally zero over most of the domain
+P2	E17.aug26.ocn.A0_B16_C0_O1_W0_X0.S01	ocn	2	8	16	S01	1-daily ocean stepping (O1) vs E11's 5-daily
+P3	E01.aug26.atm.A0_B16_C0_O5_W0_X0.S02	atm	4	16	16	S02	baseline: no CO2, no aerosol, equal weights
+P3	E01.aug26.atm.A0_B16_C0_O5_W0_X0.S03	atm	4	16	16	S03	baseline: no CO2, no aerosol, equal weights
+P3	E02.aug26.atm.A0_B16_C1_O5_W0_X0.S02	atm	4	16	16	S02	+ CO2
+P3	E02.aug26.atm.A0_B16_C1_O5_W0_X0.S03	atm	4	16	16	S03	+ CO2
+P3	E05.aug26.atm.A3_B16_C1_O5_W0_X0.S02	atm	4	16	16	S02	+ aerosol input back: both inputs and outputs
+P3	E05.aug26.atm.A3_B16_C1_O5_W0_X0.S03	atm	4	16	16	S03	+ aerosol input back: both inputs and outputs
+P3	E11.aug26.ocn.A0_B16_C0_O5_W0_X0.S02	ocn	2	8	16	S02	baseline
+P3	E11.aug26.ocn.A0_B16_C0_O5_W0_X0.S03	ocn	2	8	16	S03	baseline
+P4	E01.aug26.atm.A0_B08_C0_O5_W0_X0.S01	atm	2	8	8	S01	baseline: no CO2, no aerosol, equal weights @ batch 8
+P4	E01.aug26.atm.A0_B32_C0_O5_W0_X0.S01	atm	8	32	32	S01	baseline: no CO2, no aerosol, equal weights @ batch 32
+P4	E02.aug26.atm.A0_B08_C1_O5_W0_X0.S01	atm	2	8	8	S01	+ CO2 @ batch 8
+P4	E02.aug26.atm.A0_B32_C1_O5_W0_X0.S01	atm	8	32	32	S01	+ CO2 @ batch 32
+P4	E05.aug26.atm.A3_B08_C1_O5_W0_X0.S01	atm	2	8	8	S01	+ aerosol input back: both inputs and outputs @ batch 8
+P4	E05.aug26.atm.A3_B32_C1_O5_W0_X0.S01	atm	8	32	32	S01	+ aerosol input back: both inputs and outputs @ batch 32
+P4	E11.aug26.ocn.A0_B08_C0_O5_W0_X0.S01	ocn	1	4	8	S01	baseline @ batch 8
+P4	E11.aug26.ocn.A0_B32_C0_O5_W0_X0.S01	ocn	4	16	32	S01	baseline @ batch 32

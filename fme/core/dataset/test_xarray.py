@@ -8,6 +8,7 @@ from collections import namedtuple
 from collections.abc import Iterable, Sequence
 
 import cftime
+import fsspec
 import numpy as np
 import pandas as pd
 import pytest
@@ -21,8 +22,13 @@ from fme.core.coordinates import (
     LatLonCoordinates,
     NullVerticalCoordinate,
 )
+from fme.core.dataset import xarray as xarray_module
 from fme.core.dataset.concat import XarrayConcat, get_dataset
-from fme.core.dataset.merged import MergedXarrayDataset
+from fme.core.dataset.merged import (
+    MergeDatasetConfig,
+    MergedXarrayDataset,
+    get_per_dataset_names,
+)
 from fme.core.dataset.schedule import IntSchedule
 from fme.core.dataset.time import RepeatedInterval, TimeSlice
 from fme.core.dataset.utils import FillNaNsConfig
@@ -38,6 +44,7 @@ from fme.core.dataset.xarray import (
     _get_timestep,
     _get_vertical_coordinate,
     _repeat_and_increment_time,
+    get_raw_paths,
     get_xarray_dataset,
 )
 from fme.core.spatial_mask_provider import SpatialMaskProvider
@@ -1018,8 +1025,6 @@ def test_get_raw_times_is_memoized_and_serial(tmp_path, monkeypatch):
     setup slow enough to trip the NCCL watchdog, and the parallel workarounds
     that hid the cost were unsafe (fork deadlock, then HDF5 heap corruption).
     """
-    from fme.core.dataset import xarray as xarray_module
-
     n_files = 13
     times = xr.date_range("2000", freq="6h", periods=2 * n_files, use_cftime=True)
     paths = []
@@ -1054,10 +1059,6 @@ def test_get_raw_times_is_memoized_and_serial(tmp_path, monkeypatch):
 
 def test_get_raw_paths_local_matches_fsspec(mock_monthly_netcdfs):
     """The local fast path must return exactly what the fsspec path returns."""
-    import fsspec
-
-    from fme.core.dataset.xarray import get_raw_paths
-
     tmpdir = str(mock_monthly_netcdfs.tmpdir)
     fast = get_raw_paths(tmpdir, "*.nc")
     reference = sorted(fsspec.filesystem("file").glob(os.path.join(tmpdir, "*.nc")))
@@ -1256,8 +1257,6 @@ def test_combine_config_validation():
 
 def test_combine_target_routes_to_correct_merge_member(mock_monthly_netcdfs):
     """A merged dataset must route a combine target to the member producing it."""
-    from fme.core.dataset.merged import MergeDatasetConfig, get_per_dataset_names
-
     producer = XarrayDataConfig(
         data_path=mock_monthly_netcdfs.tmpdir,
         combine={"total": {"foo": 1.0, "bar": 1.0}},

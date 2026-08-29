@@ -1,18 +1,43 @@
-# ACE2S pretraining on the E3SMv3 v3.LR.historical_0101.aigo run.
+# ACE2S atmosphere BASELINE for the 2026-08-31 hackathon (run E01).
+#
+# This file is the campaign baseline, not a maximal config. It is exactly
+#
+#     E01 = aug26.atm.A0_B16_C0_O5_W0_X0.S01
+#
+# in the naming scheme on the hackathon page: no CO2, no aerosol channels,
+# batch 16, equal loss weights, no AMP. Everything else in the run list is
+# generated from this file by make_ablation_config.py, which adds channels and
+# reweights the loss; nothing else about the model is varied. Regenerate the
+# whole campaign with sbatch-scripts/generate-campaign.sh.
+#
+# Baseline provenance (Elynn's piControl configuration, per the "FOR NASER"
+# box on the hackathon page):
+#   embed_dim 384, noise_embed_dim 32, equal loss weighting,
+#   checkpoint_save_epochs / ema_checkpoint_save_epochs every epoch,
+#   wandb 2D image metrics off, 1D logs kept.
+# Do not drift from those five without changing the page first.
 #
 # The raw EAM history files are read directly (no preprocessed zarr), so the
 # three E3SM-vs-FME mismatches are handled by the loader configuration:
-#   1. PRECT/PRECST are renamed to the names the piControl stats use.
+#   1. PRECT/PRECST are renamed to the names the stats use.
 #   2. PRECT/PRECST are in m/s, so they are scaled by the liquid water density
 #      (1000 kg/m3) to kg/m2/s. Without this the moisture budget corrector is
 #      off by 1e3 relative to DTENDTTW and LHFLX.
 #   3. E3SM writes dimensionless ak coefficients, so reference_pressure_name
 #      makes FME compute p = ak * P0 + bk * PS instead of p = ak + bk * PS.
 #
-# See README.md in this directory for the verified launch recipes, sizing
-# rules (batch_size must equal the rank count for this config) and known
-# gotchas. Quick version -- launch directly from the repo root, no wrapper
-# script, all paths are literal. On one node:
+# Sizing. `batch_size` is global and is split across ranks, and this config is
+# built for local batch 1, so the rank count must equal `batch_size`:
+#
+#     B08 ->  8 ranks = 2 nodes
+#     B16 -> 16 ranks = 4 nodes   <- the baseline
+#     B32 -> 32 ranks = 8 nodes
+#
+# The 16 inference initial conditions below divide 8 and 16 but not 32, so the
+# B32 variant needs 32 ICs; make_ablation_config.py rewrites the list rather
+# than leaving it to a dotlist override (which cannot index into a yaml list).
+#
+# Launch. From the repo root, no wrapper needed for a single node:
 #
 #   uv run torchrun --nproc_per_node 4 \
 #     -m fme.ace.train configs/experiments/e3sm_hist_v20260812/config-train-atm.yaml \
@@ -20,66 +45,40 @@
 #
 # and across nodes, from inside an salloc:
 #
-#   srun -N 2 --ntasks-per-node 1 --gpus-per-node 4 uv run --no-sync torchrun \
-#     --nnodes 2 --nproc_per_node 4 \
+#   srun -N 4 --ntasks-per-node 1 --gpus-per-node 4 uv run --no-sync torchrun \
+#     --nnodes 4 --nproc_per_node 4 \
 #     --rdzv-backend=c10d --rdzv-endpoint="$(hostname):29507" \
 #     -m fme.ace.train configs/experiments/e3sm_hist_v20260812/config-train-atm.yaml \
 #     --override experiment_dir=$PSCRATCH/fme-output/hist-test
 #
-# For a quick plumbing test rather than a real run. Dotlist overrides CANNOT
-# index into a yaml list ("Cannot merge DictConfig with ListConfig"), so
-# anything under `inference:` or `concat:` has to be changed with sed, and
-# everything else can be an --override:
-#
-#   sed -e 's/n_forward_steps: 17520/n_forward_steps: 20/' \
-#       -e 's/forward_steps_in_memory: 20/forward_steps_in_memory: 10/' \
-#       -e "s/stop_time: '1990-01-01T00:00:00'/stop_time: '1940-04-01T00:00:00'/" \
-#       -e "s/stop_time: '2040-01-01T00:00:00'/stop_time: '2000-04-01T00:00:00'/" \
-#       config-train.yaml > /tmp/test.yaml
-#
-#   uv run torchrun --nproc_per_node 4 -m fme.ace.train /tmp/test.yaml --override \
-#     experiment_dir=$PSCRATCH/fme-output/hist-test max_epochs=1 \
-#     save_checkpoint=false logging.log_to_wandb=false \
-#     validation.loader.dataset.subset.stop_time=1990-07-01T00:00:00 \
-#     stepper.step.config.builder.config.embed_dim=64 \
-#     stepper.step.config.builder.config.num_layers=2 \
-#     stepper.step.config.builder.config.spectral_layers=1
-#
-# That exact recipe was run on 4 GPUs: train 2.863, valid 3.023, inference
-# error 0.755, ~8 min wall clock (most of it opening the 1501 files, since
-# every loader globs the full record and applies `subset` afterwards).
+# For the queue, use sbatch-scripts/run-train.sh, which stages and validates the
+# config before it burns an allocation. During the hackathon window also export
+# RESERVATION=_CAP_aigs_hist or the job sits in the regular queue while the 96
+# reserved nodes idle.
 #
 # Do not shrink the validation window much further. With `time_buffer: 10` the
 # loader keeps only every 11th start index, so a split needs roughly
-# `11 * batch_size * n_ranks` timesteps to yield even one batch; at 6-hourly
-# that is ~90 days for batch_size 32 on 4 ranks. Below that it fails with
+# `11 * batch_size` timesteps to yield even one batch; at 6-hourly that is
+# ~45 days for batch_size 16. Below that it fails with
 # "No batches in dataloader: 0 samples".
 #
-# Without the sed, inference alone is 16 initial conditions x 17520 steps
-# (12 years each), so a "quick" test is not quick.
-#
-# Rank counts: `batch_size` and the number of inference initial conditions must
-# both divide the number of ranks. The 16 ICs below cover 1/2/4/8/16 ranks;
-# `batch_size: 8` covers up to 8, so for a 16-rank test also pass
-# `--override train_loader.batch_size=16`. (Dotlist overrides cannot rewrite
-# the IC list itself, which is why it is sized at 16 here.)
-#
-# CO2 and aerosols (the point of training on historical rather than piControl):
-#   - CO2 enters as `global_mean_co2` (renamed from the scalar `co2vmr`, which
-#     the loader broadcasts to the grid). Its normalization is in the stats at
-#     3.658244e-04 / 5.128173e-05 -- mean/std of co2vmr over the 90 training
-#     years. Training range is -1.06 to +2.11 normalized; the 12yr_test rollout
-#     reaches +3.59, i.e. it extrapolates in the forcing as well as the dynamics.
-#   - Aerosol forcings `aerindexall` (aerosol index) and `colccn.3` (column CCN
-#     at S=0.3%) are inputs; cloud diagnostics `lwp`, `lcc`, `cdnc` are outputs,
-#     so the aerosol-cloud response is trained. All five are 2D fields present
-#     in every h0 file, and all have entries in the stats below.
+# See README.md for verified launch recipes and known gotchas, and
+# EXPERIMENTS.md for the campaign design and the readiness assessment.
 experiment_dir: /pscratch/sd/m/mahf708/fme-output/hist-train
 save_checkpoint: true
+seed: 1
 validate_using_ema: true
 ema:
   decay: 0.999
 max_epochs: 30
+# Every epoch, both the training checkpoint (with optimizer state) and the EMA
+# checkpoint (weights only), so a run can be evaluated at any epoch rather than
+# only at the best-validation point. Storage cost is real -- see EXPERIMENTS.md
+# "Checkpoint storage" before raising max_epochs.
+checkpoint_save_epochs:
+  step: 1
+ema_checkpoint_save_epochs:
+  step: 1
 inference:
   - name: inference
     weight: 1.0
@@ -87,7 +86,7 @@ inference:
     forward_steps_in_memory: 20
     loader:
       start_indices:
-        times:
+        times: &train_window_ics
         - '1940-01-03T12:00:00'
         - '1945-01-03T12:00:00'
         - '1950-01-03T12:00:00'
@@ -116,21 +115,45 @@ inference:
           multiply_scalar:
             surface_precipitation_rate: 1000.0
             frozen_precipitation_rate: 1000.0
-      num_data_workers: 2
-    aggregator:
-      log_histograms: true
-  # held out: initial conditions and the full 12 year rollout are outside the
-  # training subsets
+      num_data_workers: 8
+    # 1D logs only: every 2D image metric is off (see `aggregator_1d` below for
+    # what that means and which one exception is kept).
+    aggregator: &inference_aggregator_1d
+      histogram:
+        enabled: true          # 1D distribution plot, cheap, kept
+      zonal_mean:
+        enabled: false         # lat x time image
+      video:
+        enabled: false         # animated maps
+      trend:
+        enabled: false         # per-cell slope maps
+      seasonal:
+        enabled: false         # seasonal-mean maps
+      near_zero_fraction:
+        enabled: false         # maps
+      enso_coefficient:
+        enabled: false         # regression coefficient maps
+      step_diagnostics:
+        correction_scalars: true
+        correction_maps: false
+      # KEPT ON DELIBERATELY: time_mean_denorm / time_mean_norm. They emit
+      # `time_mean/rmse/<var>` and `time_mean/bias/<var>` scalars -- the headline
+      # skill numbers for the whole campaign -- and the bias map is a byproduct
+      # with no separate switch. Disabling them to remove the image would remove
+      # the metric everyone is going to compare runs on. mean/mean_norm,
+      # power_spectrum, annual, enso_index and ipo_index are 1D and stay on.
+  # Held out: initial conditions and the full 12 year rollout are outside the
+  # training subsets.
   - name: 12yr_test
     weight: 0.0
     epochs:
-      start: 0
+      start: 4
       step: 5
     n_forward_steps: 17520
     forward_steps_in_memory: 20
     loader:
       start_indices:
-        times:
+        times: &test_window_ics
         - '2040-01-03T12:00:00'
         - '2040-07-03T12:00:00'
         - '2041-01-03T12:00:00'
@@ -148,20 +171,44 @@ inference:
         - '2047-01-03T12:00:00'
         - '2047-07-03T12:00:00'
       dataset: *dataset
-      num_data_workers: 2
-    aggregator:
-      log_histograms: true
+      num_data_workers: 8
+    aggregator: *inference_aggregator_1d
+# wandb. Both realms go to ONE project so atmosphere and ocean runs sit in the
+# same workspace and can be filtered by tag rather than compared across projects.
+# `entity` is the team, not the account: `wandb login` prints
+# "Currently logged in as: <username> (<entity>)", so e3sm-ai is the account and
+# e3sm-aig is the entity.
+#
+# Run identity is NOT set here -- WANDB_NAME, WANDB_RUN_GROUP, WANDB_JOB_TYPE,
+# WANDB_TAGS and WANDB_NOTES are read straight from the environment by the wandb
+# library. make_ablation_config.py writes them into runs/<runid>.env and
+# run-train.sh exports them, so an ad-hoc launch of this file lands unnamed.
 logging:
   log_to_screen: true
   log_to_wandb: true
   log_to_file: true
-  project: ace-eamv3
-  entity: ai2cm
+  project: SamudrACE-E3SMv3
+  entity: e3sm-aig
 train_loader:
-  batch_size: 8
-  num_data_workers: 2
+  # Data loading. MEASURED 2026-08-29 on 4 nodes / 16 ranks: the committed
+  # `num_data_workers: 2, prefetch_factor: 1` and the default
+  # `time_buffer_pool_size: 1` ran at 3.16 s/batch effective against a
+  # 0.90 s/batch compute-bound rate -- every 60-120 steps one interval took
+  # 163-216 s while GPU memory sat flat, i.e. the time_buffer window refill was
+  # starving the GPU. These three settings measured 0.925 s/batch over 680 steps
+  # with 500 consecutive clean ones. That is the difference between a 63 h
+  # 30-epoch run and a 216 h one in a 126 h window. Do not lower them without
+  # re-measuring. See EXPERIMENTS.md "Measurements".
+  #
+  # `time_buffer_pool_size: 2` also decorrelates consecutive output batches,
+  # which otherwise all come from the same preloaded window -- a sampling change
+  # as well as a throughput one, applied identically to every run in the
+  # campaign so comparisons stay valid.
+  batch_size: 16
+  num_data_workers: 8
   time_buffer: 10
-  prefetch_factor: 1
+  time_buffer_pool_size: 2
+  prefetch_factor: 4
   dataset:
     concat:
     - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
@@ -182,10 +229,11 @@ train_loader:
         stop_time: '2040-01-01T00:00:00'
 validation:
   loader:
-    batch_size: 32
-    num_data_workers: 2
+    batch_size: 16
+    num_data_workers: 8
     time_buffer: 10
-    prefetch_factor: 1
+    time_buffer_pool_size: 2
+    prefetch_factor: 4
     dataset:
       data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
       file_pattern: *file_pattern
@@ -195,6 +243,13 @@ validation:
       subset:
         start_time: '1990-01-01T06:00:00'
         stop_time: '1995-01-01T00:00:00'
+  # 1D logs only: the one-step aggregator's two image metrics are off. Its
+  # scalar mean/mean_norm/power_spectrum/ensemble metrics are unaffected.
+  aggregator:
+    snapshot:
+      enabled: false
+    mean_map:
+      enabled: false
 optimization:
   enable_automatic_mixed_precision: false
   lr: 0.0001
@@ -208,21 +263,9 @@ stepper_training:
   optimize_last_step_only: true
   loss:
     type: EnsembleLoss
-    weights:
-      T_0: 0.5
-      T_1: 0.5
-      U_0: 0.5
-      V_0: 0.5
-      STW_0: 0.25
-      STW_1: 0.25
-      STW_2: 0.5
-      surface_precipitation_rate: 2
-      FLDS: 2
-      FLUS: 5
-      FSNS: 2
-      FSUTOA: 2
-      DTENDTTW: 0.5
-      PS: 3
+    # Equal loss weighting (W0). `weights` defaults to {}, which is uniform; the
+    # W1/W2/W4 variants are written by make_ablation_config.py. Do not add a
+    # weights block here -- the baseline is the unweighted control.
     kwargs:
       crps_weight: 0.9
       energy_score_weight: 0.1
@@ -234,8 +277,9 @@ stepper:
       builder:
         type: NoiseConditionedSFNO
         config:
-          embed_dim: 512
-          noise_embed_dim: 64
+          embed_dim: 384
+          checkpointing: 3
+          noise_embed_dim: 32
           noise_type: isotropic
           filter_type: linear
           use_mlp: true
@@ -247,11 +291,11 @@ stepper:
           affine_norms: true
       normalization:
         network:
-          global_means_path: /pscratch/sd/m/mahf708/2026-08-13-E3SMv3-historical-stats/train-only/atmosphere/centering.nc
-          global_stds_path: /pscratch/sd/m/mahf708/2026-08-13-E3SMv3-historical-stats/train-only/atmosphere/scaling-full-field.nc
+          global_means_path: /global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/stats-2026-08-13/train-only/atmosphere/centering.nc
+          global_stds_path: /global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/stats-2026-08-13/train-only/atmosphere/scaling-full-field.nc
         residual:
-          global_means_path: /pscratch/sd/m/mahf708/2026-08-13-E3SMv3-historical-stats/train-only/atmosphere/centering.nc
-          global_stds_path: /pscratch/sd/m/mahf708/2026-08-13-E3SMv3-historical-stats/train-only/atmosphere/scaling-residual.nc
+          global_means_path: /global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/stats-2026-08-13/train-only/atmosphere/centering.nc
+          global_stds_path: /global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/stats-2026-08-13/train-only/atmosphere/scaling-residual.nc
       ocean:
         surface_temperature_name: TS
         ocean_fraction_name: OCNFRAC
@@ -275,9 +319,6 @@ stepper:
         - FLDS
         - FSNS
         - FSUTOA
-        - lwp
-        - lcc
-        - cdnc
       next_step_forcing_names:
       - SOLIN
       in_names:
@@ -324,9 +365,6 @@ stepper:
       - Uat10m
       - Vat10m
       - Tat2m
-      - global_mean_co2
-      - aerindexall
-      - colccn.3
       out_names:
       - PS
       - TS
@@ -378,6 +416,3 @@ stepper:
       - Uat10m
       - Vat10m
       - Tat2m
-      - lwp
-      - lcc
-      - cdnc

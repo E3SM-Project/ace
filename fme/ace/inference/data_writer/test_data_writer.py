@@ -80,6 +80,17 @@ def test_data_writer_config_prediction_names_warns_when_predictions_disabled():
         )
 
 
+def test_data_writer_config_prediction_names_rejects_empty_list():
+    # An empty allowlist would silently write prediction files with no
+    # data variables, so it must fail loudly at config construction.
+    with pytest.raises(ValueError, match="prediction_names is empty"):
+        DataWriterConfig(
+            save_prediction_files=True,
+            save_monthly_files=True,
+            prediction_names=[],
+        )
+
+
 def get_paired_data(
     prediction: TensorMapping, reference: TensorMapping, time: xr.DataArray
 ) -> PairedData:

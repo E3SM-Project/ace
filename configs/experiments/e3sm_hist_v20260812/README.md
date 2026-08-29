@@ -11,11 +11,19 @@ ocean's step window at runtime, and resolves SST→TS online.
 | config | trains | timestep | reads |
 |---|---|---|---|
 | `config-train-atm.yaml` | ACE2S atmosphere | 6-hourly | `eam.h0.*.nc` |
-| `config-train-ocn.yaml` | Samudra ocean | 5-day | `mpaso`/`mpassi` `*5D*.remapped.nc` + LANDFRAC |
+| `config-train-ocn.yaml` | Samudra ocean | 5-day (or 1-day, see below) | `mpaso`/`mpassi` `*5D*.remapped.nc` + LANDFRAC |
 | `config-train-cpl.yaml` | coupled finetune | both | both |
 
 **Production order:** train the atmosphere and the ocean separately, then
 regenerate the coupled config with both checkpoints injected and finetune.
+
+> **The two component configs are hackathon baselines, not templates.**
+> `config-train-atm.yaml` *is* run `E01` and `config-train-ocn.yaml` *is* run
+> `E11` of the 2026-08-31 campaign
+> ([page](https://e3sm.atlassian.net/wiki/spaces/p3ai/pages/6550683662)).
+> Every other run is generated from them by `make_ablation_config.py`. Editing
+> either file changes the campaign's control, so read
+> [EXPERIMENTS.md](EXPERIMENTS.md) first.
 
 ---
 
@@ -36,7 +44,19 @@ uv run torchrun --nproc_per_node 4 -m fme.ace.train $PSCRATCH/smoke-ocn.yaml
 
 # 3. a production run (submits to the batch queue, resumes automatically)
 ./sbatch-scripts/run-train.sh ocn
+
+# 4. the whole 2026-08-31 campaign: 30 runs generated from the two baselines
+./sbatch-scripts/generate-campaign.sh --list      # run list + node budget
+./sbatch-scripts/generate-campaign.sh             # writes runs/
+./sbatch-scripts/submit-campaign.sh --dry-run     # what would be queued
+RESERVATION=_CAP_aigs_hist ./sbatch-scripts/submit-campaign.sh
 ```
+
+**During the hackathon window you must export `RESERVATION=_CAP_aigs_hist`.**
+Nothing sets it for you, and without it every job sits in the regular queue
+while the 96 reserved nodes idle. Drop it for anything that will continue past
+the window's end (Sat 2026-09-05 15:00) — a segment that cannot finish inside
+the reservation will not start in it.
 
 The coupled config uses a **different entry point** — `fme.coupled.train` and
 `fme.coupled.validate_config`, not `fme.ace.*`. `run-train.sh` handles this.
@@ -51,11 +71,18 @@ The coupled config uses a **different entry point** — `fme.coupled.train` and
 | `config-train-ocn.yaml` | ocean training config |
 | `config-train-cpl.yaml` | coupled config — **generated, do not hand-edit** |
 | `make_cpl_config.py` | generates the above from the other two |
+| `make_ablation_config.py` | **generates the whole campaign** from the two baselines |
+| `check_campaign.py` | asserts every run config matches its run id (run after generating) |
+| `runs/` | the 30 generated run configs, their `.env` provenance, and `MANIFEST.tsv` |
+| `make_time_ramp.py` | builds the physics-free clock control (built, unscheduled) |
+| `EXPERIMENTS.md` | campaign design, schedule, blockers, decision rules |
 | `make_smoke_config.py` | derives a short test config from a production one |
-| `make_landfrac_5d.py` | builds the LANDFRAC-on-the-ocean-axis input file |
+| `make_landfrac_ocn.py` | builds LANDFRAC/sea_surface_fraction on the ocean axis (`--cadence 5d|1d`) |
 | `compute_hist_stats.py` | computes the normalization statistics |
 | `stage-shared-data.sh` | puts the input data somewhere colleagues can read it |
-| `sbatch-scripts/run-train.sh` | **the production entry point** — stage, validate, submit |
+| `sbatch-scripts/run-train.sh` | **the production entry point** — stage, validate, size, submit |
+| `sbatch-scripts/generate-campaign.sh` | one call, regenerates `runs/` |
+| `sbatch-scripts/submit-campaign.sh` | walks `runs/MANIFEST.tsv` in priority order |
 | `sbatch-scripts/sbatch-train-{atm,ocn,cpl}.sh` | the batch job for each realm |
 | `sbatch-scripts/requeueable-train.sh` | per-node payload; handles preemption and requeue |
 | `NOTES-historical-stats.md` | how the normalization statistics were derived |
@@ -64,9 +91,9 @@ The coupled config uses a **different entry point** — `fme.coupled.train` and
 
 ### Why the scripts exist rather than being config
 
-* **`make_cpl_config.py`** — 401 of the coupled config's 765 lines (52%) are a
+* **`make_cpl_config.py`** — 412 of the coupled config's 837 lines (49%) are a
   verbatim mirror of the atm and ocn stepper blocks. YAML anchors do not cross
-  files, so this script is the only thing keeping ~400 lines of channel
+  files, so this script is the only thing keeping ~410 lines of channel
   definitions in sync. **Regenerate after editing either component config.**
   `--check` exits non-zero with a diff if the committed file has drifted, and
   is the thing to run in CI.
@@ -75,7 +102,66 @@ The coupled config uses a **different entry point** — `fme.coupled.train` and
   members. The script also keeps inference initial conditions on the ocean's
   5-day axis and keeps the coupled realms' first timestamps equal; both are
   enforced at runtime and fail the run otherwise.
-* **`make_landfrac_5d.py`** — produces a data file no config can synthesise.
+* **`make_landfrac_ocn.py`** — produces a data file no config can synthesise.
+* **`make_ablation_config.py`** — the campaign's 30 runs differ in channel
+  lists, loss weights, batch size and rank count, and three of those cannot be
+  expressed as `--override` dotlists at all (they index into YAML lists). The
+  script is also where the divisibility rules and the `12yr_test` final-epoch
+  rule are enforced, on a login node, before an allocation is burned.
+
+---
+
+## Weights & Biases
+
+All 33 runs go to **one** project so both realms sit in the same workspace:
+
+| | |
+|---|---|
+| entity | `e3sm-aig` |
+| project | `SamudrACE-E3SMv3` |
+
+`entity` is the **team**, not the account. `wandb login` prints
+`Currently logged in as: <username> (<entity>)`, so `e3sm-ai` is the account and
+`e3sm-aig` is what goes in `logging.entity`. `check_campaign.py` asserts both on
+every generated config.
+
+Run identity is **not** in the yaml — `WANDB_NAME`, `WANDB_RUN_GROUP`,
+`WANDB_JOB_TYPE`, `WANDB_TAGS` and `WANDB_NOTES` are read straight from the
+environment by the wandb library. `make_ablation_config.py` writes them into
+`runs/<runid>.env` and `run-train.sh` exports them, so a campaign run is named
+and tagged automatically and an ad-hoc `run-train.sh atm` lands unnamed.
+
+    WANDB_NAME=E17.aug26.ocn.A0_B16_C0_O1_W0_X0.S01
+    WANDB_RUN_GROUP=aug26.ocn.E17          # seeds collapse into one group
+    WANDB_JOB_TYPE=A0_B16_C0_O1_W0_X0      # the factor word
+    WANDB_TAGS=aug26,E17,ocn,A0,B16,C0,O1,W0,X0,S01,P2
+
+Every factor is its own tag, so "every C1 run" or "every W2 run" is a filter.
+
+### Logging in
+
+**Each person uses their own key — do not pass one key around.** A W&B API key
+is a personal credential: whoever holds it can read, edit and delete anything
+that account can, and every run made with it is attributed to that account, so
+"who ran this" stops being answerable.
+
+The supported way to share a project is to share the **team**:
+
+1. A team admin adds each person to the `e3sm-aig` team in the W&B UI
+   (Team settings → Members → Invite).
+2. Each person runs `wandb login` once on Perlmutter and pastes **their own** key
+   from <https://wandb.ai/authorize>. That writes `~/.netrc` mode 600.
+3. Runs land in `e3sm-aig/SamudrACE-E3SMv3` regardless of who launched them,
+   because the entity and project come from the config.
+
+For unattended jobs that should not carry a person's identity, W&B supports
+**team service accounts** (Team settings → Service accounts). That key is
+designed to be shared inside a team and its runs are attributed to the service
+account. That is the right mechanism if a shared key is genuinely wanted.
+
+Either way the key belongs in `~/.netrc` or in `WANDB_API_KEY` in the
+environment — **never** in a config, in the repo, or on the wiki page. If a key
+does end up somewhere shared, rotate it at <https://wandb.ai/authorize>.
 
 ---
 
@@ -146,40 +232,50 @@ Pin the versions — a newer ruff reformats untouched lines and adds diff noise.
 Two divisibility rules must both hold, and they decide the rank count for you:
 
 1. **`batch_size` must be divisible by the number of ranks.** Reported clearly.
+   `batch_size` is *global* — `dist.local_batch_size` divides it across ranks
+   (`fme/ace/data_loading/getters.py:120`), so widening a run is changing the
+   global batch unless you hold `batch_size` fixed.
 2. **Each inference block's initial-condition count must be divisible by the
    rank count.** Reported as `UnionMatchError: can not match type "list"`,
    which says nothing useful — re-validate at the same world size to see the
    real message.
 
-| config | train `batch_size` | val `batch_size` | inference ICs | **valid rank counts ≤ 16** |
+| config | train `batch_size` | val `batch_size` | inference ICs | **valid rank counts** |
 |---|---|---|---|---|
-| atm | 8 | 32 | 16, 16 | 1, 2, 4, 8 |
+| atm | 16 | 16 | 16, 16 | 1, 2, 4, 8, 16 |
 | ocn | 16 | 16 | 16, 16 | 1, 2, 4, 8, 16 |
 | cpl | 8 | 8 | 8 | 1, 2, 4, 8 |
 
-Measured peak memory per GPU on `A100-SXM4-80GB`:
+Measured peak memory per GPU on `A100-SXM4-80GB`, **at the current
+`embed_dim: 384` baseline with `checkpointing: 3`** (2026-08-29, 16 ranks):
 
 | config | local batch | peak/GPU | |
 |---|---|---|---|
-| atm | 1 | **61.8 GB** | runs |
-| atm | 2 | 77.4 GB | **OOM even at 80 GB** |
+| atm | 1 | **19.0 GB** | runs, with three-quarters of the card free |
 | ocn | 4 | 15.5 GB | runs |
-| cpl | 1 | 37.8 GB steady, **77.1 GB peak** | runs, but see below |
+| cpl | 1 | 37.8 GB steady, 77.1 GB peak | runs; measured at `embed_dim: 512` |
 
-**As shipped, all three configs need 80 GB cards.** The atmosphere wants local
-batch 1, so `batch_size` must equal the rank count — **8 ranks (2 nodes) is the
-intended atmosphere configuration**. The coupled config looks modest most of the
-time but peaks near 77 GB whenever the atmosphere's `n_steps` distribution draws
-its 41-step rollout, which is 96% of an 80 GB card.
+The atmosphere model is 456,223,488 trainable parameters at `embed_dim: 384`.
 
-**This is fixable — see "Making the coupled config fit" below.** Enabling
-gradient checkpointing drops the atmosphere to 28.4 GB with bit-identical
-gradients, which removes the coupled memory cliff entirely.
+**Superseded, kept for the record.** The earlier figures — atm 61.8 GB at local
+batch 1 and an OOM at local batch 2 — were measured at `embed_dim: 512` with
+`checkpointing: 0`. The current baseline is narrower *and* checkpointed, which is
+why it is 3× smaller. Do not quote the 61.8 GB number against today's config.
 
-To go wider, raise `batch_size` to the rank count and add initial conditions so
-their count stays divisible too. Per-GPU memory does not change with rank count
-at fixed local batch, so **scaling out is the walltime lever** — the atmosphere
-at 16 ranks costs the same GPU-hours and finishes in half the wall time.
+**Local batch 2 measures 28.7 GB at 384** — it fits with room to spare and is
+marginally better per sample. It halves the node count of every run but doubles
+the epoch, so the campaign stays at local batch 1; see `EXPERIMENTS.md`
+"Measurements" for the trade.
+
+To go wider at fixed local batch, raise `batch_size` to the rank count and add
+initial conditions so their count stays divisible too — but note that this
+changes the **global** batch, which for the campaign is a scientific variable
+(the `B` factor), not a free knob. Per-GPU memory does not change with rank
+count at fixed local batch, so scaling out this way costs the same GPU-hours and
+buys wall time at the price of a different optimizer trajectory.
+
+`make_ablation_config.py` does all of this for the campaign runs, and
+`run-train.sh` reads the resulting node count out of the run's `.env`.
 
 ---
 
@@ -235,8 +331,15 @@ right one — one rank per GCD with `--gpus-per-task=1 --gpu-bind=closest`.
 
 Resuming is automatic: relaunch against the same `experiment_dir` and it logs
 `Resuming training from ...` / `Beginning epoch after N complete epochs`.
-Checkpoints are per-epoch, so a requeue mid-epoch repeats that epoch. Budget
-disk: the coupled `ckpt.tar` is 14 GB and is rewritten every interval.
+A checkpoint is written at every epoch boundary and again on graceful
+shutdown (atomic tmp-file + rename, so a killed save leaves the previous one
+intact), and resume skips the batches already processed in the current
+epoch — a USR1 requeue mid-epoch therefore continues the epoch rather than
+repeating it. The exception is the worst case: if the 14 GB restart save
+itself is killed mid-write (torchrun SIGKILLs about 30 s after SIGTERM and
+the save duration is unmeasured), the epoch repeats from its last boundary
+checkpoint. Budget disk: the coupled `ckpt.tar` is 14 GB and is rewritten
+every epoch.
 
 ---
 
@@ -257,12 +360,43 @@ Extrapolated to production:
 
 | config | ranks | batches/epoch | s/batch | **h/epoch** | `max_epochs` | **total** |
 |---|---|---|---|---|---|---|
-| ocn | 4 | 410 | 8.8 | **1.0** (measured) | 150 | **~6 days** |
-| atm | 8 | 16434 | 1.4 | **6.3** | 30 | **~8 days** |
+| ocn | 8 | 411 | **1.390** (measured alone; 2.945 contended) | **0.16** | 150 | **1.0 day** |
+| ocn, 1-daily | 8 | 2053 | **1.538** | **0.88** | 30 | **1.1 days** |
+| atm | 16 | 8210 | **0.925** (measured, tuned loader) | **2.11** | 30 | **2.6 days** |
 | cpl (production rollouts) | 8 | 1643 | **61.3** (measured) | **~28** | 5 | **~6 days** |
 
-The ocean row is the sanity check: 410 × 8.8 s predicts 1.0 h and the measured
-epoch was 3601 s, so the method holds.
+**The ocean row is also measured, and also moved by the loader.** At 8 ranks the
+old `num_data_workers: 2, prefetch_factor: 1` gave **24.36 s/step** against
+**3.10 s/step** at 8/4 — both contended, so read the ratio rather than the
+absolutes. Measured **alone** the committed config is **1.390 s/step**, a
+0.16 h epoch and 150 epochs in ~24 h.
+
+**Contention is worth 2× on the ocean.** The same config measured 1.390 s/step
+alone and 2.945 s/step alongside one other 2-node job on disjoint nodes — CFS is
+the binding resource, not the nodes. Setup moves too, 10.5 → 13.1 min. Expect
+campaign-scale numbers to be worse than any of these; stagger launches.
+
+**Do not add `time_buffer` to the ocean.** `time_buffer: 10` with
+`time_buffer_pool_size: 2` is killed by the host OOM killer before the first
+step. Each worker holds `prefetch_factor` input batches of
+`local_batch × (n_timesteps + time_buffer)` samples, and the ocean's window is
+~4.5× the atmosphere's (91 channels vs ~50, local batch 2 vs 1, 5 timesteps vs
+2), so the in-flight host memory goes 28 → 84 GB per node. It also is not needed:
+alone at `time_buffer: 0` a full 411-step epoch shows **no stalls at all**, every
+interval between 1.00 and 1.50 s. Raising workers and prefetch is what mattered.
+
+The older "410 × 8.8 s ≈ 1.0 h/epoch at 4 ranks" row was measured at 4 ranks with
+the starved loader; do not quote it against today's config.
+
+**The atmosphere row is measured, and it moved by 3.4× on 2026-08-29.** With the
+loader as previously committed (`num_data_workers: 2`, `prefetch_factor: 1`,
+default `time_buffer_pool_size: 1`) the effective rate was **3.155 s/batch** —
+7.2 h/epoch, and `max_epochs: 30` would not have fitted the hackathon window.
+The step log was bimodal: twenty steps at 17–18 s, then one interval at
+163–216 s, with GPU memory flat throughout. At `8 / 4 / 2` it is **0.925 s/batch**
+with 500 consecutive clean steps. Both baselines now ship those settings; see
+`EXPERIMENTS.md` "Measurements" for the caveats, including that the ocean was
+not measured.
 
 **The coupled figure is now measured, not extrapolated** (2026-08-24): a 6-year
 window on 8 ranks with the *production* training rollouts — `n_coupled_steps: 4`
@@ -314,6 +448,21 @@ same nodes, same config, only the flag changed:**
 |---|---|---|
 | atmosphere, `checkpointing: 0` | 61.8 GB | 2.11 |
 | atmosphere, `checkpointing: 3` | **28.4 GB** | 1.48 |
+
+Both rows are `embed_dim: 512`. **Re-measured at `embed_dim: 384` on
+2026-08-29, 8 ranks, same nodes, only the flag changed:**
+
+| | peak/GPU | s/batch |
+|---|---|---|
+| atmosphere 384, `checkpointing: 0` | 40.9 GB | 0.830 |
+| atmosphere 384, `checkpointing: 3` | **19.0 GB** | 0.850 |
+
+**A 54% memory reduction for 3–5% of step time.** The "+33% step compute" cost
+quoted for the 512-wide model does not survive the move to 384 — checkpointing
+is close to free here, and there is no reason to turn it off. Local batch 2 at
+`checkpointing: 3` measures 28.7 GB and 1.660 s/batch (0.830 s/sample), so it
+fits comfortably; see `EXPERIMENTS.md` for why the campaign stays at local
+batch 1 anyway.
 
 A 54% memory reduction, with gradients verified **bit-identical** to the
 uncheckpointed path (it is exact recompute, not an approximation). Throughput
@@ -410,10 +559,13 @@ width and depth, not rollout — which is exactly why checkpointing works so wel
 * **Scale out.** Per-GPU memory is independent of rank count at fixed local
   batch, so the atmosphere at 16 ranks is ~4 days instead of 8 for the same
   GPU-hours.
-* **Cut the *ocean's* `n_steps` distribution, not the atmosphere's.** Expected
-  outer steps per coupled batch is 2.34, driven by the ocean's `steps: 4`
-  outcome (p=0.3). Moving that mass to `steps: 2` is **−24% walltime**; to
-  `steps: 1`, −35%. Dropping the atmosphere's 41-step outcome buys only −3.5%.
+* **Cut the *ocean's* `n_steps` distribution, not the atmosphere's.** The
+  stepper runs `max(ocean_steps, ceil(atm_steps / 20))` outer steps per batch
+  (20 six-hour atmosphere steps per 120-hour ocean step), so with the current
+  draws the expectation is 2.29 and the ocean's `steps: 4` outcome (p=0.3)
+  is what mostly drives it. Moving that mass to `steps: 2` is **−25%
+  walltime**; to `steps: 1`, −37%. Dropping the atmosphere's 41-step outcome
+  (p=0.05) buys only ~−2.5%.
 * **Halving the coupled finetune record** (your 100→50 year idea) is exactly
   linear: 1643 → ~820 batches/epoch, **−50%**. It is the largest single
   walltime win and it costs no memory. The caveat: the config concatenates
@@ -455,6 +607,47 @@ monitoring; a 876-step (12-year) rollout from the last of them ends in 2059,
 inside the 2065 record.
 
 ### Ocean forcing: EAM names, MPAS data
+
+### Ocean cadence: 5-day and 1-day streams both exist
+
+The run directory carries both, 1501 files each, 1940–2065:
+
+| | streams | timestep | records/month |
+|---|---|---|---|
+| **O5** | `fmeDepthCoarsening5D`, `fmeDerivedFields5D`, `fmeSeaiceDerivedFields5D` | 5 days | 6 |
+| **O1** | the same names **without** the `5D` suffix | 1 day | 30 |
+
+Both are interval **means** (`time_bnds` span 5 days and 1 day), so switching is
+a data swap rather than a resample. Measured: per step the cadences are within
+~10% (1.390 vs 1.538 s), so the epoch cost is essentially the 5× sample count —
+but **dataset setup goes 10.5 → 50.7 min**, because the config builds 12 datasets
+and each opens all 1501 files to read time coordinates, with 5× the records each.
+That is paid on every start and requeue. The daily `fmeDepthCoarsening` also carries
+95 `*_inst` variables the 5-day stream does not; nothing here uses them.
+
+Four things move together, which is why `make_ablation_config.py` handles it
+rather than a `sed`: the three MPAS file patterns, the LANDFRAC aux file (which
+must be on the matching axis — `make_landfrac_ocn.py --cadence 1d`), each
+inference block's `n_forward_steps` (876 → 4380 for the same 12-year rollout),
+and `max_epochs` (an epoch holds 5× the samples). `check_campaign.py` rejects a
+config whose four merge members disagree on cadence — that either fails at load
+on time alignment or silently trains on the intersection.
+
+**Coupling.** `fme/coupled/requirements.py` *derives* the ratio,
+`n_steps_fast = ocean_timestep / atmosphere_timestep`, and requires the
+atmosphere timestep to divide the ocean's. Against a 6-hourly atmosphere that is
+**20** atmosphere steps per ocean step at O5 and **4** at O1 — both integers, so
+O1 needs no code change. At `n_coupled_steps: 4` a sample spans 20 days at O5 and
+4 days at O1; raising `n_coupled_steps` to 20 at O1 restores the 20-day horizon
+and the same 81 atmosphere timepoints per sample.
+
+The ocean statistics shipped here were computed on the 5-day stream. Measured
+1-day/5-day standard-deviation ratios: 1.000–1.005 for `temperature_*`, `sst`,
+`ssh` and ice area; **1.115** for `latentHeatFlux` and **1.130** for
+`velocityMeridional_18`. Means agree to four significant figures. A production
+1-day run should recompute its own with `compute_hist_stats.py`.
+
+---
 
 The ocean is forced from the MPAS streams but under **EAM variable names**,
 because atmosphere→ocean coupling is resolved by intersecting the ocean's
@@ -503,7 +696,7 @@ streams, but the coupled ocean needs them: a cell's sea ice fraction is
 substitute (~20% of ocean cells are coastal with fractional land). Merge members
 must share `sample_start_times`, so LANDFRAC is materialised on the 5-day axis:
 
-    uv run python make_landfrac_5d.py <output-dir>
+    uv run python make_landfrac_ocn.py <output-dir>
 
 126 year-files, 91 MB.
 
@@ -537,7 +730,7 @@ Headlines (details in `NOTES-historical-stats.md`):
 * **Why `train-only/`**: it covers 1940–1990 and 2000–2040, exactly the training
   windows. The full-record set spans 1940–2065 and has therefore seen the
   validation window and the `12yr_test` period, which is leakage. Restricting
-  is nearly free — of 350 numbers, all temperatures, winds, fluxes, salinities,
+  is nearly free — of 503 numbers, all temperatures, winds, fluxes, salinities,
   velocities, precipitation, `PS`, `TS` and `LANDFRAC` move under 2%.
 
 Three fields were dropped for a zero scale, each for a real reason: **`sol_tsi`
@@ -601,7 +794,7 @@ for `REAL_EXIT=0` and `DONE ---- rank 0`.
 
 These configs need `fme/` changes that are **committed on this branch but not
 yet merged to `main`**, so a checkout of `main` cannot run them. The branch is
-8 commits ahead of `main` and 3 behind.
+17 commits ahead of `main` and 3 behind.
 
 | commit | change | why |
 |---|---|---|
@@ -615,8 +808,8 @@ yet merged to `main`**, so a checkout of `main` cannot run them. The branch is
 `3d26128ec` (`DataWriterConfig.prediction_names`) is also on the branch but no
 config here uses it; it belongs to a separate PR.
 
-The upstreamable library work is a clean, reviewable delta — 9 files,
-+1161/−47, all with tests — and cutting it as a PR off `main` is the main
+The upstreamable library work is a clean, reviewable delta — 12 files,
++1227/−51, all with tests — and cutting it as a PR off `main` is the main
 outstanding task.
 
 ---

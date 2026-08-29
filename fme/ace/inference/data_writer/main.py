@@ -90,6 +90,12 @@ class DataWriterConfig:
             warnings.warn(
                 "prediction_names provided but save_prediction_files is False."
             )
+        if self.prediction_names is not None and len(self.prediction_names) == 0:
+            raise ValueError(
+                "prediction_names is empty; it must be a non-empty list, or "
+                "None to fall back to names. An empty list would write "
+                "prediction files containing no data variables."
+            )
         all_filenames = self._get_all_filenames()
         if len(set(all_filenames)) != len(all_filenames):
             raise ValueError(

@@ -8,7 +8,11 @@
 # Resume is automatic: training relaunches against the same experiment_dir and
 # picks up from <experiment_dir>/training_checkpoints/ckpt.tar (verified for
 # both realms, see README "Checkpointing and resuming"). Checkpoints are
-# per-epoch, so a requeue mid-epoch repeats that epoch (plus dataset setup).
+# written at every epoch boundary and again on graceful shutdown (atomic
+# tmp-file + rename), and resume skips the batches already processed in the
+# current epoch, so a USR1 requeue mid-epoch continues the epoch. Worst case -
+# the 14 GB restart save killed mid-write - the epoch repeats (plus dataset
+# setup).
 #
 # Required environment (exported by the calling sbatch script):
 #   TRAIN_CONFIG  absolute path to the config yaml (on shared FS, never /tmp)
