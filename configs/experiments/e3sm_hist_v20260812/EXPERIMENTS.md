@@ -992,11 +992,39 @@ Open:
 |---|---|
 | **CO₂ helps** | E02 beats E01 on `12yr_test` `time_mean/rmse` for `TS`, `T_*`, `PS`, outside E01's S01–S03 spread |
 | **Aerosols help** | E05 beats E02 on the same metric; E06 then says whether the two forcings are separable |
-| **A weight set wins** | it improves its target variables without degrading `time_mean/rmse/channel_mean`. W2 is mean-normalized so this comparison means something |
+| **A weight set wins** | it improves its target variables without degrading `time_mean/rmse/channel_mean`, by more than E05's S01–S03 spread on the same metric. W2 is mean-normalized so this comparison means something |
 | **AMP is worth it** | s/batch and whether the loss curve tracks E05's — nothing else. At `checkpointing: 3` the bf16 memory saving is 0.4 GB, and checkpointing itself costs only 3–5%, so E10 has to beat an efficient baseline |
-| **A batch size wins** | samples per second, and whether the validation curve at equal *sample count* — not equal step count — matches B16 |
+| **A batch size wins** | samples per second, and whether the validation curve at equal *sample count* — not equal step count — matches B16. Use `valid_loss`, not `inference_error`: the B32 arms need 32 ICs to divide their rank count, so they score inference on a different IC ensemble (Jan **and** Jul starts) than the B08/B16 arms' 16 January starts, and the two are not IC-matched |
 | **A learning rate scaling wins** | B32-L1 beats B32-L0 on validation at equal sample count. If it does, a B32-L0 deficit against B16 was a step-size problem rather than a batch-size one; if it does not, the batch-size reading stands |
 | **1-daily ocean is worth it** | E17 beats E11 on 12-year drift at equal **wall clock**, not equal epochs. It sees 5× the samples per epoch, so an equal-epoch comparison flatters it |
+
+### What counts as a result, for the arms with one seed
+
+**Pre-registered 2026-08-30, before any campaign run started.** Only E01, E02,
+E05 and E11 have three seeds. Every other arm has one, and the measured
+repeat-run noise floor is **0.0035** on `time_mean/rmse/channel_mean` against
+effects as small as **0.0025** — so a single-seed number read on its own is not
+readable.
+
+**The rule: a single-seed arm counts as a result only if it falls outside the
+three-seed spread of its parent on the same metric and the same epoch.** Every
+arm has one, by construction:
+
+| arms | differ only in | parent, which has S01–S03 |
+|---|---|---|
+| E03, E04 | `A` (aerosol) | E02 `A0_B16_C1` |
+| E06 | `C` (CO₂) | E05 `A3_B16_C1` |
+| E07 E08 E09 E15 | `W` (loss weights) | E05 `A3_B16_C1_W0_X0` |
+| E10 | `X` (AMP) | E05 `A3_B16_C1_W0_X0` |
+| E12 E13 E14 E16 | `W` | E11 `A0_B16_C0_O5_W0` |
+| E17 | `O` (cadence) | E11 `A0_B16_C0_O5_W0` |
+| every B08/B32 and L1 arm | `B`, `L` | the same experiment at B16 — E01, E02, E05 or E11, all three-seeded |
+
+Inside the parent's spread, report the arm as **"no effect resolvable at one
+seed"** — which is a real finding about effect size, not a failure — rather than
+as a direction. Do not read a sign off a difference smaller than the spread, and
+do not spend a seed to break a tie unless the arm is on the critical path: a
+fourth run of an arm whose effect is below the noise floor buys almost nothing.
 
 **Report the epoch a number came from.** With `checkpoint_save_epochs: 1` every
 epoch is on disk, so it is easy to compare epoch 28 of one run with epoch 30 of
