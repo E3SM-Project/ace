@@ -1156,9 +1156,24 @@ another.
   device 0 and every rank dies with `invalid device ordinal`.
 - **`srun` dies with the launching session.** Multi-hour work goes through
   `sbatch`.
-- **Expect I/O contention at campaign scale.** The measurements above are single
-  jobs; twenty-plus concurrent runs read the same 3.7 TB directory. Stagger
-  Monday's launches by a few minutes.
+- **Expect I/O contention at campaign scale, and treat it as the schedule's
+  main risk.** One competing 2-node job already cost the ocean 2.1x on step
+  time. The inputs are the reason: **6.03 TiB across 10,507 files** on CFS, in
+  `NETCDF3_64BIT_DATA` with no chunking and no compression, on a filesystem with
+  a **16 MiB block size**. netCDF-3 interleaves record variables by timestep, so
+  one variable's consecutive timesteps sit **19.3 MiB apart** — every read is a
+  ~259 KB strided hit into a distinct block, readahead cannot help, and a job
+  drags most of a file's extent across the wire to use the 28% of it the model
+  actually reads. One atmosphere epoch touches **2.42 TiB of extent for 0.68 TiB
+  of useful data**; all 35 runs together are order **5 GiB/s useful and up to
+  11 GiB/s of extent, sustained for five days** — roughly 800 TiB read over the
+  week against 6 TiB of distinct input. Follow the launch ramp above rather than
+  releasing 129 nodes at once.
+- **If this campaign is ever repeated, stage the inputs to scratch or rewrite
+  them chunked.** CFS is NERSC's sharing filesystem, not its job-I/O
+  filesystem, and re-reading the same 6 TiB on the order of 130-300x is the
+  thing to fix — but it is hours of work that itself hammers CFS, so it is a
+  next-campaign change, not a night-before one.
 
 ---
 
