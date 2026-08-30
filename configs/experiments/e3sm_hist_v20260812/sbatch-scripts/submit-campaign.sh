@@ -12,18 +12,18 @@
 # independent from-scratch training, so this just walks ../runs/MANIFEST.TSV in
 # priority order and submits. Slurm decides what runs when.
 #
-# Why priority order matters. The run list adds up to 111 nodes and the
-# reservation is 96, so 15 nodes' worth cannot start at once. Submitting in
+# Why priority order matters. The run list adds up to 129 nodes and the
+# reservation is 96, so a third of it cannot start at once. Submitting in
 # priority order means the queue drains in the order the science needs:
 #
 #   P1  14 nodes  the four bolded baselines at B16 S01 (E01 E02 E05 E11)
-#   P2  34 nodes  the single-seed science ablations -- the only measurement of
+#   P2  42 nodes  the single-seed science ablations -- the only measurement of
 #                 their factor that exists at all
 #   P3  28 nodes  seeds S02/S03 of the bolded four
-#   P4  35 nodes  the B08/B32 batch sweeps -- an optimizer question, not a
+#   P4  45 nodes  the B08/B32 batch sweeps -- an optimizer question, not a
 #                 science question, and the right thing to lose to a queue
 #
-# P1+P2+P3 = 76 nodes and fits with 20 to spare; P4 lands as capacity frees.
+# P1+P2+P3 = 84 nodes and fits with 12 to spare; P4 lands as capacity frees.
 #
 # During the hackathon window, export the reservation or every job sits in the
 # regular queue while the 96 reserved nodes idle:
@@ -38,6 +38,10 @@
 # either filter on the subject or submit with FME_MAIL_TYPE=FAIL,TIME_LIMIT_90
 # to hear only about trouble.
 
+# run-train.sh refuses a dirty worktree and refuses to submit into an output
+# directory that already holds a checkpoint, so a campaign submission fails
+# fast rather than half-queueing. Commit first; pass --resume per run to
+# continue runs that already exist.
 set -euo pipefail
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)

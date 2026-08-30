@@ -54,13 +54,18 @@ export FME_OVERRIDE_ARGS="experiment_dir=$FME_OUTPUT_DIR"
   echo "config       $TRAIN_CONFIG"
   echo "output       $FME_OUTPUT_DIR"
   echo "commit       $(cat "$CONFIG_DIR/COMMIT" 2>/dev/null || echo unknown)"
+  echo "config sha   $(cat "$CONFIG_DIR/CONFIG_SHA256" 2>/dev/null || echo unknown)"
   echo "wandb        ${WANDB_NAME:-<unset>} in ${WANDB_RUN_GROUP:-<unset>}"
   echo "started      $(date -Is)"
   echo "==================================================================="
 } >&2
 
-# Keep a copy of exactly what ran next to the output.
-cp -r "$CONFIG_DIR" "$FME_OUTPUT_DIR/job_config"
+# Keep a copy of exactly what ran next to the output. `cp -r src dst` nests
+# as dst/<uuid> once dst exists, so a requeued or resumed segment used to
+# bury its config one level deeper each time -- and run-train.sh now reads
+# job_config/<config> back to refuse a mismatched resume.
+mkdir -p "$FME_OUTPUT_DIR/job_config"
+cp -r "$CONFIG_DIR/." "$FME_OUTPUT_DIR/job_config/"
 
 srun --nodes=$SLURM_JOB_NUM_NODES --ntasks-per-node=1 --gpus-per-node=4 \
      "$CONFIG_DIR/requeueable-train.sh"

@@ -4,6 +4,7 @@
 #     ./run-train.sh atm|ocn|cpl                        # the committed config
 #     ./run-train.sh atm <runid> [--after <jobid>]      # a campaign run
 #     ./run-train.sh atm <runid> --no-submit            # stage + validate only
+#     ./run-train.sh atm <runid> --resume               # continue an existing run
 #
 # With a run id, the config is taken from ../runs/<runid>.yaml, the matching
 # ../runs/<runid>.env is sourced so the run is named in wandb and sized
@@ -34,13 +35,15 @@ REALM="${1:-}"
 case "$REALM" in
     atm|ocn) VALIDATOR=fme.ace.validate_config ;;
     cpl)     VALIDATOR=fme.coupled.validate_config ;;
-    *) echo "usage: $0 atm|ocn|cpl [runid] [--after <jobid>] [--no-submit]" >&2; exit 2 ;;
+    *) echo "usage: $0 atm|ocn|cpl [runid] [--after <jobid>] [--no-submit] [--resume] [--force]" >&2; exit 2 ;;
 esac
 shift
 
 RUNID=""
 AFTER=""
 NOSUBMIT=0
+RESUME=0
+FORCE=0
 SIZE=()
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -49,6 +52,14 @@ while [ $# -gt 0 ]; do
         # on Sunday: it exercises staging, the .env, the sizing and the config
         # validator without queueing anything.
         --no-submit) NOSUBMIT=1; shift ;;
+        # Continue an existing run in place. Required whenever the output
+        # directory already holds a checkpoint, because the trainer resumes
+        # from it unconditionally (fme/core/generics/trainer.py, `resuming`).
+        --resume) RESUME=1; shift ;;
+        # Resume even though the config or the commit has changed. This makes
+        # one logical run two different experiments; only for a deliberate
+        # restart after a code fix.
+        --force) FORCE=1; shift ;;
         *)       RUNID="$1"; shift ;;
     esac
 done
@@ -112,6 +123,53 @@ git -C "$REPO_ROOT" rev-parse HEAD > "$CONFIG_DIR/COMMIT" 2>/dev/null || true
 
 export FME_TORCHRUN="$REPO_ROOT/.venv/bin/torchrun"
 [ -x "$FME_TORCHRUN" ] || { echo "no torchrun at $FME_TORCHRUN; run 'uv sync' first" >&2; exit 1; }
+
+# Run identity. A run id names the *arms* of the experiment, not the config:
+# make_ablation_config.py's --aod, --epochs and --local-batch all change what is
+# generated while emitting the same id. So hash the staged config and record it
+# beside the output. Two submissions of one id that disagree are then loud
+# instead of silent.
+sha256sum "$CONFIG_DIR/${CONFIG_NAME}" | cut -d' ' -f1 > "$CONFIG_DIR/CONFIG_SHA256"
+
+# The worktree is what runs, not the recorded commit: .venv is an editable
+# install pointing straight at this tree, so an edit between submit and start --
+# or before a requeued segment -- silently changes the code while COMMIT still
+# says otherwise. Refuse a dirty tree rather than record a lie.
+if [ -n "$(git -C "$REPO_ROOT" status --porcelain 2>/dev/null)" ]; then
+    if [ "${FME_ALLOW_DIRTY:-0}" = 1 ]; then
+        echo "WARNING: worktree is dirty; COMMIT records $(cut -c1-8 < "$CONFIG_DIR/COMMIT") but the job will run whatever is checked out at start time" >&2
+    else
+        echo "refusing to submit from a dirty worktree -- .venv is an editable install, so the job runs the tree, not the commit. Commit, stash, or set FME_ALLOW_DIRTY=1." >&2
+        exit 1
+    fi
+fi
+
+# Resume guard. The trainer restores <output>/training_checkpoints/ckpt.tar if
+# it exists, whatever the newly staged config says, so an accidental second
+# submission of a run id continues someone else's run under a different config.
+if [ -n "$RUNID" ]; then
+    OUT="${CAMPAIGN_ROOT}/${RUNID}"
+    PREV_CFG="$OUT/job_config/${CONFIG_NAME}"
+    if [ -f "$OUT/training_checkpoints/ckpt.tar" ] && [ "$RESUME" != 1 ]; then
+        echo "$OUT already holds a checkpoint. Training would resume from it, not start over." >&2
+        echo "  continue it:  ./run-train.sh $REALM $RUNID --resume" >&2
+        echo "  start over:   move or delete $OUT first" >&2
+        exit 1
+    fi
+    if [ -f "$PREV_CFG" ]; then
+        PREV_SHA=$(sha256sum "$PREV_CFG" | cut -d' ' -f1)
+        THIS_SHA=$(cat "$CONFIG_DIR/CONFIG_SHA256")
+        PREV_COMMIT=$(cat "$OUT/job_config/COMMIT" 2>/dev/null || echo unknown)
+        THIS_COMMIT=$(cat "$CONFIG_DIR/COMMIT" 2>/dev/null || echo unknown)
+        if [ "$PREV_SHA" != "$THIS_SHA" ] || [ "$PREV_COMMIT" != "$THIS_COMMIT" ]; then
+            echo "$RUNID has already run, and this submission does not match it:" >&2
+            [ "$PREV_SHA" != "$THIS_SHA" ] && echo "  config  $PREV_SHA -> $THIS_SHA" >&2
+            [ "$PREV_COMMIT" != "$THIS_COMMIT" ] && echo "  commit  $PREV_COMMIT -> $THIS_COMMIT" >&2
+            echo "  Resuming would make one run id two experiments. Pass --force if that is really what you want." >&2
+            [ "$FORCE" != 1 ] && exit 1
+        fi
+    fi
+fi
 
 # Email. NERSC delivers to <user>@nersc.gov. On by default: these jobs are
 # --requeue with a 12 h walltime, so a run silently dies or silently restarts

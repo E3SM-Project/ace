@@ -29,7 +29,7 @@ fi
 OUT="${1:-$EXP/runs}"
 
 # Samples per rank. CAMPAIGN_LOCAL_BATCH=atm=2 halves every atmosphere run's node
-# count and takes the campaign from 111 nodes to 64 -- see EXPERIMENTS.md
+# count and takes the campaign from 129 nodes to 75 -- see EXPERIMENTS.md
 # "Measurements". It is passed to the checker too, which duplicates the constant
 # deliberately and would otherwise compute the wrong rank count.
 LB=()
