@@ -32,6 +32,11 @@ SRC_LANDFRAC=/pscratch/sd/m/mahf708/e3sm-hist-aux/landfrac5d
 
 DEST_STATS=$DEST_ROOT/stats-2026-08-13
 DEST_LANDFRAC=$DEST_ROOT/landfrac5d
+# Also read by the configs, though not staged by this script: landfrac1d is
+# E17's forcing and the simulation output is the training data itself. --check
+# reports them because "can I read the inputs?" is the question being asked.
+DEST_LANDFRAC1D=$DEST_ROOT/landfrac1d
+SIM_ROOT=/global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 CHECK_ONLY=0
@@ -43,14 +48,33 @@ echo "destination     : $DEST_ROOT"
 echo
 
 if [ "$CHECK_ONLY" = 1 ]; then
-    for p in "$SRC_STATS" "$SRC_LANDFRAC" "$DEST_STATS" "$DEST_LANDFRAC"; do
-        if [ -e "$p" ]; then echo "  present: $p"; else echo "  MISSING: $p"; fi
+    # Check what the configs actually READ, from the account running this.
+    # The two SRC_ trees below are mahf708's staging sources; they are not
+    # inputs to anybody's run, so a teammate seeing them missing is fine and a
+    # teammate seeing the four destinations present is what matters. The
+    # earlier version of this check listed only two of the four destinations
+    # and never looked at landfrac1d, which is E17's only input.
+    rc=0
+    echo "inputs the generated configs read:"
+    for p in "$SIM_ROOT" "$DEST_STATS" "$DEST_LANDFRAC" "$DEST_LANDFRAC1D"; do
+        if [ -r "$p" ] && ls "$p" > /dev/null 2>&1; then
+            echo "  readable: $p"
+        else
+            echo "  UNREADABLE: $p"; rc=1
+        fi
+    done
+    echo
+    echo "staging sources (mahf708 only; not needed to run):"
+    for p in "$SRC_STATS" "$SRC_LANDFRAC"; do
+        if [ -e "$p" ]; then echo "  present: $p"; else echo "  absent:  $p"; fi
     done
     echo
     echo "config references still pointing at personal scratch:"
     grep -c '/pscratch/sd/m/mahf708/\(2026-08-13\|e3sm-hist-aux\)' \
         "$HERE"/config-train-*.yaml || true
-    exit 0
+    [ "$rc" = 0 ] && echo && echo "all inputs readable" \
+                  || { echo; echo "MISSING INPUTS -- you are probably not in the e3smdata group" >&2; }
+    exit "$rc"
 fi
 
 for p in "$SRC_STATS" "$SRC_LANDFRAC"; do

@@ -36,7 +36,7 @@ and writes `joblogs/<runid>-<jobid>.out`. Everything else on this page is detail
 | on the right branch | `git rev-parse --abbrev-ref HEAD` | `e3sm/exps/hist-v2026.8.0` |
 | tree is clean | `git status --short` | no output |
 | venv built | `ls .venv/bin/torchrun` | exists |
-| inputs readable | `./stage-shared-data.sh --check` | all present |
+| inputs readable | `./stage-shared-data.sh --check` | `all inputs readable` |
 | wandb is you | `wandb login` then check the printed user | your account, entity `e3sm-aig` |
 | configs agree with their names | `./check_campaign.py` | `35 configs, 0 with problems` |
 
@@ -221,8 +221,8 @@ than a run.
 1. Queue P1 (14 nodes, the four baselines everything is compared against).
 2. Let E01 log **two** epochs — epoch 1 carries setup and the first checkpoint.
 3. Read `epoch_total_seconds` in wandb:
-   * **< 10,600 s** — release P2+P3 with `--max-priority 3`, P4 as nodes free.
-   * **10,600–11,900 s** — release P2+P3, skip P4.
+   * **< 10,800 s** — release P2+P3 with `--max-priority 3`, P4 as nodes free.
+   * **10,800–11,900 s** — release P2+P3, skip P4.
    * **> 11,900 s** — stop. 30 epochs no longer fits; cut a lever from
      EXPERIMENTS.md "The levers, if the budget gets tight" first.
 
@@ -356,7 +356,7 @@ full breakdown and the wandb runs.
 |---|---|---|
 | nodes | 4 | 2 |
 | dataset setup, per job start **and per requeue** | **22.4 min** | **14.0 min** |
-| training | 0.887 s/batch, 8,212 batches/epoch | 1.34 s/batch, 411 batches/epoch |
+| training | 0.899 s/batch, 8,217 batches/epoch | 1.34 s/batch, 411 batches/epoch |
 | inline inference, per scored rollout | 35–42 min | 4.9 min |
 | epoch total, everything included | **2.8–3.0 h** | **0.32 h** |
 | epochs | 30 | 150 |
@@ -369,6 +369,10 @@ Four consequences for how you work:
 * **Setup is 14–22 minutes and is paid again on every requeue.** Do not chase a
   run's first twenty minutes of silence; it is opening 1,501 netCDF files, and
   the cost does not depend on how much of the record the run actually reads.
+  Yes, a `$PSCRATCH` copy of the inputs exists and opens in 152 s instead of
+  1,337 s — and it is 29% slower per step, which nets 15 h worse over a
+  30-epoch run. **Do not repoint your run at it**; see EXPERIMENTS.md "The
+  filesystem A/B".
 * **Inference is a quarter to a third of an epoch**, and it is what the older
   63 h / 24 h estimates left out. Judge progress by `epoch_total_seconds`.
   The same correction is why the ocean's O1 arm (E17) keeps 30 epochs: priced

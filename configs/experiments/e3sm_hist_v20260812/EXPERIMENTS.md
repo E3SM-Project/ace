@@ -615,8 +615,8 @@ requeue. Do not release 129 nodes at once.
 
    | `epoch_total_seconds` | what it means | what to do |
    |---|---|---|
-   | under ~10,600 s (2.95 h) | contention is not biting | release P2+P3: `--max-priority 3`, then P4 as nodes free |
-   | ~10,600–11,900 s (2.95–3.3 h) | tight but survivable | release P2+P3, skip P4 |
+   | under ~10,800 s (3.0 h) | contention is not biting | release P2+P3: `--max-priority 3`, then P4 as nodes free |
+   | ~10,800–11,900 s (3.0–3.3 h) | tight but survivable | release P2+P3, skip P4 |
    | over ~11,900 s (3.3 h) | 30 epochs does not fit | pull a lever from "The levers, if the budget gets tight" **before** queueing anything else |
 
 The ramp costs nothing. P1 is the four runs everything else is compared against,
@@ -799,7 +799,7 @@ rollout every epoch — `InlineInferenceConfig.epochs` defaults to
 12-year block every fifth. This section prices the whole thing.
 
 Method: the production config with **only** the training window shortened
-(1940–1943, 275 batches instead of 8,212) and the inference blocks shortened
+(1940–1943, 275 batches instead of 8,217) and the inference blocks shortened
 (365 forward steps instead of 17,520), both firing every epoch. Validation
 window, aggregators, checkpoint cadence, loader settings, model and node count
 are all at production values. Two epochs, 4 nodes / 16 ranks, no other job on
@@ -822,8 +822,12 @@ the allocation. Configs and logs under
 
 Repeatable to 4.3% between the two epochs. The two numbers that extrapolate:
 
-* **Steady training rate 0.887 s/batch** (steps 40→260, 220 batches), against
-  0.925 measured on 2026-08-29. The production epoch is 8,212 batches.
+* **Steady training rate 0.887 s/batch** (steps 40→260, 220 batches) — but on
+  *this run's* 3-year training window, not the production one, so it is a
+  lower bound and not the figure to extrapolate from. The production window was
+  measured separately at 0.925 (2026-08-29) and 0.899 (2026-08-30, see "The
+  filesystem A/B" below); the epoch table uses 0.899. A production epoch is
+  **8,217 batches**, as the loader reports.
 * **Steady inference rate 2.17–2.25 s per 20-step window**, i.e. **0.109 s per
   forward step**, flat across 19 windows in four separate blocks. A production
   block is 17,520 steps = 876 windows.
@@ -864,15 +868,15 @@ So the production block is bounded, not point-estimated:
 
 | phase | seconds | note |
 |---|---|---|
-| training, 8,212 batches at 0.887 s | 7,284 | |
+| training, 8,217 batches at 0.899 s | 7,387 | production window, measured 2026-08-30 |
 | train-evaluation pass | 68 | fixed |
 | validation | 202 | measured directly, production window |
 | `inference`, weight 1.0, **every epoch** | 2,120 – 2,530 | 876 windows, median / mean-with-stalls |
 | `12yr_test`, weight 0.0, every 5th epoch | 424 – 506 | amortised |
 | wandb log + checkpoint write | 58 | |
-| **total** | **10,156 – 10,648 s = 2.82 – 2.96 h** | |
+| **total** | **10,259 – 10,751 s = 2.85 – 2.99 h** | |
 
-**A 30-epoch atmosphere run is 85–89 h of epochs, not 63 h.** The inline
+**A 30-epoch atmosphere run is 86–90 h of epochs, not 63 h.** The inline
 inference the old figure omitted is 25–29% of an epoch.
 
 ### Dataset setup is 22 minutes, not 9
@@ -897,6 +901,57 @@ is metadata I/O, not compute.
 85–89 h run is 8 starts, so **3.0 h of setup**, and the run is **88–92 h** end
 to end. Against the 126 h reservation window that is a **1.37–1.44x margin**,
 not the 2x the 63 h figure implied.
+
+### The filesystem A/B — CFS wins, and staging to scratch would cost 15 h/run
+
+The whole 6.03 TiB input set was copied to `$PSCRATCH` by Globus on 2026-08-30
+to test whether CFS is the bottleneck. It is not the one that matters.
+
+Method: one allocation (`57753686`), four nodes, the **production** train
+window, inference parked, configs byte-identical but for `data_path` and the
+stats root. The CFS arm ran first, was killed, the nodes were verified idle
+(no `fme.ace.train`, no process holding a GPU), then the scratch arm ran on the
+**same four nodes**, which had never read the scratch copy.
+
+| | dataset setup | s/step, min | p50 | p90 | mean |
+|---|---|---|---|---|---|
+| **CFS** `atm-fs-cfs2` | **1,337 s** | 0.891 | 0.897 | 0.909 | **0.899** |
+| **scratch** `atm-fs-scratch4`, same nodes | **152 s** | 0.956 | 1.113 | 1.313 | **1.162** |
+| scratch `atm-fs-scratch2`, other nodes | 95 s | 0.956 | 1.171 | 1.275 | **1.162** |
+| `/dvs_ro/cfs/cdirs` | >5 min, killed in the loader | — | — | — | — |
+
+Two independent scratch runs on different node sets agree to three digits on
+both the mean and the floor, so this is not noise and not a bad node.
+
+**Scratch wins setup by 8.8x and loses throughput by 29%.** Over a 30-epoch run
+that is 2.6 h saved on setup (8 starts x 1,185 s) against 18.0 h lost on
+training (8,217 x 0.263 s x 30) — **net 15 h worse per atmosphere run.** The
+campaign stays on CFS.
+
+**Read latency is not the explanation, and it points the other way.** Cold
+single-reader strided reads (259 KB every 19.3 MiB, the loader's actual
+pattern) on a compute node: scratch **0.258 ms**, CFS **2.176 ms** — scratch is
+8.4x *faster* per read. Measure the same thing from a login node and CFS looks
+45x worse; that gap is the login node's own CFS path, not what a job sees, so
+do not benchmark filesystems from a login node.
+
+**What is actually happening** is visible in the shape rather than the level.
+CFS holds 0.891–0.918 s/step — a 3% spread over 460 steps, no stall anywhere —
+so on CFS the loader never once starves the GPU and 0.899 s/step *is* the
+compute cost. On scratch the intervals range 0.956–1.767 and even the floor sits
+6% above CFS's mean, so there the loader is the binding constraint. A filesystem
+whose reads are 8x faster feeding the GPU 29% worse is genuinely
+counterintuitive; the untested hypothesis is Lustre client CPU cost per RPC
+competing with 32 dataloader workers per node for 64 cores. **It is a
+hypothesis, not a measured cause.**
+
+**What this does not settle: contention.** Both arms were measured alone.
+Monday puts ~25 atmosphere runs on CFS at once, and one competing 2-node job
+already cost the ocean 2.1x (2026-08-29). Scratch is per-user Lustre across 370
+OSTs and should degrade far less, so the ranking above could invert under load —
+that is exactly what the launch ramp's `epoch_total_seconds` check is for. The
+staged copy is left in place as the fallback: switching is then a config change,
+not a 6 TiB data movement.
 
 ### Ocean — measured at production rollout length, no extrapolation
 
@@ -1169,11 +1224,14 @@ another.
   11 GiB/s of extent, sustained for five days** — roughly 800 TiB read over the
   week against 6 TiB of distinct input. Follow the launch ramp above rather than
   releasing 129 nodes at once.
-- **If this campaign is ever repeated, stage the inputs to scratch or rewrite
-  them chunked.** CFS is NERSC's sharing filesystem, not its job-I/O
-  filesystem, and re-reading the same 6 TiB on the order of 130-300x is the
-  thing to fix — but it is hours of work that itself hammers CFS, so it is a
-  next-campaign change, not a night-before one.
+- **Staging the inputs to scratch was tried and is not the fix.** The whole
+  6 TiB set is now on `$PSCRATCH`, and measured head to head it buys 8.8x on
+  dataset setup and loses 29% on step time, netting **15 h worse per
+  atmosphere run** — see "The filesystem A/B". The copy is kept as a
+  contention fallback, not as an improvement. The thing still worth fixing for
+  a future campaign is the *file format*: `NETCDF3_64BIT_DATA` with no chunking
+  forces a 259 KB strided read every 19.3 MiB, and rewriting the inputs chunked
+  would help on either filesystem.
 
 ---
 
