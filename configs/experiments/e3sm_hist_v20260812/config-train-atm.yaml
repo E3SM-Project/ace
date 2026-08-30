@@ -191,7 +191,7 @@ inference:
   - name: 12yr_test
     weight: 0.0
     epochs:
-      start: 4
+      start: 0
       step: 5
     n_forward_steps: 17520
     forward_steps_in_memory: 20

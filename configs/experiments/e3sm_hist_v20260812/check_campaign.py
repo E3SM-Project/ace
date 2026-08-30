@@ -415,6 +415,36 @@ def check(path: pathlib.Path) -> list[str]:
     return bad
 
 
+def check_baselines() -> list[str]:
+    """The two hand-written baselines, which nothing else checks.
+
+    `config-train-atm.yaml` is the file EXPERIMENTS.md calls "E01", and it is
+    what anyone reaches for to run one arm ad hoc. The generator recomputes
+    `12yr_test`'s `start` for whatever `max_epochs` it sets, so the generated
+    configs are safe by construction; these two are not, and a `start` left over
+    from a different run length silently stops scoring the final epoch.
+    """
+    bad: list[str] = []
+    for realm in ("atm", "ocn"):
+        path = HERE / f"config-train-{realm}.yaml"
+        if not path.is_file():
+            continue
+        d = yaml.safe_load(path.read_text())
+        for entry in d.get("inference", []):
+            sched = entry.get("epochs") or {}
+            if not sched:
+                continue
+            fires = range(d["max_epochs"] + 1)[sched.get("start") :: sched.get("step")]
+            if not (fires and fires[-1] == d["max_epochs"]):
+                bad.append(
+                    f"{path.name}: {entry.get('name')!r} last fires at "
+                    f"{fires[-1] if fires else 'never'}, not max_epochs "
+                    f"{d['max_epochs']} (start={sched.get('start')}, "
+                    f"step={sched.get('step')}). Use start = max_epochs % step."
+                )
+    return bad
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--dir", default=str(HERE / "runs"))
@@ -438,6 +468,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     failed = 0
+    for msg in check_baselines():
+        failed += 1
+        print(f"FAIL {msg}")
     for path in paths:
         bad = check(path)
         if bad:
