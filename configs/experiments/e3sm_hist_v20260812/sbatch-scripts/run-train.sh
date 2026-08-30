@@ -21,6 +21,12 @@
 #
 # Resume a preempted or requeued run:
 #     RESUME_JOB_ID=<job id> ./run-train.sh atm
+#
+# Email is on by default to $USER@nersc.gov on BEGIN, END, FAIL, REQUEUE and
+# TIME_LIMIT_90. Override with FME_MAIL_USER / FME_MAIL_TYPE, or FME_MAIL_TYPE=NONE.
+# Already-queued jobs can be retrofitted without resubmitting:
+#     scontrol update JobId=<id> MailUser=$USER@nersc.gov \
+#         MailType=BEGIN,END,FAIL,REQUEUE,TIME_LIMIT_90
 
 set -euo pipefail
 
@@ -103,6 +109,28 @@ git -C "$REPO_ROOT" rev-parse HEAD > "$CONFIG_DIR/COMMIT" 2>/dev/null || true
 export FME_TORCHRUN="$REPO_ROOT/.venv/bin/torchrun"
 [ -x "$FME_TORCHRUN" ] || { echo "no torchrun at $FME_TORCHRUN; run 'uv sync' first" >&2; exit 1; }
 
+# Email. NERSC delivers to <user>@nersc.gov. On by default: these jobs are
+# --requeue with a 12 h walltime, so a run silently dies or silently restarts
+# and nothing on the terminal says so. REQUEUE is the one that matters -- it is
+# the difference between "still training" and "has been requeueing all night".
+#
+#   FME_MAIL_USER=you@lbl.gov     send somewhere else
+#   FME_MAIL_TYPE=NONE            turn it off
+#   FME_MAIL_TYPE=ALL             every state change, including STAGE_OUT
+#
+# Volume: roughly (1 + segments) messages per run, where a 63 h atmosphere run
+# at a 12 h walltime is 6 segments. The full 35-run campaign is order 250
+# messages; filter on the subject, which carries the job name and id.
+MAIL_USER="${FME_MAIL_USER:-${USER}@nersc.gov}"
+MAIL_TYPE="${FME_MAIL_TYPE:-BEGIN,END,FAIL,REQUEUE,TIME_LIMIT_90}"
+MAIL=()
+if [ "$MAIL_TYPE" = "NONE" ]; then
+    echo "mail: disabled (FME_MAIL_TYPE=NONE)" >&2
+else
+    MAIL=(--mail-user="$MAIL_USER" --mail-type="$MAIL_TYPE")
+    echo "mail: $MAIL_TYPE -> $MAIL_USER" >&2
+fi
+
 echo "staged config: $CONFIG_DIR/$CONFIG_NAME" >&2
 [ -n "$RUNID" ] && echo "runid: $RUNID -> ${CAMPAIGN_ROOT}/${RUNID}" >&2
 
@@ -119,6 +147,6 @@ DEP=()
 [ -n "${RESERVATION:-}" ] && DEP+=(--reservation="${RESERVATION}")
 
 # --parsable prints only the job id, so a driver script can chain on it.
-JOBID=$(sbatch --parsable "${SIZE[@]}" "${DEP[@]}" "$HERE/sbatch-train-${REALM}.sh")
+JOBID=$(sbatch --parsable "${SIZE[@]}" "${DEP[@]}" "${MAIL[@]}" "$HERE/sbatch-train-${REALM}.sh")
 echo "submitted ${JOBID}${AFTER:+ (after ${AFTER})}" >&2
 echo "$JOBID"

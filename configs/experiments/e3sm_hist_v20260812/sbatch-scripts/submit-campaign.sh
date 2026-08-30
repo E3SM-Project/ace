@@ -33,6 +33,11 @@
 # Drop it for anything continuing past the window's end (Sat 2026-09-05 15:00);
 # a 12 h segment that cannot finish inside the reservation will not start in it.
 
+# Email is on by default (run-train.sh sets it): $USER@nersc.gov on BEGIN, END,
+# FAIL, REQUEUE and TIME_LIMIT_90. The whole campaign is order 250 messages, so
+# either filter on the subject or submit with FME_MAIL_TYPE=FAIL,TIME_LIMIT_90
+# to hear only about trouble.
+
 set -euo pipefail
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)

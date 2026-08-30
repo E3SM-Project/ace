@@ -52,6 +52,35 @@ uv run torchrun --nproc_per_node 4 -m fme.ace.train $PSCRATCH/smoke-ocn.yaml
 RESERVATION=_CAP_aigs_hist ./sbatch-scripts/submit-campaign.sh
 ```
 
+### Email notifications
+
+`run-train.sh` sets them on every submission, so `submit-campaign.sh` inherits:
+
+| | |
+|---|---|
+| to | `$USER@nersc.gov` — override with `FME_MAIL_USER` |
+| on | `BEGIN,END,FAIL,REQUEUE,TIME_LIMIT_90` — override with `FME_MAIL_TYPE` |
+| off | `FME_MAIL_TYPE=NONE` |
+
+`REQUEUE` is the one worth having: a 12 h segment that hits its walltime
+requeues itself and nothing on the terminal says so, and a run that requeues
+all night is paying dataset setup each time (22.5 min atm, 10.5 min ocn).
+`TIME_LIMIT_90` arrives ~72 min before that handoff, which is the window to
+cancel rather than let it restart.
+
+The whole 35-run campaign is order 250 messages. To hear only about trouble:
+
+```bash
+FME_MAIL_TYPE=FAIL,TIME_LIMIT_90 ./sbatch-scripts/submit-campaign.sh
+```
+
+Jobs already in the queue can be retrofitted without resubmitting:
+
+```bash
+scontrol update JobId=<id> MailUser=$USER@nersc.gov \
+    MailType=BEGIN,END,FAIL,REQUEUE,TIME_LIMIT_90
+```
+
 **During the hackathon window you must export `RESERVATION=_CAP_aigs_hist`.**
 Nothing sets it for you, and without it every job sits in the regular queue
 while the 96 reserved nodes idle. Drop it for anything that will continue past
