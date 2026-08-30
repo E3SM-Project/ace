@@ -52,6 +52,40 @@ uv run torchrun --nproc_per_node 4 -m fme.ace.train $PSCRATCH/smoke-ocn.yaml
 RESERVATION=_CAP_aigs_hist ./sbatch-scripts/submit-campaign.sh
 ```
 
+### Job names and logs
+
+A submission with a run id is named after the run, so `squeue` distinguishes
+the 25 atmosphere jobs instead of showing `fme-hist-atm` 25 times. `--output`
+is `joblogs/%x-%j.out` and `%x` is the job name, so the log follows:
+
+    joblogs/E01.aug26.atm.A0_B16_C0_L0_O5_W0_X0.S01-57723725.out
+
+`--chdir` pins the working directory to this one, so the log lands in the same
+place regardless of where you invoked the script from. Ad-hoc runs (no run id)
+keep the generic `fme-hist-<realm>` name.
+
+Every job log opens with a banner — grep for `=== run`:
+
+    runid        E01.aug26.atm.A0_B16_C0_L0_O5_W0_X0.S01
+    job          E01.aug26.atm...S01 / 57723725
+    restarts     0
+    nodes        4 (nid[001234-001237])
+    ranks        16
+    config       /pscratch/.../fme-config/<uuid>/E01...yaml
+    output       /pscratch/.../aug26/E01...S01
+    commit       867e1da1e...
+    wandb        E01...S01 in E01.atm
+
+`restarts` is `SLURM_RESTART_COUNT`: on a requeued segment it is non-zero, which
+is how you tell a fresh start from the fourth restart of the same run.
+
+Jobs already queued can be renamed without resubmitting — Slurm re-resolves the
+`%x` in the output path, so the log filename updates too:
+
+```bash
+scontrol update JobId=<id> JobName=<runid>
+```
+
 ### Email notifications
 
 `run-train.sh` sets them on every submission, so `submit-campaign.sh` inherits:

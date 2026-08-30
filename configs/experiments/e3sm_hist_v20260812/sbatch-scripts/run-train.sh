@@ -57,8 +57,12 @@ HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 EXP_DIR=$(dirname "$HERE")
 REPO_ROOT=$(cd "$EXP_DIR/../../.." && pwd)
 
-# --output=joblogs/%x-%j.out fails to start the job if this does not exist.
-mkdir -p "$HERE/joblogs"
+# --output=joblogs/%x-%j.out is relative to the job's working directory, which
+# defaults to wherever sbatch was invoked -- so the log landed in a different
+# joblogs/ depending on the caller's cwd, and a job whose output directory does
+# not exist fails to start with no log at all. Pin both: --chdir below fixes the
+# working directory to the experiment dir, and this creates the matching dir.
+mkdir -p "$EXP_DIR/joblogs"
 
 UUID=$(uuidgen)
 export CONFIG_DIR=${PSCRATCH}/fme-config/${UUID}
@@ -147,6 +151,16 @@ DEP=()
 [ -n "${RESERVATION:-}" ] && DEP+=(--reservation="${RESERVATION}")
 
 # --parsable prints only the job id, so a driver script can chain on it.
-JOBID=$(sbatch --parsable "${SIZE[@]}" "${DEP[@]}" "${MAIL[@]}" "$HERE/sbatch-train-${REALM}.sh")
+# --job-name defaults to fme-hist-<realm> in the #SBATCH block, which makes all
+# 25 atmosphere runs identical in squeue and gives every one of them the same
+# log filename. Name the job after the run instead: --output is joblogs/%x-%j.out
+# and %x is the job name, so the log becomes joblogs/<runid>-<jobid>.out with no
+# further change. Ad-hoc runs keep the generic name.
+NAME=()
+[ -n "$RUNID" ] && NAME=(--job-name="$RUNID")
+
+JOBID=$(sbatch --parsable --chdir="$EXP_DIR" \
+    "${SIZE[@]}" "${DEP[@]}" "${MAIL[@]}" "${NAME[@]}" \
+    "$HERE/sbatch-train-${REALM}.sh")
 echo "submitted ${JOBID}${AFTER:+ (after ${AFTER})}" >&2
 echo "$JOBID"

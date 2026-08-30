@@ -53,6 +53,24 @@ export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -1)
 export MASTER_PORT=29508       # distinct per realm: two runs on a node collide at 29500
 export FME_OVERRIDE_ARGS="experiment_dir=$FME_OUTPUT_DIR"
 
+# Banner. `set -x` makes the log a wall of trace, and every atmosphere run
+# used to be named fme-hist-atm, so a log told you almost nothing about which
+# of 35 runs it was. Grep the log for "=== run" to get the identity back.
+{
+  echo "=== run ==========================================================="
+  echo "runid        ${RUNID:-<ad-hoc, no run id>}"
+  echo "job          ${SLURM_JOB_NAME:-?} / ${SLURM_JOB_ID:-?}"
+  echo "restarts     ${SLURM_RESTART_COUNT:-0}"
+  echo "nodes        ${SLURM_JOB_NUM_NODES:-?} (${SLURM_JOB_NODELIST:-?})"
+  echo "ranks        $(( ${SLURM_JOB_NUM_NODES:-1} * 4 ))"
+  echo "config       $TRAIN_CONFIG"
+  echo "output       $FME_OUTPUT_DIR"
+  echo "commit       $(cat "$CONFIG_DIR/COMMIT" 2>/dev/null || echo unknown)"
+  echo "wandb        ${WANDB_NAME:-<unset>} in ${WANDB_RUN_GROUP:-<unset>}"
+  echo "started      $(date -Is)"
+  echo "==================================================================="
+} >&2
+
 # Keep a copy of exactly what ran next to the output.
 cp -r "$CONFIG_DIR" "$FME_OUTPUT_DIR/job_config"
 
