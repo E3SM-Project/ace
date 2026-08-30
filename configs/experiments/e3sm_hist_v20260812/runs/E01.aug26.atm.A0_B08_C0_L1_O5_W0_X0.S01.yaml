@@ -3,6 +3,7 @@
 # 2 nodes / 8 ranks, priority P4
 experiment_dir: /pscratch/sd/m/mahf708/fme-output/hist-train
 save_checkpoint: true
+save_per_epoch_diagnostics: true
 seed: 1
 validate_using_ema: true
 ema:
@@ -28,30 +29,69 @@ inference:
       - '1965-01-03T12:00:00'
       - '1970-01-03T12:00:00'
       - '1975-01-03T12:00:00'
-      - '1980-01-03T12:00:00'
+      - '1977-01-03T12:00:00'
       - '2000-01-03T12:00:00'
       - '2005-01-03T12:00:00'
       - '2010-01-03T12:00:00'
       - '2015-01-03T12:00:00'
       - '2020-01-03T12:00:00'
       - '2025-01-03T12:00:00'
-      - '2030-01-03T12:00:00'
-    dataset: &id001
+      - '2027-01-03T12:00:00'
+    dataset: &id002
       data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
       file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
-      rename: &id003
+      rename: &id004
         PRECT: surface_precipitation_rate
         PRECST: frozen_precipitation_rate
         co2vmr: global_mean_co2
       reference_pressure_name: P0
-      overwrite: &id004
+      overwrite: &id005
         multiply_scalar:
           surface_precipitation_rate: 1000.0
           frozen_precipitation_rate: 1000.0
     num_data_workers: 8
-  aggregator: &id002
+  aggregator: &id003
     histogram:
       enabled: true
+      variables: &id001
+      - PS
+      - TS
+      - LHFLX
+      - SHFLX
+      - surface_precipitation_rate
+      - frozen_precipitation_rate
+      - FLUS
+      - FLUT
+      - FLDS
+      - FSNS
+      - FSUTOA
+      - DTENDTTW
+      - TAUX
+      - TAUY
+      - Qat2m
+      - Uat10m
+      - Vat10m
+      - Tat2m
+      - T_0
+      - T_1
+      - T_4
+      - T_6
+      - T_7
+      - STW_0
+      - STW_1
+      - STW_4
+      - STW_6
+      - STW_7
+      - U_0
+      - U_1
+      - U_4
+      - U_6
+      - U_7
+      - V_0
+      - V_1
+      - V_4
+      - V_6
+      - V_7
     zonal_mean:
       enabled: false
     video:
@@ -67,6 +107,15 @@ inference:
     step_diagnostics:
       correction_scalars: true
       correction_maps: false
+    time_mean_denorm:
+      plot_variables: *id001
+    time_mean_norm:
+      target: norm
+      plot_variables: *id001
+    power_spectrum:
+      plot_variables: *id001
+    ipo_index:
+      enabled: false
 - name: 12yr_test
   weight: 0.0
   epochs:
@@ -93,9 +142,9 @@ inference:
       - '2046-07-03T12:00:00'
       - '2047-01-03T12:00:00'
       - '2047-07-03T12:00:00'
-    dataset: *id001
+    dataset: *id002
     num_data_workers: 8
-  aggregator: *id002
+  aggregator: *id003
 logging:
   log_to_screen: true
   log_to_wandb: true
@@ -112,17 +161,17 @@ train_loader:
     concat:
     - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
       file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
-      rename: *id003
+      rename: *id004
       reference_pressure_name: P0
-      overwrite: *id004
+      overwrite: *id005
       subset:
         start_time: '1940-01-01T06:00:00'
         stop_time: '1990-01-01T00:00:00'
     - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
       file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
-      rename: *id003
+      rename: *id004
       reference_pressure_name: P0
-      overwrite: *id004
+      overwrite: *id005
       subset:
         start_time: '2000-01-01T06:00:00'
         stop_time: '2040-01-01T00:00:00'
@@ -136,9 +185,9 @@ validation:
     dataset:
       data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
       file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
-      rename: *id003
+      rename: *id004
       reference_pressure_name: P0
-      overwrite: *id004
+      overwrite: *id005
       subset:
         start_time: '1990-01-01T06:00:00'
         stop_time: '1995-01-01T00:00:00'
@@ -147,6 +196,8 @@ validation:
       enabled: false
     mean_map:
       enabled: false
+    ensemble_denorm:
+      log_mean_maps: false
 optimization:
   enable_automatic_mixed_precision: false
   lr: 7.071067811865475e-05

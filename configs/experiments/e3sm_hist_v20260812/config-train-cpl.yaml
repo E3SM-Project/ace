@@ -5,6 +5,7 @@ ema:
   decay: 0.9995
   faster_decay_at_start: false
 max_epochs: 5
+save_per_epoch_diagnostics: true
 inference:
 - name: inference
   weight: 1.0
@@ -71,9 +72,11 @@ inference:
       - '2005-01-06T00:00:00'
       - '2015-01-06T00:00:00'
       - '2025-01-06T00:00:00'
-      - '2035-01-06T00:00:00'
-  aggregator:
+      - '2027-01-06T00:00:00'
+  aggregator: &id001
     log_zonal_mean_images: false
+    log_video: false
+    log_seasonal_means: false
     log_histograms: false
 - name: 12yr_test
   weight: 0.0
@@ -144,15 +147,13 @@ inference:
       - '2045-01-06T00:00:00'
       - '2046-01-06T00:00:00'
       - '2047-01-06T00:00:00'
-  aggregator:
-    log_zonal_mean_images: false
-    log_histograms: false
+  aggregator: *id001
 logging:
   log_to_screen: true
   log_to_wandb: true
   log_to_file: true
-  project: samudrace-e3sm-hist
-  entity: ai2cm
+  project: SamudrACE-E3SMv3
+  entity: e3sm-aig
 train_loader:
   batch_size: 8
   num_data_workers: 2

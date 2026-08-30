@@ -212,7 +212,7 @@ def learning_rate(base_lr: float, factors: "Factors") -> float:
 IC_TRAIN_WINDOW_32 = [
     f"{y}-{m}-03T12:00:00"
     for y in (1940, 1945, 1950, 1955, 1960, 1965, 1970, 1975,
-              1980, 2000, 2005, 2010, 2015, 2020, 2025, 2030)
+              1977, 2000, 2005, 2010, 2015, 2020, 2025, 2027)
     for m in ("01", "07")
 ]
 IC_TEST_WINDOW_32 = [
@@ -225,8 +225,8 @@ IC_TEST_WINDOW_32 = [
 
 # Samples per rank. This is the single number that sets how many nodes the whole
 # campaign needs, so it is a knob rather than a constant: at local batch 1 the
-# atmosphere's B16 baseline is 4 nodes and the campaign is 111 nodes; at local
-# batch 2 it is 2 nodes and the campaign is 64, which fits the 96-node
+# atmosphere's B16 baseline is 4 nodes and the campaign is 129 nodes; at local
+# batch 2 it is 2 nodes and the campaign is 75, which fits the 96-node
 # reservation outright.
 #
 # Both values are MEASURED (2026-08-29): 19.0 GB/GPU at local batch 1 and
@@ -235,7 +235,7 @@ IC_TEST_WINDOW_32 = [
 # fixed global batch also DOUBLES the epoch: 4 nodes and 2.11 h/epoch versus
 # 2 nodes and 3.79 h/epoch. At local batch 1 the P1-P3 science finishes
 # Wednesday night; at 2 nothing finishes before Friday morning. Pass
-# `--local-batch atm=2` only if the group prefers all 30 runs concurrent.
+# `--local-batch atm=2` only if the group prefers all 35 runs concurrent.
 # See EXPERIMENTS.md "Measurements".
 # O1 vs O5. Both MPAS cadences exist in the run directory: the 5-day streams
 # carry a `5D` suffix, the 1-day streams are the un-suffixed ones, 1501 files
@@ -663,7 +663,7 @@ def apply_ocean_cadence(config: dict, run: Run) -> None:
 
 
 def env_file(run: Run, campaign_root: str, owner: str) -> str:
-    """wandb provenance. wandb reads these from the environment, not the config."""
+    """W&B provenance: read from the environment by wandb, not from the config."""
     tags = ",".join(
         [
             CAMPAIGN,

@@ -133,13 +133,40 @@ TRAIN_WINDOWS = [
     {"start_time": "2000-01-06", "stop_time": "2040-01-01"},
 ]
 VAL_A = {"start_time": "1990-01-06", "stop_time": "1995-01-01"}
-IC = [f"{y}-01-06T00:00:00" for y in [1945, 1955, 1965, 1975, 2005, 2015, 2025, 2035]]
+# Checkpoint-selection initial conditions. This block is weight 1.0, so what has
+# to be in-sample is the whole 876-step (12-year) trajectory, not just its first
+# timestep. 2035 used to be here and ran to 2047, seven years into the held-out
+# period; 2027 ends 2039, inside the second training window.
+IC = [f"{y}-01-06T00:00:00" for y in [1945, 1955, 1965, 1975, 2005, 2015, 2025, 2027]]
 # Held-out initial conditions, mirroring the 12yr_test block the atm and ocn
-# configs carry. Every IC above falls inside a training window, so without this
-# the coupled finetune has no out-of-sample monitoring at all. These start after
-# the second training window ends (2040-01-01) and are on the ocean's 5-day
-# axis; a 876-step (12-year) rollout from 2047 ends in 2059, inside the record.
+# configs carry. Without this the coupled finetune has no out-of-sample
+# monitoring at all. These start after the second training window ends
+# (2040-01-01) and are on the ocean's 5-day axis; a 12-year rollout from 2047
+# ends in 2059, inside the record.
 IC_TEST = [f"{y}-01-06T00:00:00" for y in range(2040, 2048)]
+
+# Inference aggregator, shared by both blocks.
+#
+# NOTE: `fme.coupled.aggregator.InferenceEvaluatorAggregatorConfig` is a
+# different class from the uncoupled one -- boolean flags only, no per-metric
+# typed sub-configs. These four names are its real API, not the deprecated ACE
+# union member that looks similar.
+#
+# CONSEQUENCE: the upload-budget switches the atm and ocn baselines use
+# (`time_mean_*.report_plot`, `power_spectrum.plot_variables`,
+# `ensemble_denorm.log_mean_maps`) have no coupled equivalent. This config
+# builds `TimeMeanMetricConfig(target=...)` internally with plotting on, so a
+# coupled run still uploads one map PNG per channel per block per epoch --
+# measured at 55 MB/epoch in the atmosphere. No coupled run is in the aug26
+# campaign, so this is a known gap rather than a live problem; closing it means
+# plumbing report_plot through _build_metrics. See EXPERIMENTS.md "The upload
+# budget".
+AGGREGATOR = {
+    "log_zonal_mean_images": False,
+    "log_video": False,
+    "log_seasonal_means": False,
+    "log_histograms": False,
+}
 
 cfg = {
     "experiment_dir": "/pscratch/sd/m/mahf708/fme-output/hist-cpl",
@@ -147,6 +174,8 @@ cfg = {
     "validate_using_ema": True,
     "ema": {"decay": 0.9995, "faster_decay_at_start": False},
     "max_epochs": 5,
+    # The maps go to disk as netCDF rather than to W&B; see AGGREGATOR.
+    "save_per_epoch_diagnostics": True,
     "inference": [
         {
             "name": "inference",
@@ -161,7 +190,7 @@ cfg = {
                 },
                 "start_indices": {"times": IC},
             },
-            "aggregator": {"log_zonal_mean_images": False, "log_histograms": False},
+            "aggregator": AGGREGATOR,
         },
         {
             # weight 0.0: monitored, never used to select the best checkpoint.
@@ -179,15 +208,18 @@ cfg = {
                 },
                 "start_indices": {"times": IC_TEST},
             },
-            "aggregator": {"log_zonal_mean_images": False, "log_histograms": False},
+            "aggregator": AGGREGATOR,
         },
     ],
     "logging": {
         "log_to_screen": True,
         "log_to_wandb": True,
         "log_to_file": True,
-        "project": "samudrace-e3sm-hist",
-        "entity": "ai2cm",
+        # One project for the whole campaign, and the team entity rather than an
+        # account. A coupled run used to be pointed at ai2cm/samudrace-e3sm-hist,
+        # which is a different organisation's workspace.
+        "project": "SamudrACE-E3SMv3",
+        "entity": "e3sm-aig",
     },
     "train_loader": {
         "batch_size": 8,

@@ -4,7 +4,7 @@
 `fme.ace.validate_config` proves a config *parses*. It cannot prove that
 `E05.aug26.atm.A3_B16_C1_O5_W0_X0.S01` actually has CO2 and both aerosol sets,
 batch 16, equal loss weights and no AMP. That is what this checks: the factor
-word against the file, for all 30 runs, in about a second on a login node.
+word against the file, for all 35 runs, in about a second on a login node.
 
     ./check_campaign.py                              # check ../runs
     ./check_campaign.py --dir /some/dir
@@ -46,15 +46,19 @@ LOADER = {"num_data_workers": 8, "prefetch_factor": 4}
 # One project for both realms, and the team entity rather than the account.
 WANDB = {"project": "SamudrACE-E3SMv3", "entity": "e3sm-aig"}
 
-# The page's "disable 2D plots, keep 1D logs". Each of these emits images and
-# must be off. `time_mean_denorm`/`time_mean_norm` are deliberately NOT here:
-# they emit the campaign's headline rmse/bias scalars and their bias map from the
-# same call, with no separate switch, so disabling them would remove the metric.
+# The page's "disable 2D plots, keep 1D logs". Each of these exists only to make
+# images and must be off entirely. `time_mean_denorm`/`time_mean_norm` are NOT
+# here: they emit the campaign's headline rmse/bias scalars, so they stay
+# enabled and only their plotting is turned off, via the `report_plot` check
+# further down.
 IMAGE_METRICS_OFF = (
     "zonal_mean", "video", "trend", "seasonal", "near_zero_fraction",
     "enso_coefficient",
 )
 ONE_STEP_IMAGE_METRICS_OFF = ("snapshot", "mean_map")
+# `ipo_index` needs >80 years of rollout and the scored one is 12, so it can
+# never build here -- it only ever logs "metric not supported".
+UPLOAD_METRICS_OFF = ("ipo_index",)
 # Boolean-flag fields belonging to the DEPRECATED Legacy*AggregatorConfig union
 # members. dacite picks a union member by shape, so a config using these parses
 # fine, warns once, and silently turns the 2D metrics back on.
@@ -63,6 +67,72 @@ LEGACY_AGGREGATOR_FIELDS = (
     "log_seasonal_means", "log_histograms", "log_snapshots", "log_mean_maps",
     "log_nino34_index", "log_ipo_index", "log_global_mean_time_series",
 )
+
+
+# Hours per forward step, by realm and ocean cadence. Used to turn an inference
+# block's `n_forward_steps` into the physical span of the trajectory it scores.
+STEP_HOURS = {("atm", "O5"): 6, ("atm", "O1"): 6, ("ocn", "O5"): 120, ("ocn", "O1"): 24}
+
+
+def _training_windows(d: dict) -> list[tuple[str, str]]:
+    """Every (start_time, stop_time) the train loader actually reads."""
+    out: list[tuple[str, str]] = []
+
+    def walk(node):
+        if isinstance(node, dict):
+            sub = node.get("subset")
+            if isinstance(sub, dict) and "start_time" in sub and "stop_time" in sub:
+                out.append((str(sub["start_time"]), str(sub["stop_time"])))
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(d["train_loader"]["dataset"])
+    return out
+
+
+def _noleap(stamp: str):
+    import cftime
+
+    date, _, clock = str(stamp).partition("T")
+    y, m, dd = (int(x) for x in date.split("-"))
+    parts = [int(x) for x in clock.split(":")] if clock else []
+    parts += [0] * (3 - len(parts))
+    return cftime.DatetimeNoLeap(y, m, dd, *parts)
+
+
+def check_selection_in_sample(d: dict, realm: str, ocean: str) -> list[str]:
+    """Checkpoint selection must not see validation or held-out data.
+
+    A weighted inference block picks the checkpoint, so its *whole trajectory* --
+    not just its initial condition -- has to lie inside a training subset. A
+    12-year rollout started three years before the end of a training window runs
+    nine years past it, which is how a "selection is in-sample" claim quietly
+    becomes false.
+    """
+    import datetime
+
+    bad: list[str] = []
+    windows = [(_noleap(a), _noleap(b)) for a, b in _training_windows(d)]
+    if not windows:
+        return ["cannot read the training windows, so selection leakage is unchecked"]
+    hours = STEP_HOURS[(realm, ocean)]
+    for block in d.get("inference", []):
+        if not block.get("weight", 0.0):
+            continue  # weight 0 blocks are diagnostics; they are meant to be held out
+        span = datetime.timedelta(hours=hours * block["n_forward_steps"])
+        for stamp in block["loader"]["start_indices"]["times"]:
+            t0 = _noleap(stamp)
+            t1 = t0 + span
+            if not any(a <= t0 and t1 <= b for a, b in windows):
+                bad.append(
+                    f"block {block.get('name')!r} is weighted {block['weight']} and "
+                    f"selects on {stamp} -> {t1}, which leaves every training "
+                    f"window; checkpoint selection would see held-out data"
+                )
+    return bad
 
 
 def check(path: pathlib.Path) -> list[str]:
@@ -117,7 +187,10 @@ def check(path: pathlib.Path) -> list[str]:
             )
         cfg = step["builder"]["config"]
         for k, v in EMBED.items():
-            want(cfg[k] == v, f"{k} is {cfg[k]}, expected {v} (the page's FOR NASER box)")
+            want(
+                cfg[k] == v,
+                f"{k} is {cfg[k]}, expected {v} (the page's FOR NASER box)",
+            )
         want(
             d["train_loader"].get("time_buffer_pool_size") == 2,
             "time_buffer_pool_size is not 2 -- see EXPERIMENTS.md 'Measurements'",
@@ -147,6 +220,8 @@ def check(path: pathlib.Path) -> list[str]:
                      f"O1 block {block.get('name')!r} has "
                      f"{block['n_forward_steps']} forward steps; a 12-year "
                      f"rollout on a daily axis is 4380")
+
+    bad.extend(check_selection_in_sample(d, realm, ocean))
 
     # L0 holds the base learning rate; L1 scales it by sqrt(batch / 16). Checked
     # numerically rather than by flag, because a wrong lr is invisible in a run id.
@@ -215,7 +290,9 @@ def check(path: pathlib.Path) -> list[str]:
         agg = block.get("aggregator")
         label = f"inference block {block.get('name')!r}"
         if agg is None:
-            bad.append(f"{label} has no aggregator block -- 2D image metrics default on")
+            bad.append(
+                f"{label} has no aggregator block -- 2D image metrics default on"
+            )
             continue
         legacy = [k for k in LEGACY_AGGREGATOR_FIELDS if k in agg]
         want(
@@ -233,10 +310,61 @@ def check(path: pathlib.Path) -> list[str]:
             agg.get("step_diagnostics", {}).get("correction_maps") is False,
             f"{label}: step_diagnostics.correction_maps is not disabled",
         )
+        # Upload budget. The `enabled: false` switches above cover the metrics
+        # that exist only to make pictures. These three emit one figure per
+        # channel while carrying scalars worth keeping, so they are narrowed to
+        # a short reference list rather than turned off -- and all three must
+        # narrow to the SAME list, or the plots stop being comparable.
+        plot_lists = {
+            "time_mean_denorm": agg.get("time_mean_denorm", {}).get("plot_variables"),
+            "time_mean_norm": agg.get("time_mean_norm", {}).get("plot_variables"),
+            "power_spectrum": agg.get("power_spectrum", {}).get("plot_variables"),
+            "histogram": agg.get("histogram", {}).get("variables"),
+        }
+        out = set(step["out_names"])
+        for metric, value in plot_lists.items():
+            if not (isinstance(value, list) and value):
+                bad.append(
+                    f"{label}: {metric} has no plot list, so it plots every "
+                    f"channel -- one PNG per channel per map metric per block "
+                    f"per epoch is what fills the W&B account"
+                )
+                continue
+            want(
+                len(value) < len(out),
+                f"{label}: {metric} plots all {len(out)} channels; the list is "
+                f"meant to drop the interior levels",
+            )
+            unknown = sorted(set(value) - out)
+            want(
+                not unknown,
+                f"{label}: {metric} plots names that are not outputs {unknown} "
+                f"-- a typo here fails silently, it just never plots",
+            )
+        distinct = {tuple(v) for v in plot_lists.values() if isinstance(v, list)}
+        want(
+            len(distinct) <= 1,
+            f"{label}: the plotted variable lists disagree {plot_lists!r}; the "
+            f"point of the list is that one screen shows the same channels as "
+            f"maps, spectra and histograms",
+        )
+        want(
+            agg.get("time_mean_norm", {}).get("target") == "norm",
+            f"{label}: time_mean_norm.target is not pinned to 'norm'; dacite "
+            f"builds this field from the yaml alone, so the 'denorm' default "
+            f"wins and the config fails post-init with a union error",
+        )
+        for metric in UPLOAD_METRICS_OFF:
+            want(
+                agg.get(metric, {}).get("enabled") is False,
+                f"{label}: {metric} is not explicitly disabled",
+            )
 
     vagg = d.get("validation", {}).get("aggregator")
     if vagg is None:
-        bad.append("validation has no aggregator block -- snapshot and mean_map default on")
+        bad.append(
+            "validation has no aggregator block -- snapshot and mean_map default on"
+        )
     else:
         legacy = [k for k in LEGACY_AGGREGATOR_FIELDS if k in vagg]
         want(not legacy, f"validation aggregator uses deprecated legacy flags {legacy}")
@@ -245,10 +373,27 @@ def check(path: pathlib.Path) -> list[str]:
                 vagg.get(metric, {}).get("enabled") is False,
                 f"validation: {metric} is not explicitly disabled",
             )
+        want(
+            vagg.get("ensemble_denorm", {}).get("log_mean_maps") is False,
+            "validation: ensemble_denorm.log_mean_maps is not false -- the "
+            "ensemble emits crps / ssr_bias / ensemble_mean_rmse mean maps for "
+            "every channel, a third of the atmosphere's whole upload",
+        )
+
+    # The maps are kept, on disk, as netCDF. Without this the report_plot
+    # switches above would be a deletion rather than a relocation.
+    want(
+        d.get("save_per_epoch_diagnostics") is True,
+        "save_per_epoch_diagnostics is not true -- the time-mean fields would "
+        "then exist in neither W&B nor experiment_dir",
+    )
 
     # Inputs must be readable by everyone on the reservation, not just the author.
     text = path.read_text()
-    for personal in ("/pscratch/sd/m/mahf708/2026-08-13", "/pscratch/sd/m/mahf708/e3sm-hist-aux"):
+    for personal in (
+        "/pscratch/sd/m/mahf708/2026-08-13",
+        "/pscratch/sd/m/mahf708/e3sm-hist-aux",
+    ):
         want(personal not in text, f"references personal scratch input {personal}")
 
     return bad
@@ -270,7 +415,10 @@ def main(argv: list[str] | None = None) -> int:
 
     paths = sorted(pathlib.Path(f) for f in glob.glob(os.path.join(args.dir, "*.yaml")))
     if not paths:
-        print(f"no configs in {args.dir} -- run generate-campaign.sh first", file=sys.stderr)
+        print(
+            f"no configs in {args.dir} -- run generate-campaign.sh first",
+            file=sys.stderr,
+        )
         return 2
 
     failed = 0

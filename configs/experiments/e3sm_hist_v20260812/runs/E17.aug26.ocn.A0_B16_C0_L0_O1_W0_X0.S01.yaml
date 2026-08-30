@@ -3,6 +3,7 @@
 # 2 nodes / 8 ranks, priority P2
 experiment_dir: /pscratch/sd/m/mahf708/fme-output/hist-ocn
 save_checkpoint: true
+save_per_epoch_diagnostics: true
 seed: 1
 validate_using_ema: true
 ema:
@@ -28,14 +29,14 @@ inference:
       - '1965-01-06T00:00:00'
       - '1970-01-06T00:00:00'
       - '1975-01-06T00:00:00'
-      - '1980-01-06T00:00:00'
+      - '1977-01-06T00:00:00'
       - '2000-01-06T00:00:00'
       - '2005-01-06T00:00:00'
       - '2010-01-06T00:00:00'
       - '2015-01-06T00:00:00'
       - '2020-01-06T00:00:00'
       - '2025-01-06T00:00:00'
-      - '2030-01-06T00:00:00'
+      - '2027-01-06T00:00:00'
     dataset:
       merge:
       - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
@@ -44,7 +45,7 @@ inference:
       - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
         file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDerivedFields.*.remapped.nc
         mask_and_scale: true
-        rename: &id001
+        rename: &id002
           windStressZonal: TAUX
           windStressMeridional: TAUY
           shortWaveHeatFlux: FSNS
@@ -54,7 +55,7 @@ inference:
           sensibleHeatFlux: SHFLX
           snowFlux: frozen_precipitation_rate
         overwrite:
-          multiply_scalar: &id002
+          multiply_scalar: &id003
             TAUX: -1.0
             TAUY: -1.0
             FLUS: -1.0
@@ -74,9 +75,38 @@ inference:
       - data_path: /global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/landfrac1d
         file_pattern: landfrac1d.*.nc
     num_data_workers: 8
-  aggregator: &id003
+  aggregator: &id004
     histogram:
       enabled: true
+      variables: &id001
+      - sst
+      - ssh
+      - ocean_sea_ice_fraction
+      - iceVolumeTotal
+      - temperatureCoarsened_0
+      - temperatureCoarsened_1
+      - temperatureCoarsened_2
+      - temperatureCoarsened_9
+      - temperatureCoarsened_17
+      - temperatureCoarsened_18
+      - salinityCoarsened_0
+      - salinityCoarsened_1
+      - salinityCoarsened_2
+      - salinityCoarsened_9
+      - salinityCoarsened_17
+      - salinityCoarsened_18
+      - velocityZonalCoarsened_0
+      - velocityZonalCoarsened_1
+      - velocityZonalCoarsened_2
+      - velocityZonalCoarsened_9
+      - velocityZonalCoarsened_17
+      - velocityZonalCoarsened_18
+      - velocityMeridionalCoarsened_0
+      - velocityMeridionalCoarsened_1
+      - velocityMeridionalCoarsened_2
+      - velocityMeridionalCoarsened_9
+      - velocityMeridionalCoarsened_17
+      - velocityMeridionalCoarsened_18
     zonal_mean:
       enabled: false
     video:
@@ -92,6 +122,15 @@ inference:
     step_diagnostics:
       correction_scalars: true
       correction_maps: false
+    time_mean_denorm:
+      plot_variables: *id001
+    time_mean_norm:
+      target: norm
+      plot_variables: *id001
+    power_spectrum:
+      plot_variables: *id001
+    ipo_index:
+      enabled: false
 - name: 12yr_test
   weight: 0.0
   epochs:
@@ -126,9 +165,9 @@ inference:
       - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
         file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDerivedFields.*.remapped.nc
         mask_and_scale: true
-        rename: *id001
+        rename: *id002
         overwrite:
-          multiply_scalar: *id002
+          multiply_scalar: *id003
           add_scalar:
             sst: 273.15
         combine:
@@ -143,7 +182,7 @@ inference:
       - data_path: /global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/landfrac1d
         file_pattern: landfrac1d.*.nc
     num_data_workers: 8
-  aggregator: *id003
+  aggregator: *id004
 logging:
   log_to_screen: true
   log_to_wandb: true
@@ -173,12 +212,12 @@ train_loader:
       - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
         file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDerivedFields.*.remapped.nc
         mask_and_scale: true
-        rename: *id001
-        overwrite: &id004
-          multiply_scalar: *id002
+        rename: *id002
+        overwrite: &id005
+          multiply_scalar: *id003
           add_scalar:
             sst: 273.15
-        combine: &id005
+        combine: &id006
           surface_precipitation_rate:
             rainFlux: 1.0
             frozen_precipitation_rate: 1.0
@@ -188,9 +227,9 @@ train_loader:
       - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
         file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDerivedFields.*.remapped.nc
         mask_and_scale: true
-        rename: *id001
-        overwrite: *id004
-        combine: *id005
+        rename: *id002
+        overwrite: *id005
+        combine: *id006
         subset:
           start_time: '2000-01-06'
           stop_time: '2040-01-01'
@@ -198,7 +237,7 @@ train_loader:
       - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
         file_pattern: v3.LR.historical_0101.aigo.mpassi.hist.am.fmeSeaiceDerivedFields.*.remapped.nc
         mask_and_scale: true
-        rename: &id006
+        rename: &id007
           iceAreaTotal: ocean_sea_ice_fraction
         subset:
           start_time: '1940-01-06'
@@ -206,7 +245,7 @@ train_loader:
       - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
         file_pattern: v3.LR.historical_0101.aigo.mpassi.hist.am.fmeSeaiceDerivedFields.*.remapped.nc
         mask_and_scale: true
-        rename: *id006
+        rename: *id007
         subset:
           start_time: '2000-01-06'
           stop_time: '2040-01-01'
@@ -237,9 +276,9 @@ validation:
       - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
         file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDerivedFields.*.remapped.nc
         mask_and_scale: true
-        rename: *id001
+        rename: *id002
         overwrite:
-          multiply_scalar: *id002
+          multiply_scalar: *id003
           add_scalar:
             sst: 273.15
         combine:
@@ -267,6 +306,8 @@ validation:
       enabled: false
     mean_map:
       enabled: false
+    ensemble_denorm:
+      log_mean_maps: false
 optimization:
   use_gradient_accumulation: true
   enable_automatic_mixed_precision: false

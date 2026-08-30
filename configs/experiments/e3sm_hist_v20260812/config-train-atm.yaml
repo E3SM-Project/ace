@@ -33,6 +33,13 @@
 #     B16 -> 16 ranks = 4 nodes   <- the baseline
 #     B32 -> 32 ranks = 8 nodes
 #
+#
+# The starts are on a 5-year grid except for 1977 and 2027, which are where 1980
+# and 2030 used to be. This block is weight 1.0, so it *selects the checkpoint*,
+# and the thing that has to be in-sample is the whole 12-year trajectory, not
+# just its first timestep: 1980 ran to 1992 (into the 1990-95 validation split)
+# and 2030 to 2042 (into the held-out test period). 1977 ends 1989 and 2027 ends
+# 2039, both inside their training subsets. check_campaign.py enforces this.
 # The 16 inference initial conditions below divide 8 and 16 but not 32, so the
 # B32 variant needs 32 ICs; make_ablation_config.py rewrites the list rather
 # than leaving it to a dotlist override (which cannot index into a yaml list).
@@ -66,6 +73,10 @@
 # EXPERIMENTS.md for the campaign design and the readiness assessment.
 experiment_dir: /pscratch/sd/m/mahf708/fme-output/hist-train
 save_checkpoint: true
+# Every aggregator's full fields land in experiment_dir as netCDF each
+# epoch. This is the other half of the upload-budget trade below: the
+# maps are kept, they are just kept on disk instead of in W&B.
+save_per_epoch_diagnostics: true
 seed: 1
 validate_using_ema: true
 ema:
@@ -95,14 +106,14 @@ inference:
         - '1965-01-03T12:00:00'
         - '1970-01-03T12:00:00'
         - '1975-01-03T12:00:00'
-        - '1980-01-03T12:00:00'
+        - '1977-01-03T12:00:00'
         - '2000-01-03T12:00:00'
         - '2005-01-03T12:00:00'
         - '2010-01-03T12:00:00'
         - '2015-01-03T12:00:00'
         - '2020-01-03T12:00:00'
         - '2025-01-03T12:00:00'
-        - '2030-01-03T12:00:00'
+        - '2027-01-03T12:00:00'
       dataset: &dataset
         data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
         file_pattern: &file_pattern v3.LR.historical_0101.aigo.eam.h0.*.nc
@@ -116,11 +127,21 @@ inference:
             surface_precipitation_rate: 1000.0
             frozen_precipitation_rate: 1000.0
       num_data_workers: 8
-    # 1D logs only: every 2D image metric is off (see `aggregator_1d` below for
-    # what that means and which one exception is kept).
+    # 2D image metrics off, 1D kept (see `aggregator_1d` below for what that
+    # means and how the per-channel plotting is narrowed).
     aggregator: &inference_aggregator_1d
+      # 1D distribution plots, on the same short reference list as the maps
+      # below -- see UPLOAD BUDGET. A YAML anchor has to be defined before it
+      # is used, and this is the first use in document order.
+       # 1D distribution plots, on the same channel list as the maps below.
+      # A YAML anchor must be defined before use and this is the first use.
       histogram:
-        enabled: true          # 1D distribution plot, cheap, kept
+        enabled: true
+        variables: &plot_vars [PS, TS, LHFLX, SHFLX, surface_precipitation_rate,
+        frozen_precipitation_rate, FLUS, FLUT, FLDS, FSNS, FSUTOA,
+        DTENDTTW, TAUX, TAUY, Qat2m, Uat10m, Vat10m, Tat2m, T_0, T_1, T_4,
+        T_6, T_7, STW_0, STW_1, STW_4, STW_6, STW_7, U_0, U_1, U_4, U_6,
+        U_7, V_0, V_1, V_4, V_6, V_7]
       zonal_mean:
         enabled: false         # lat x time image
       video:
@@ -136,12 +157,35 @@ inference:
       step_diagnostics:
         correction_scalars: true
         correction_maps: false
-      # KEPT ON DELIBERATELY: time_mean_denorm / time_mean_norm. They emit
-      # `time_mean/rmse/<var>` and `time_mean/bias/<var>` scalars -- the headline
-      # skill numbers for the whole campaign -- and the bias map is a byproduct
-      # with no separate switch. Disabling them to remove the image would remove
-      # the metric everyone is going to compare runs on. mean/mean_norm,
-      # power_spectrum, annual, enso_index and ipo_index are 1D and stay on.
+      # WHAT GETS PLOTTED. One PNG per channel per map metric per block per
+      # epoch is what fills a 100 GB W&B account -- measured 2026-08-30 at 506
+      # images per atmosphere epoch and 484 per ocean epoch. Plotting nearly all
+      # of it is affordable; the interior levels are the part not worth the
+      # bytes, so they are the only thing dropped: index 0 is TOA and 7 the surface, so this keeps the two top and two bottom
+      # levels plus one mid-column reference, and every flux and near-surface
+      # field. 38 of 50 channels.
+      #
+      # `plot_variables` gates IMAGES ONLY. rmse/<var>, bias/<var> and
+      # rmse/channel_mean are still emitted for EVERY channel, so no comparison
+      # loses a number. Everything is on disk regardless --
+      # `save_per_epoch_diagnostics: true` writes each aggregator's full fields
+      # to experiment_dir as netCDF every epoch.
+      time_mean_denorm:
+        plot_variables: *plot_vars
+      time_mean_norm:
+        # target must be written out: dacite builds this field from the yaml
+        # alone, so the dataclass default ("denorm") wins over the
+        # default_factory and the config fails post-init with a UnionMatchError
+        # on `inference` that names neither the field nor the reason.
+        target: norm
+        plot_variables: *plot_vars
+      power_spectrum:
+        plot_variables: *plot_vars
+      # Needs >80 years of rollout; the scored one is 12, so this can never
+      # build -- it only ever logs "metric not supported" four times an epoch.
+      ipo_index:
+        enabled: false
+      # mean/mean_norm, annual and enso_index are 1D, unrestricted and stay on.
   # Held out: initial conditions and the full 12 year rollout are outside the
   # training subsets.
   - name: 12yr_test
@@ -250,6 +294,11 @@ validation:
       enabled: false
     mean_map:
       enabled: false
+    # The validation ensemble emits crps / ssr_bias / ensemble_mean_rmse mean
+    # maps for every channel -- 174 PNGs per atmosphere epoch, a third of the
+    # whole upload. The scalars are what the campaign reads.
+    ensemble_denorm:
+      log_mean_maps: false
 optimization:
   enable_automatic_mixed_precision: false
   lr: 0.0001
