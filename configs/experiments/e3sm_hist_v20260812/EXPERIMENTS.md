@@ -328,13 +328,20 @@ but the spread is not uniform:
 | variable | std ratio 1D/5D |
 |---|---|
 | `temperature*`, `salinity*`, `sst`, `ssh` | 1.000 |
+| `LHFLX` (`latentHeatFlux`) | **1.117** |
 | `velocityMeridionalCoarsened_*` (surface) | 1.15 – 1.30 |
-| `SHFLX` | **1.207** |
-| `TAUX` | **1.216** |
+| `SHFLX` (`sensibleHeatFlux`) | **1.207** |
+| `TAUX` (`windStressZonal`) | **1.216** |
 | `surface_precipitation_rate` | **1.401** |
-| `frozen_precipitation_rate` | **1.432** |
-| `TAUY` | **1.481** |
+| `frozen_precipitation_rate` (`snowFlux`) | **1.432** |
+| `TAUY` (`windStressMeridional`) | **1.481** |
 | `airStressZonal`, `airStressMeridional` | **0.842**, **0.823** |
+
+The statistics are keyed by the **FME** channel name, not the MPAS one — the
+config renames `windStressZonal`/`windStressMeridional` to `TAUX`/`TAUY`,
+`latentHeatFlux`/`sensibleHeatFlux` to `LHFLX`/`SHFLX`, and `snowFlux` to
+`frozen_precipitation_rate`. Grepping the stats for an MPAS name returns
+nothing and does not mean the channel is absent.
 
 The state channels are insensitive to the averaging window and the
 high-frequency ones are not, which is why borrowing the 5-day scales would have
