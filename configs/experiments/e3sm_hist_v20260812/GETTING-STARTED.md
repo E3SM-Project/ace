@@ -369,10 +369,9 @@ Four consequences for how you work:
 * **Setup is 14–22 minutes and is paid again on every requeue.** Do not chase a
   run's first twenty minutes of silence; it is opening 1,501 netCDF files, and
   the cost does not depend on how much of the record the run actually reads.
-  Yes, a `$PSCRATCH` copy of the inputs exists and opens in 152 s instead of
-  1,337 s — and it is 29% slower per step, which nets 15 h worse over a
-  30-epoch run. **Do not repoint your run at it**; see EXPERIMENTS.md "The
-  filesystem A/B".
+  Yes, a `$PSCRATCH` copy of the inputs exists and opens ~9x faster — and it is
+  8–14% slower per step, which nets 3–6 h worse over a 30-epoch run.
+  **Do not repoint your run at it**; see EXPERIMENTS.md "The filesystem A/B".
 * **Inference is a quarter to a third of an epoch**, and it is what the older
   63 h / 24 h estimates left out. Judge progress by `epoch_total_seconds`.
   The same correction is why the ocean's O1 arm (E17) keeps 30 epochs: priced

@@ -902,56 +902,93 @@ is metadata I/O, not compute.
 to end. Against the 126 h reservation window that is a **1.37–1.44x margin**,
 not the 2x the 63 h figure implied.
 
-### The filesystem A/B — CFS wins, and staging to scratch would cost 15 h/run
+### The filesystem A/B — CFS wins, by less than one measurement suggested
 
 The whole 6.03 TiB input set was copied to `$PSCRATCH` by Globus on 2026-08-30
-to test whether CFS is the bottleneck. It is not the one that matters.
+to test whether CFS is the bottleneck. It is not the one that matters, but the
+margin is smaller and noisier than a single pair of runs implied.
 
-Method: one allocation (`57753686`), four nodes, the **production** train
-window, inference parked, configs byte-identical but for `data_path` and the
-stats root. The CFS arm ran first, was killed, the nodes were verified idle
-(no `fme.ace.train`, no process holding a GPU), then the scratch arm ran on the
-**same four nodes**, which had never read the scratch copy.
+Method: one allocation (`57753686`), the same four nodes throughout, the
+**production** train window, inference parked, configs byte-identical but for
+`data_path` and the stats root. Arms were run one at a time; between them the
+nodes were verified idle (no `fme.ace.train`, no process holding a GPU). "warm"
+below means the run replayed an earlier run's shuffled window sequence, so its
+reads hit page cache; `seed: 7717` draws a different sequence and cannot.
 
-| | dataset setup | s/step, min | p50 | p90 | mean |
-|---|---|---|---|---|---|
-| **CFS** `atm-fs-cfs2` | **1,337 s** | 0.891 | 0.897 | 0.909 | **0.899** |
-| **scratch** `atm-fs-scratch4`, same nodes | **152 s** | 0.956 | 1.113 | 1.313 | **1.162** |
-| scratch `atm-fs-scratch2`, other nodes | 95 s | 0.956 | 1.171 | 1.275 | **1.162** |
-| `/dvs_ro/cfs/cdirs` | >5 min, killed in the loader | — | — | — | — |
+| run | fs | sequence | n | min | p50 | mean |
+|---|---|---|---|---|---|---|
+| `atm-fs-cfs2` | CFS | cold | 22 | 0.891 | 0.897 | 0.899 |
+| `atm-fs-cfs3` | CFS | warm | 12 | 0.900 | 0.924 | 0.921 |
+| **`atm-fs-cfs4`** | **CFS** | **cold, seed 7717** | 15 | 0.889 | **0.905** | **0.950** |
+| `atm-fs-scratch2` | scratch | cold | 24 | 0.956 | 1.171 | 1.162 |
+| `atm-fs-scratch4` | scratch | cold | 12 | 0.956 | 1.126 | 1.163 |
+| `atm-fs-scratch5` | scratch | warm | 7 | 0.916 | 0.969 | 1.007 |
+| **`atm-fs-scratch6`** | **scratch** | **cold, seed 7717** | 16 | 0.936 | **1.032** | **1.029** |
 
-Two independent scratch runs on different node sets agree to three digits on
-both the mean and the floor, so this is not noise and not a bad node.
+Dataset setup, same nodes: **CFS 1,279 / 1,378 / 1,291 s** against
+**scratch 95 / 152 / ~150 s** — a reproducible **8.5–9x**.
 
-**Scratch wins setup by 8.8x and loses throughput by 29%.** Over a 30-epoch run
-that is 2.6 h saved on setup (8 starts x 1,185 s) against 18.0 h lost on
-training (8,217 x 0.263 s x 30) — **net 15 h worse per atmosphere run.** The
-campaign stays on CFS.
+**The matched pair is the one to quote**: `cfs4` and `scratch6` share a seed, so
+they read the same windows in the same order, both cold, on the same nodes.
+That pair is **+14% on p50 and +8% on mean**, which over 30 epochs is
+**+2.9 to +6.2 h of training against 2.5 h of setup saved — net 3–6 h worse.**
+Across every possible pairing the range is **+3 to +14 h**. Direction is
+consistent — every scratch run is slower than every CFS run on both p50 and
+mean — but the magnitude is not well determined, and an earlier draft of this
+section quoted 15 h by pairing CFS's best run against scratch's worst.
 
-**Read latency is not the explanation, and it points the other way.** Cold
-single-reader strided reads (259 KB every 19.3 MiB, the loader's actual
-pattern) on a compute node: scratch **0.258 ms**, CFS **2.176 ms** — scratch is
-8.4x *faster* per read. Measure the same thing from a login node and CFS looks
-45x worse; that gap is the login node's own CFS path, not what a job sees, so
-do not benchmark filesystems from a login node.
+**The campaign stays on CFS.** Scratch loses on net in every pairing, and the
+staged copy is kept as a contention fallback: switching later is then a config
+change, not a 6 TiB move.
 
-**What is actually happening** is visible in the shape rather than the level.
-CFS holds 0.891–0.918 s/step — a 3% spread over 460 steps, no stall anywhere —
-so on CFS the loader never once starves the GPU and 0.899 s/step *is* the
-compute cost. On scratch the intervals range 0.956–1.767 and even the floor sits
-6% above CFS's mean, so there the loader is the binding constraint. A filesystem
-whose reads are 8x faster feeding the GPU 29% worse is genuinely
-counterintuitive; the untested hypothesis is Lustre client CPU cost per RPC
-competing with 32 dataloader workers per node for 64 cores. **It is a
-hypothesis, not a measured cause.**
+### Why — three wrong answers and one partial one
 
-**What this does not settle: contention.** Both arms were measured alone.
-Monday puts ~25 atmosphere runs on CFS at once, and one competing 2-node job
-already cost the ocean 2.1x (2026-08-29). Scratch is per-user Lustre across 370
-OSTs and should degrade far less, so the ranking above could invert under load —
-that is exactly what the launch ramp's `epoch_total_seconds` check is for. The
-staged copy is left in place as the fallback: switching is then a config change,
-not a 6 TiB data movement.
+*Not striping.* The staged files are `stripe_count: 1`, but re-striping the same
+file across 1, 8, 16 and 48 OSTs moves the median strided read by 0.05 ms, and a
+single stream off one OST already does 1.3 GB/s. Wide striping does tighten the
+tail (p95 3.2 → 1.3 ms). Note CFS offers no equivalent knob at all: GPFS block
+size is fixed at filesystem creation and `mmchattr` is admin-only.
+
+*Not read latency, which points the other way.* Cold strided reads (259 KB every
+19.3 MiB, the loader's real pattern) on a **compute node**: scratch **0.258 ms**,
+CFS **2.176 ms**. Scratch is 8x faster per read. The same test from a **login
+node** says 45x — that is the login node's own CFS path, not what a job sees.
+**Do not benchmark a filesystem from a login node.**
+
+*Not memory.* Sampled every 5 s on all four nodes during training (n=102 CFS,
+n=133 scratch), the two are identical to within 2%: ~135.5 GB anonymous,
+~108 GB page cache, ~116 GB still reclaimable of 251 GB, and 19.1–19.4 GB per
+A100. Worth noting separately that 135 GB of anonymous memory is ~7x what the
+`time_buffer` table below predicts for the loader; there is headroom, so it is
+not biting, but the estimate is wrong.
+
+*Partially: kernel CPU on the read path.* Whole-node CPU over 60 s during
+training, cold sequence both sides:
+
+| | user | sys | iowait | idle |
+|---|---|---|---|---|
+| CFS `cfs4` | 3.3–3.8% | **14.8–16.0%** | 0.1–0.4% | 80% |
+| scratch `scratch6` | 2.6–3.3% | **26.3–30.1%** | 0.4–1.0% | 67–70% |
+
+**~1.8x the system time for identical user time** — about 18 cores of kernel
+work against 10. That is consistent with the Lustre client running its LNet/OSC
+stack on the compute node while CFS/DVS offloads read handling to DVS servers,
+leaving the compute node to do a cheap RPC and wait. It also fits the warm-cache
+result: cached reads skip the client path entirely, and `scratch5` duly came in
+at 1.007 rather than 1.16.
+
+**This is a correlation across two filesystems, not an isolated cause.** A first
+CPU measurement appeared to show 7x and was wrong — it compared a warm-cache CFS
+run against a cold scratch one. The honest statement is that scratch delivers
+faster reads at a higher kernel cost per read, and the loader's 8 workers per
+rank are already enough to hide CFS's latency entirely, so the extra speed buys
+nothing while the extra CPU costs something.
+
+**What none of this settles is contention.** Every arm was measured alone.
+Monday puts ~25 atmosphere runs on CFS at once, and a single competing 2-node
+job already cost the ocean 2.1x. Scratch is per-user Lustre across 370 OSTs and
+should degrade far less, so the ranking could invert under load — which is
+exactly what the launch ramp's `epoch_total_seconds` check is for.
 
 ### Ocean — measured at production rollout length, no extrapolation
 
@@ -1225,9 +1262,10 @@ another.
   week against 6 TiB of distinct input. Follow the launch ramp above rather than
   releasing 129 nodes at once.
 - **Staging the inputs to scratch was tried and is not the fix.** The whole
-  6 TiB set is now on `$PSCRATCH`, and measured head to head it buys 8.8x on
-  dataset setup and loses 29% on step time, netting **15 h worse per
-  atmosphere run** — see "The filesystem A/B". The copy is kept as a
+  6 TiB set is now on `$PSCRATCH`, and measured head to head it buys ~8.5x on
+  dataset setup and loses 8-14% on step time, netting **3-6 h worse per
+  atmosphere run on the best-controlled pair** (3-14 h across all pairings) —
+  see "The filesystem A/B". The copy is kept as a
   contention fallback, not as an improvement. The thing still worth fixing for
   a future campaign is the *file format*: `NETCDF3_64BIT_DATA` with no chunking
   forces a 259 KB strided read every 19.3 MiB, and rewriting the inputs chunked
