@@ -72,6 +72,8 @@ class TimeMeanAggregator:
         variable_metadata: Mapping[str, VariableMetadata] | None = None,
         reference_means: xr.Dataset | None = None,
         log_variables: frozenset[str] | None = None,
+        report_plot: bool = True,
+        plot_variables: frozenset[str] | None = None,
     ):
         """
         Args:
@@ -85,6 +87,16 @@ class TimeMeanAggregator:
             log_variables: If provided, only include per-variable entries in
                 get_logs and get_dataset for these variables. All variables
                 are still recorded and available via get_data.
+            report_plot: master plot toggle. When ``False``, no per-variable map
+                images are emitted; every scalar metric is unaffected. The maps
+                are by far the largest thing an inline-inference epoch uploads,
+                so this is the knob to reach for when the experiment tracker's
+                storage is the binding constraint.
+            plot_variables: when set, emit map images only for these variables.
+                Scalars are still emitted for every variable, so this keeps the
+                cohort-wide comparison while uploading a handful of reference
+                maps rather than one per channel. Ignored when ``report_plot``
+                is ``False``.
         """
         self._ops = gridded_operations
         self._target = target
@@ -99,6 +111,8 @@ class TimeMeanAggregator:
         self._reference_means = reference_means
         self._reference_validated = False
         self._log_variables = log_variables
+        self._report_plot = report_plot
+        self._plot_variables = plot_variables
 
     @staticmethod
     def _add_or_initialize_time_mean(
@@ -171,22 +185,25 @@ class TimeMeanAggregator:
         for name, pred in data.items():
             if self._log_variables is not None and name not in self._log_variables:
                 continue
-            if target_maps is not None and name in target_maps:
-                gen_map_caption_key = "gen_target_map"
-                data_panels = [[pred.cpu().numpy()], [target_maps[name].cpu().numpy()]]
-            else:
-                gen_map_caption_key = gen_map_key
-                data_panels = [[pred.cpu().numpy()]]
-            prediction_image = plot_paneled_data(
-                data_panels,
-                diverging=False,
-                caption=self._get_caption(gen_map_caption_key, name),
-            )
-            logs.update(
-                {
-                    f"{gen_map_key}/{name}": prediction_image,
-                }
-            )
+            if self._should_plot(name):
+                if target_maps is not None and name in target_maps:
+                    gen_map_caption_key = "gen_target_map"
+                    data_panels = [
+                        [pred.cpu().numpy()],
+                        [target_maps[name].cpu().numpy()],
+                    ]
+                else:
+                    gen_map_caption_key = gen_map_key
+                    data_panels = [[pred.cpu().numpy()]]
+                logs.update(
+                    {
+                        f"{gen_map_key}/{name}": plot_paneled_data(
+                            data_panels,
+                            diverging=False,
+                            caption=self._get_caption(gen_map_caption_key, name),
+                        ),
+                    }
+                )
             if self._reference_means is not None and name in self._reference_means:
                 pair = _TargetGenPair(
                     name=name,
@@ -196,18 +213,33 @@ class TimeMeanAggregator:
                     gen=pred,
                     ops=self._ops,
                 )
-                bias_image = plot_paneled_data(
-                    [[pair.bias().cpu().numpy()]],
-                    diverging=True,
-                    caption=self._get_caption("bias_map", name),
-                )
                 logs.update({f"ref_bias/{name}": pair.weighted_mean_bias()})
                 logs.update({f"ref_rmse/{name}": pair.rmse()})
-                logs.update({f"ref_bias_map/{name}": bias_image})
+                if self._should_plot(name):
+                    logs.update(
+                        {
+                            f"ref_bias_map/{name}": plot_paneled_data(
+                                [[pair.bias().cpu().numpy()]],
+                                diverging=True,
+                                caption=self._get_caption("bias_map", name),
+                            )
+                        }
+                    )
 
         if len(label) != 0:
             return {f"{label}/{key}": logs[key] for key in logs}
         return logs
+
+    def _should_plot(self, name: str) -> bool:
+        """Whether to emit a map image for this variable.
+
+        Two switches, deliberately separate: ``report_plot`` is the master and
+        ``plot_variables`` narrows what the master allows. Neither touches a
+        scalar.
+        """
+        if not self._report_plot:
+            return False
+        return self._plot_variables is None or name in self._plot_variables
 
     def _get_caption(self, key: str, name: str) -> str:
         if name in self._variable_metadata:
@@ -263,6 +295,8 @@ class TimeMeanEvaluatorAggregator:
         reference_means: xr.Dataset | None = None,
         channel_mean_names: Sequence[str] | None = None,
         log_variables: frozenset[str] | None = None,
+        report_plot: bool = True,
+        plot_variables: frozenset[str] | None = None,
     ):
         """
         Args:
@@ -279,6 +313,13 @@ class TimeMeanEvaluatorAggregator:
             log_variables: If provided, only include per-variable entries in
                 get_logs and get_dataset for these variables. All variables
                 are still recorded so that channel_mean is computed correctly.
+            report_plot: master plot toggle. When ``False``, no per-variable map
+                images are emitted; every scalar metric is unaffected.
+            plot_variables: when set, emit map images only for these variables.
+                Scalars are still emitted for every variable, so this keeps the
+                cohort-wide comparison while uploading a handful of reference
+                maps rather than one per channel. Ignored when ``report_plot``
+                is ``False``.
         """
         self._ops = ops
         self._horizontal_dims = horizontal_dims
@@ -289,6 +330,8 @@ class TimeMeanEvaluatorAggregator:
         else:
             self._variable_metadata = variable_metadata
         self._log_variables = log_variables
+        self._report_plot = report_plot
+        self._plot_variables = plot_variables
         # Dictionaries of tensors of shape [n_lat, n_lon] represnting time means
         self._target_agg = TimeMeanAggregator(
             gridded_operations=ops, target=target, variable_metadata=variable_metadata
@@ -297,6 +340,8 @@ class TimeMeanEvaluatorAggregator:
             gridded_operations=ops,
             target=target,
             variable_metadata=variable_metadata,
+            report_plot=report_plot,
+            plot_variables=plot_variables,
             reference_means=reference_means,
             log_variables=log_variables,
         )
@@ -352,20 +397,20 @@ class TimeMeanEvaluatorAggregator:
                 all_nan_target_names.add(pred.name)
             should_log = self._log_variables is None or pred.name in self._log_variables
             if should_log:
-                bias_image = plot_paneled_data(
-                    [[pred.bias().cpu().numpy()]],
-                    diverging=True,
-                    caption=self._get_caption(bias_map_key, pred.name),
-                )
-                plt.close("all")
                 logs.update({f"rmse/{pred.name}": rmse_all_channels[pred.name]})
                 if self._target == "denorm":
-                    logs.update(
-                        {
-                            f"{bias_map_key}/{pred.name}": bias_image,
-                            f"bias/{pred.name}": pred.weighted_mean_bias(),
-                        }
-                    )
+                    logs.update({f"bias/{pred.name}": pred.weighted_mean_bias()})
+                    if self._should_plot(pred.name):
+                        logs.update(
+                            {
+                                f"{bias_map_key}/{pred.name}": plot_paneled_data(
+                                    [[pred.bias().cpu().numpy()]],
+                                    diverging=True,
+                                    caption=self._get_caption(bias_map_key, pred.name),
+                                )
+                            }
+                        )
+                        plt.close("all")
         if self._target == "norm":
             metric_name = "rmse/channel_mean"
             if self._channel_mean_names is None:
@@ -399,6 +444,17 @@ class TimeMeanEvaluatorAggregator:
         if len(label) != 0:
             return {f"{label}/{key}": logs[key] for key in logs}
         return logs
+
+    def _should_plot(self, name: str) -> bool:
+        """Whether to emit a map image for this variable.
+
+        Two switches, deliberately separate: ``report_plot`` is the master and
+        ``plot_variables`` narrows what the master allows. Neither touches a
+        scalar.
+        """
+        if not self._report_plot:
+            return False
+        return self._plot_variables is None or name in self._plot_variables
 
     def _get_caption(self, key: str, name: str) -> str:
         if name in self._variable_metadata:
@@ -453,6 +509,8 @@ class TimeMeanMetricConfig:
     channel_mean_names: list[str] | None = None
     enabled: bool = True
     strict: bool = False
+    report_plot: bool = True
+    plot_variables: list[str] | None = None
 
     def __post_init__(self):
         if self.name is None:
@@ -480,6 +538,12 @@ class TimeMeanMetricConfig:
             ),
             log_variables=(
                 frozenset(self.variables) if self.variables is not None else None
+            ),
+            report_plot=self.report_plot,
+            plot_variables=(
+                frozenset(self.plot_variables)
+                if self.plot_variables is not None
+                else None
             ),
         )
         return MetricBuildResult(aggregator=agg)

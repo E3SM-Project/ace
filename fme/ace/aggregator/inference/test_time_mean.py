@@ -5,6 +5,7 @@ from fme.ace.aggregator.inference.data import InferenceBatchData, make_dummy_tim
 from fme.ace.aggregator.inference.time_mean import (
     TimeMeanAggregator,
     TimeMeanEvaluatorAggregator,
+    TimeMeanMetricConfig,
 )
 from fme.core.device import get_device
 from fme.core.gridded_ops import LatLonOperations
@@ -342,3 +343,120 @@ def test_aggregator_mean_values():
         ds["gen_map-a"].values,
         (data["a"].cpu().numpy().mean(axis=(0, 1))),
     )
+
+
+def _paired_batch():
+    """One batch with two channels whose bias is known, for the plot tests."""
+    device = get_device()
+    target = {
+        "a": torch.ones([2, 3, 4, 4], device=device),
+        "b": torch.ones([2, 3, 4, 4], device=device) * 3,
+    }
+    gen = {
+        "a": torch.ones([2, 3, 4, 4], device=device) * 2.0,
+        "b": torch.ones([2, 3, 4, 4], device=device) * 5,
+    }
+    return InferenceBatchData(
+        prediction=gen,
+        prediction_norm=gen,
+        target=target,
+        target_norm=target,
+        time=make_dummy_time(2, 3),
+        i_time_start=0,
+    )
+
+
+def _image_keys(logs):
+    return {k for k in logs if "map" in k}
+
+
+def test_report_plot_false_drops_maps_but_keeps_every_scalar():
+    """The storage lever: no map images, identical scalars.
+
+    Uploading a per-variable map for every channel every epoch is the largest
+    thing an inline-inference run sends to the experiment tracker, and it is
+    also the thing least worth having there -- the same fields go to disk via
+    get_dataset. Turning the plots off must not cost a single number.
+    """
+    area_weights = torch.ones(1, 1).to(get_device())
+    scalars = {}
+    images = {}
+    for report_plot in (True, False):
+        agg = TimeMeanEvaluatorAggregator(
+            LatLonOperations(area_weights),
+            horizontal_dims=["lat", "lon"],
+            target="denorm",
+            report_plot=report_plot,
+        )
+        agg.record_batch(_paired_batch())
+        logs = agg.get_logs(label="time_mean")
+        images[report_plot] = _image_keys(logs)
+        scalars[report_plot] = {
+            k: v for k, v in logs.items() if isinstance(v, int | float)
+        }
+
+    assert images[True], "expected map images when report_plot is on"
+    assert images[False] == set(), f"maps leaked: {sorted(images[False])}"
+    assert scalars[True] == scalars[False]
+    assert scalars[False]["time_mean/rmse/a"] == 1.0
+    assert scalars[False]["time_mean/bias/b"] == 2.0
+
+
+def test_report_plot_false_still_writes_maps_to_disk():
+    """report_plot is an upload switch, not a compute switch."""
+    area_weights = torch.ones(1, 1).to(get_device())
+    agg = TimeMeanEvaluatorAggregator(
+        LatLonOperations(area_weights),
+        horizontal_dims=["lat", "lon"],
+        target="denorm",
+        report_plot=False,
+    )
+    agg.record_batch(_paired_batch())
+    ds = agg.get_dataset()
+    assert "bias_map-a" in ds
+    assert "gen_map-a" in ds
+
+
+def test_report_plot_config_default_is_on():
+    """Existing checkpoints and configs keep the maps they had."""
+    assert TimeMeanMetricConfig().report_plot is True
+
+
+def test_plot_variables_narrows_maps_but_not_scalars():
+    """ "A select few spatial plots" -- the middle setting between all and none.
+
+    report_plot is the master switch; plot_variables narrows what it allows.
+    Neither may touch a scalar, because the per-variable rmse and bias are what
+    every run is compared on.
+    """
+    area_weights = torch.ones(1, 1).to(get_device())
+    agg = TimeMeanEvaluatorAggregator(
+        LatLonOperations(area_weights),
+        horizontal_dims=["lat", "lon"],
+        target="denorm",
+        plot_variables=frozenset(["a"]),
+    )
+    agg.record_batch(_paired_batch())
+    logs = agg.get_logs(label="time_mean")
+
+    maps = _image_keys(logs)
+    assert any(k.endswith("/a") for k in maps), sorted(maps)
+    assert not any(k.endswith("/b") for k in maps), sorted(maps)
+    # every scalar survives for both channels
+    assert logs["time_mean/rmse/a"] == 1.0
+    assert logs["time_mean/rmse/b"] == 2.0
+    assert logs["time_mean/bias/b"] == 2.0
+
+
+def test_report_plot_false_beats_plot_variables():
+    """The master switch wins; a stale plot_variables list cannot re-enable maps."""
+    area_weights = torch.ones(1, 1).to(get_device())
+    agg = TimeMeanEvaluatorAggregator(
+        LatLonOperations(area_weights),
+        horizontal_dims=["lat", "lon"],
+        target="denorm",
+        report_plot=False,
+        plot_variables=frozenset(["a", "b"]),
+    )
+    agg.record_batch(_paired_batch())
+    assert _image_keys(agg.get_logs(label="time_mean")) == set()
