@@ -552,24 +552,28 @@ Ready:
 - `config-train-cpl.yaml` regenerated from the baselines; `make_cpl_config.py
   --check` clean, `fme.coupled.validate_config` passes.
 
+- **Committed and pushed** to `e3sm/exps/hist-v2026.8.0`. A clone of the branch
+  the page names gets the baselines, the generator, the checker, all 33 run
+  configs and their `.env` files.
+- **wandb verified end to end.** A run reaches
+  `e3sm-aig/SamudrACE-E3SMv3` with name, group, job type and all eleven tags
+  populated from the generated `.env`.
+
 Open:
 
-1. **Nothing is committed.** The page tells participants to clone
-   `E3SM-Project/ace @ e3sm/exps/hist-v2026.8.0`, and the branch does not yet
-   carry any of this.
-2. **Scratch quota vs per-epoch checkpoints** — order 8 TB; check `myquota` from
+1. **Scratch quota vs per-epoch checkpoints** — order 8 TB; check `myquota` from
    a login node.
-3. **E17 uses the 5-day ocean statistics.** Fine for a cadence comparison; a
+2. **E17 uses the 5-day ocean statistics.** Fine for a cadence comparison; a
    production O1 run wants its own.
-4. **Soil moisture** is item 5 of the page's preamble and is not implemented —
+3. **Soil moisture** is item 5 of the page's preamble and is not implemented —
    no `H2OSOI`/`TSOI` in any config, and the stats cover only atmosphere and
    ocean. Needs the ELM history stream plus a stats recompute.
-5. **The clock control.** `global_mean_co2` is a `(time,)` scalar with no spatial
+4. **The clock control.** `global_mean_co2` is a `(time,)` scalar with no spatial
    structure, monotone over the record, so a model can use it as a clock rather
    than a forcing. `make_time_ramp.py` builds a matched physics-free ramp and is
    one command from being another run. It separates "the CO₂ channel works" from
    "the model learned to read a clock". Not on the page's list.
-6. **Checkpoint selection is in-sample.** `save_all_checkpoints(valid_loss,
+5. **Checkpoint selection is in-sample.** `save_all_checkpoints(valid_loss,
    inference_error)` selects on `valid_loss` over the 1990–95 window — an
    interpolation window between the two training blocks — and on
    `inference_error`, the weighted sum over inference blocks
