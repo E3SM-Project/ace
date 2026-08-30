@@ -90,6 +90,11 @@ if [ -n "$RUNID" ]; then
     if [ -f "$EXP_DIR/runs/${RUNID}.env" ]; then
         # shellcheck disable=SC1090
         . "$EXP_DIR/runs/${RUNID}.env"
+        # Identity belongs to the submission, not to the run list. runs/ is
+        # byte-identical for every teammate on purpose -- see
+        # generate-campaign.sh -- so who ran this and where it landed are
+        # appended here, where they are also true rather than merely intended.
+        WANDB_NOTES="${WANDB_NOTES} | owner ${USER} | out ${CAMPAIGN_ROOT}/${RUNID}"
         export WANDB_NAME WANDB_RUN_GROUP WANDB_JOB_TYPE WANDB_TAGS WANDB_NOTES
         cp "$EXP_DIR/runs/${RUNID}.env" "$CONFIG_DIR/"
         # The node count is a property of the config -- batch_size / local batch

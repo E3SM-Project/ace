@@ -1002,6 +1002,18 @@ person who owns a run is the person who reads it back; and wandb is the shared
 surface, since all 35 runs report to one project regardless of whose scratch
 they live in.
 
+**`runs/` carries no identity, which is what makes that workable.** The 35 yaml
+and 35 env files are byte-identical whoever runs `generate-campaign.sh`, so a
+teammate regenerates, gets a clean worktree, and submits without committing
+anything. Baking the owner and the output path into the `.env` at generate time
+— which is what the first version did — made every file differ per person, and
+`run-train.sh` refuses to submit from a dirty worktree, so only the person who
+generated the campaign could launch it. `run-train.sh` now appends
+`owner $USER | out $CAMPAIGN_ROOT/$RUNID` to `WANDB_NOTES` at submit time, where
+it is true rather than merely intended, and the baselines' `experiment_dir` is
+the literal `OVERRIDE_ME` because every launch path overrides it anyway.
+`check_campaign.py` fails any generated file containing a `/pscratch/` path.
+
 ### The levers, if the budget gets tight
 
 Priced against the 10,011 s epoch, in the order they cost least science:

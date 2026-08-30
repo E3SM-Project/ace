@@ -37,7 +37,12 @@
 #
 # Launch through sbatch-scripts/run-train.sh, and during the hackathon window
 # export RESERVATION=_CAP_aigs_hist. See README.md and EXPERIMENTS.md.
-experiment_dir: /pscratch/sd/m/mahf708/fme-output/hist-ocn
+# Placeholder. Every launch path overrides it: sbatch-train-*.sh sets
+# experiment_dir=$CAMPAIGN_ROOT/$RUNID via FME_OVERRIDE_ARGS, and the
+# ad-hoc invocations above pass --override themselves. Naming a real
+# directory here would name one person's scratch in all 35 generated
+# configs, which is how runs/ stopped being shareable the first time.
+experiment_dir: OVERRIDE_ME
 save_checkpoint: true
 # Every aggregator's full fields land in experiment_dir as netCDF each
 # epoch. This is the other half of the upload-budget trade below: the

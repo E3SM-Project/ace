@@ -10,6 +10,11 @@
 # hackathon page. There is no chain and no ordering constraint any more: every
 # run trains from scratch, so this is a single call.
 #
+# The output is identical whoever runs it -- no username, no scratch path, no
+# timestamp. That is what lets three people share one campaign: regenerating is
+# a no-op against a committed runs/, so nobody dirties the worktree and nobody
+# has to commit before submitting. check_campaign.py enforces it.
+#
 # Sizing is per run and comes out of the config, not out of the sbatch file:
 # atm nodes = batch_size / 4, ocn nodes = batch_size / 8. run-train.sh reads
 # FME_NODES from the generated .env and passes --nodes to sbatch.
@@ -19,8 +24,6 @@ set -euo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 EXP=$(dirname "$HERE")
 GEN="$EXP/make_ablation_config.py"
-OWNER="${CAMPAIGN_OWNER:-${USER}}"
-ROOT="${CAMPAIGN_ROOT:-${PSCRATCH}/aug26}"
 
 if [ "${1:-}" = "--list" ]; then
     exec python3 "$GEN" --list
@@ -44,7 +47,7 @@ if [ -d "$OUT" ]; then
     rm -f "$OUT/MANIFEST.tsv"
 fi
 
-python3 "$GEN" --all -o "$OUT" --owner "$OWNER" --campaign-root "$ROOT" "${LB[@]}"
+python3 "$GEN" --all -o "$OUT" "${LB[@]}"
 
 # Assert every emitted config says what its run id says it says. validate_config
 # proves a config parses; this proves E05...A3_B16_C1... actually has CO2, both

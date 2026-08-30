@@ -404,13 +404,23 @@ def check(path: pathlib.Path) -> list[str]:
         "then exist in neither W&B nor experiment_dir",
     )
 
-    # Inputs must be readable by everyone on the reservation, not just the author.
-    text = path.read_text()
-    for personal in (
-        "/pscratch/sd/m/mahf708/2026-08-13",
-        "/pscratch/sd/m/mahf708/e3sm-hist-aux",
-    ):
-        want(personal not in text, f"references personal scratch input {personal}")
+    # Inputs must be readable by everyone on the reservation, not just the
+    # author, and nothing generated may name a person at all. runs/ is committed
+    # and shared, so a username anywhere in it makes the file differ for every
+    # teammate -- they regenerate, the worktree goes dirty, and run-train.sh
+    # refuses to submit. Outputs come from $CAMPAIGN_ROOT at submit time and
+    # inputs live on CFS, so no generated file needs /pscratch at all.
+    sources = [(path.name, path.read_text())]
+    env = path.with_suffix(".env")
+    if env.is_file():
+        sources.append((env.name, env.read_text()))
+    for name, text in sources:
+        for line in text.splitlines():
+            if "/pscratch/" in line:
+                bad.append(
+                    f"{name} names personal scratch, so it differs per "
+                    f"teammate: {line.strip()[:110]}"
+                )
 
     return bad
 

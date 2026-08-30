@@ -246,6 +246,19 @@ all 35 runs report to one project wherever they physically run.
 `runs/` is entirely generated. Never hand-edit a file in it: regenerate, or the
 next `generate-campaign.sh` silently reverts you.
 
+**It is also identical whoever generates it** — no username, no scratch path, no
+timestamp. So regenerating against the committed `runs/` is a no-op: your
+worktree stays clean, `run-train.sh` is happy, and **you never have to commit
+anything to launch a run.** Identity is attached at submit time instead —
+`run-train.sh` appends `owner $USER | out $CAMPAIGN_ROOT/$RUNID` to the wandb
+notes, so wandb records who actually submitted rather than who generated.
+`check_campaign.py` fails any generated file that names a `/pscratch/` path,
+which is what keeps this true.
+
+The one thing that *does* need committing is a change to the run list itself —
+`make_ablation_config.py`, the baselines, or the checker. That is a change to
+the campaign, so it goes through a normal commit and everyone regenerates.
+
 ### Queue facts worth knowing before you submit
 
 * `MaxJobsAccruePU = 2` on `gpu_regular`: only two of your jobs accrue age at a

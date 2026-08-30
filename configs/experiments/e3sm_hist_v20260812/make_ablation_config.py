@@ -693,8 +693,17 @@ def apply_ocean_cadence(config: dict, run: Run) -> None:
         raise SizingError(f"{run.runid}: 5-day ocean statistics survived the switch")
 
 
-def env_file(run: Run, campaign_root: str, owner: str) -> str:
-    """W&B provenance: read from the environment by wandb, not from the config."""
+def env_file(run: Run) -> str:
+    """W&B provenance: read from the environment by wandb, not from the config.
+
+    Deliberately free of identity. Who submitted a run and where its output
+    landed are properties of the submission, not of the run list, and
+    run-train.sh appends both to WANDB_NOTES at submit time. Baking them in
+    here made every file in runs/ different for every teammate, which dirtied
+    the worktree the moment they regenerated -- and run-train.sh refuses to
+    submit from a dirty worktree, so only the person who generated the
+    campaign could launch it.
+    """
     tags = ",".join(
         [
             CAMPAIGN,
@@ -724,8 +733,7 @@ def env_file(run: Run, campaign_root: str, owner: str) -> str:
             f"WANDB_RUN_GROUP={CAMPAIGN}.{run.realm}.{run.exp}",
             f"WANDB_JOB_TYPE={run.factors.word()}",
             f"WANDB_TAGS={tags}",
-            f'WANDB_NOTES="{run.note} | {run.nodes} nodes, {run.ranks} ranks | '
-            f'owner {owner} | out {campaign_root}/{run.runid}"',
+            f'WANDB_NOTES="{run.note} | {run.nodes} nodes, {run.ranks} ranks"',
             "",
         ]
     )
@@ -745,10 +753,6 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--dry-run", action="store_true",
                    help="build and check every config, write nothing")
     p.add_argument("-o", "--out", default=str(HERE / "runs"))
-    p.add_argument("--campaign-root", default=None,
-                   help="output root recorded in the wandb notes "
-                        "(default $PSCRATCH/aug26)")
-    p.add_argument("--owner", default="", help="who is running this arm")
     p.add_argument("--epochs", type=int, default=None,
                    help=f"override max_epochs (defaults {DEFAULT_EPOCHS})")
     p.add_argument("--local-batch", action="append", default=[], metavar="REALM=N",
@@ -786,7 +790,6 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     out = pathlib.Path(args.out)
-    campaign_root = args.campaign_root or "$PSCRATCH/aug26"
     baselines = {
         realm: yaml.safe_load((HERE / f"config-train-{realm}.yaml").read_text())
         for realm in sorted({r.realm for r in runs})
@@ -808,9 +811,7 @@ def main(argv: list[str] | None = None) -> int:
             f"# {run.nodes} nodes / {run.ranks} ranks, priority P{run.priority}\n"
             + yaml.safe_dump(config, sort_keys=False, default_flow_style=False)
         )
-        (out / f"{run.runid}.env").write_text(
-            env_file(run, campaign_root, args.owner)
-        )
+        (out / f"{run.runid}.env").write_text(env_file(run))
         written += 1
 
     manifest = "\n".join(
