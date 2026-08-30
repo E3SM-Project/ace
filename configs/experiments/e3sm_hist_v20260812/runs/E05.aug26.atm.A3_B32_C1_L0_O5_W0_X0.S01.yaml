@@ -108,6 +108,9 @@ inference:
       - V_4
       - V_6
       - V_7
+      - lwp
+      - lcc
+      - cdnc
     zonal_mean:
       enabled: false
     video:

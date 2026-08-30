@@ -532,12 +532,43 @@ def apply_channels(config: dict, run: Run, with_aod: bool) -> None:
         corrector["force_positive_names"] = (
             list(corrector["force_positive_names"]) + AEROSOL_OUT
         )
+        # lwp/lcc/cdnc are the signature outputs of these arms, so they belong
+        # in the pictures. The baseline's plot list cannot name them -- they do
+        # not exist there -- so the arm that adds the outputs adds the plots.
+        for names in _plot_lists(config):
+            names += AEROSOL_OUT
 
     dupes = [n for n in set(in_names) if in_names.count(n) > 1]
     if dupes:
         raise SizingError(f"{run.runid}: duplicate in_names {sorted(dupes)}")
     step["in_names"] = in_names
     step["out_names"] = out_names
+
+
+def _plot_lists(config: dict) -> list[list[str]]:
+    """The distinct variable lists that decide which channels get a picture.
+
+    The baselines write one list and alias it into `histogram.variables` and
+    three `plot_variables`, so yaml hands back a single object shared by every
+    site; this returns it once, by identity, and appending to it updates all of
+    them at once. Written as a search rather than a fixed path so that adding an
+    aggregator to the baselines does not silently leave it un-narrowed.
+    """
+    found: dict[int, list[str]] = {}
+
+    def walk(node) -> None:
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key in ("variables", "plot_variables") and isinstance(value, list):
+                    found[id(value)] = value
+                walk(value)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+
+    for entry in config.get("inference", []):
+        walk(entry.get("aggregator", {}))
+    return list(found.values())
 
 
 def apply_sizing(config: dict, run: Run) -> None:

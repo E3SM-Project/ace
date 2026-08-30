@@ -35,6 +35,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 # imports the thing it is checking cannot catch a mistake in the shared constant.
 LOCAL_BATCH = {"atm": 1, "ocn": 2}
 GPUS_PER_NODE = 4
+AEROSOL_OUT = ["lwp", "lcc", "cdnc"]
 AEROSOL_STATE = {
     "A0": (False, False),
     "A1": (True, False),
@@ -185,6 +186,21 @@ def check(path: pathlib.Path) -> list[str]:
                 "lcc and cdnc are non-negative by definition and the corrector is "
                 "the only thing enforcing it",
             )
+            # These are the signature outputs of the arms that add them, so an
+            # arm that predicts them and does not plot them gets scalars and no
+            # picture of the thing it exists to test. The baselines' plot list
+            # cannot name them, so the generator appends them here.
+            for entry in d.get("inference", []):
+                plotted = (
+                    entry.get("aggregator", {}).get("histogram", {}).get("variables")
+                    or []
+                )
+                missing = [n for n in AEROSOL_OUT if n not in plotted]
+                want(
+                    not missing,
+                    f"{entry.get('name')}: aerosol outputs {missing} are "
+                    "predicted but never plotted",
+                )
         cfg = step["builder"]["config"]
         for k, v in EMBED.items():
             want(
