@@ -84,10 +84,12 @@ while IFS=$'\t' read -r pri runid realm nodes ranks batch seed note; do
         continue
     fi
     printf '%-3s %2s nodes  %s\n' "$pri" "$nodes" "$runid"
+    # < /dev/null: the child inherits this loop's stdin, which is the manifest.
+    # Anything it reads from stdin is a run that never gets submitted.
     if [ "$PRE" = 1 ]; then
-        "$RUN" "$realm" "$runid" --no-submit > /dev/null || { echo "PREFLIGHT FAILED: $runid" >&2; exit 1; }
+        "$RUN" "$realm" "$runid" --no-submit > /dev/null < /dev/null || { echo "PREFLIGHT FAILED: $runid" >&2; exit 1; }
     else
-        "$RUN" "$realm" "$runid" > /dev/null
+        "$RUN" "$realm" "$runid" > /dev/null < /dev/null
     fi
 done < "$MANIFEST"
 

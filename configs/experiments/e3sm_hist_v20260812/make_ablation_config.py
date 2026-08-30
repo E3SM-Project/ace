@@ -735,7 +735,8 @@ def main(argv: list[str] | None = None) -> int:
             p.error(f"--local-batch expects atm=N or ocn=N, got {spec!r}")
         LOCAL_BATCH[realm] = int(value)
 
-    runs = expand(RUNLIST)
+    all_runs = expand(RUNLIST)
+    runs = list(all_runs)
     if args.exp:
         wanted = {e.upper() for e in args.exp}
         runs = [r for r in runs if r.exp in wanted]
@@ -794,8 +795,21 @@ def main(argv: list[str] | None = None) -> int:
             for r in runs
         ]
     ) + "\n"
-    if not args.dry_run:
+    # MANIFEST.tsv is what submit-campaign.sh walks, so writing a filtered
+    # selection over it turns the whole campaign into whatever subset was
+    # generated last -- and the submitter has no way to tell. Only a full
+    # generation may write it.
+    partial = len(runs) != len(all_runs)
+    if not args.dry_run and not partial:
         (out / "MANIFEST.tsv").write_text(manifest)
+    elif partial:
+        print(
+            f"\nselection is {len(runs)} of {len(all_runs)} runs, so "
+            f"{out / 'MANIFEST.tsv'} was left alone.\n"
+            "Regenerate the whole campaign to refresh it: "
+            "./generate-campaign.sh",
+            file=sys.stderr,
+        )
 
     report(runs)
     verb = "checked" if args.dry_run else f"wrote {written} configs to {out}"

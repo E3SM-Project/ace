@@ -150,6 +150,28 @@ fi
 if [ -n "$RUNID" ]; then
     OUT="${CAMPAIGN_ROOT}/${RUNID}"
     PREV_CFG="$OUT/job_config/${CONFIG_NAME}"
+
+    # Queued-duplicate guard. The checks below catch "this run has already run"
+    # by looking at the output directory; they cannot catch "this run is
+    # already waiting to start", because nothing has been written yet. Two
+    # submissions of one id before the first starts is not caught by anything
+    # else, and it ends with two jobs writing ckpt.tar in the same directory --
+    # which does not fail, it just silently produces one corrupted run.
+    #
+    # Scope: this sees only $USER's queue, which is the same scope as
+    # $CAMPAIGN_ROOT ($PSCRATCH is per person). Two people submitting the same
+    # id land in two different directories and two different queues, and no
+    # guard here can see that -- one owner per run is what prevents it.
+    if [ "$NOSUBMIT" != 1 ]; then
+        PENDING=$(squeue -h -u "$USER" --name="$RUNID" -o '%i %T' 2>/dev/null || true)
+        if [ -n "$PENDING" ]; then
+            echo "$RUNID is already in your queue:" >&2
+            echo "$PENDING" | sed 's/^/  /' >&2
+            echo "  Submitting again would run two jobs into $OUT and interleave their checkpoint writes." >&2
+            echo "  Cancel the existing job first, or pass --force if you know what you are doing." >&2
+            [ "$FORCE" != 1 ] && exit 1
+        fi
+    fi
     if [ -f "$OUT/training_checkpoints/ckpt.tar" ] && [ "$RESUME" != 1 ]; then
         echo "$OUT already holds a checkpoint. Training would resume from it, not start over." >&2
         echo "  continue it:  ./run-train.sh $REALM $RUNID --resume" >&2
