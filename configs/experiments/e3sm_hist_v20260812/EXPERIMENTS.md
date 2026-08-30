@@ -19,8 +19,8 @@ publish pipeline strips HTML comments, so find that block by its `id`.
 
 Two committed files, and they *are* runs E01 and E11 — not templates:
 
-    config-train-atm.yaml  =  E01.aug26.atm.A0_B16_C0_O5_W0_X0.S01
-    config-train-ocn.yaml  =  E11.aug26.ocn.A0_B16_C0_O5_W0_X0.S01
+    config-train-atm.yaml  =  E01.aug26.atm.A0_B16_C0_L0_O5_W0_X0.S01
+    config-train-ocn.yaml  =  E11.aug26.ocn.A0_B16_C0_L0_O5_W0_X0.S01
 
 Everything else is generated from them by `make_ablation_config.py`, and
 `check_campaign.py` asserts that each emitted config matches its run id.
@@ -59,7 +59,7 @@ remove the image removes the metric. Removing the image alone is a code change.
 ## Naming
 
     <exp>.<hackathon_date>.<realm>.<tuning_set>.S<seed>
-    E05  .aug26          .atm   .A3_B16_C1_O5_W0_X0.S01
+    E05  .aug26          .atm   .A3_B16_C1_L0_O5_W0_X0.S01
 
 The experiment number is one incrementing `E` sequence — E01–E10 atmosphere,
 E11–E17 ocean, and a coupled run would be the next number. `E` is the one letter
@@ -67,13 +67,15 @@ the factor alphabet (A, B, C, O, W, X) and the seed (S) both leave free; an
 `A##` or `O##` prefix collides with the aerosol and ocean-cadence factors inside
 the same run id, and `C##` collides with CO₂.
 
-The tuning set is a **fixed-order** factor word `A?_B??_C?_O?_W?_X?`:
+The tuning set is a **fixed-order** factor word `A?_B??_C?_L?_O?_W?_X?`,
+alphabetical by position:
 
 | pos | levels |
 |---|---|
 | `A` | `A0` none · `A1` aerosol **inputs** (`aerindexall`, `colccn.3`) · `A2` aerosol **outputs** (`lwp`, `lcc`, `cdnc`) · `A3` both |
 | `B` | `B08` · `B16` · `B32` — global batch size |
 | `C` | `C0` no CO₂ · `C1` `global_mean_co2` as an input |
+| `L` | `L0` baseline lr · `L1` lr × √(batch / 16) |
 | `O` | `O1` 1-daily ocean step · `O5` 5-daily |
 | `W` | `W0` equal · `W1` flux upweight · `W2` away-from-surface dilution · `W3`/`W4` zero one poor channel |
 | `X` | `X0` baseline · `X1` AMP (bf16 autocast) |
@@ -85,7 +87,7 @@ Each factor is a separate `WANDB_TAG` as well as being inside
 
 ## Weights & Biases
 
-All 33 runs go to one project so both realms share a workspace:
+All 35 runs go to one project so both realms share a workspace:
 
 | | |
 |---|---|
@@ -116,23 +118,23 @@ person's identity, use a team **service account**. Keys live in `~/.netrc` or
 
 ## The run list
 
-33 runs, 119 nodes. `make_ablation_config.py --list` prints it.
+35 runs, 129 nodes. `make_ablation_config.py --list` prints it.
 
 ### Atmosphere — E01–E10, E15
 
 | exp | factors | what it adds | seeds | nodes each |
 |---|---|---|---|---|
-| **E01** | `A0_B16_C0_O5_W0_X0` | **baseline** | 3 (+B08 +B32) | 4 |
-| **E02** | `A0_B16_C1_O5_W0_X0` | + CO₂ | 3 (+B08 +B32) | 4 |
-| E03 | `A1_B16_C1_O5_W0_X0` | + aerosol input | 1 | 4 |
-| E04 | `A2_B16_C1_O5_W0_X0` | − aerosol input + aerosol output | 1 | 4 |
-| **E05** | `A3_B16_C1_O5_W0_X0` | both aerosol inputs and outputs | 3 (+B08 +B32) | 4 |
-| E06 | `A3_B16_C0_O5_W0_X0` | − CO₂ (vs E05: aerosol/GHG interplay) | 1 | 4 |
-| E07 | `A3_B16_C1_O5_W1_X0` | flux-upweighted loss | 1 | 4 |
-| E08 | `A3_B16_C1_O5_W2_X0` | away-from-surface dilution | 1 | 4 |
-| E09 | `A3_B16_C1_O5_W4_X0` | zero `STW_0` | 1 | 4 |
-| E10 | `A3_B16_C1_O5_W0_X1` | AMP | 1 | 4 |
-| E15 | `A3_B16_C1_O5_W3_X0` | zero `STW_1` | 1 | 4 |
+| **E01** | `A0_B16_C0_L0_O5_W0_X0` | **baseline** | 3 (+B08 +B32) | 4 |
+| **E02** | `A0_B16_C1_L0_O5_W0_X0` | + CO₂ | 3 (+B08 +B32) | 4 |
+| E03 | `A1_B16_C1_L0_O5_W0_X0` | + aerosol input | 1 | 4 |
+| E04 | `A2_B16_C1_L0_O5_W0_X0` | − aerosol input + aerosol output | 1 | 4 |
+| **E05** | `A3_B16_C1_L0_O5_W0_X0` | both aerosol inputs and outputs | 3 (+B08 +B32) | 4 |
+| E06 | `A3_B16_C0_L0_O5_W0_X0` | − CO₂ (vs E05: aerosol/GHG interplay) | 1 | 4 |
+| E07 | `A3_B16_C1_L0_O5_W1_X0` | flux-upweighted loss | 1 | 4 |
+| E08 | `A3_B16_C1_L0_O5_W2_X0` | away-from-surface dilution | 1 | 4 |
+| E09 | `A3_B16_C1_L0_O5_W4_X0` | zero `STW_0` | 1 | 4 |
+| E10 | `A3_B16_C1_L0_O5_W0_X1` | AMP | 1 | 4 |
+| E15 | `A3_B16_C1_L0_O5_W3_X0` | zero `STW_1` | 1 | 4 |
 
 E03 → E04 → E05 is cumulative: E03 adds the aerosol *inputs*, E04 swaps them for
 the *outputs*, E05 has both. The three decompose the aerosol question.
@@ -141,16 +143,16 @@ the *outputs*, E05 has both. The three decompose the aerosol question.
 
 | exp | factors | what it adds | seeds | nodes each |
 |---|---|---|---|---|
-| **E11** | `A0_B16_C0_O5_W0_X0` | **baseline** | 3 (+B08 +B32) | 2 |
-| E12 | `A0_B16_C0_O5_W1_X0` | interface-upweighted loss | 1 | 2 |
-| E13 | `A0_B16_C0_O5_W2_X0` | away-from-surface dilution | 1 | 2 |
-| E14 | `A0_B16_C0_O5_W4_X0` | zero deepest meridional velocity | 1 | 2 |
-| E16 | `A0_B16_C0_O5_W3_X0` | zero `iceVolumeTotal` | 1 | 2 |
-| E17 | `A0_B16_C0_O1_W0_X0` | 1-daily stepping (vs E11's 5-daily) | 1 | 2 |
+| **E11** | `A0_B16_C0_L0_O5_W0_X0` | **baseline** | 3 (+B08 +B32) | 2 |
+| E12 | `A0_B16_C0_L0_O5_W1_X0` | interface-upweighted loss | 1 | 2 |
+| E13 | `A0_B16_C0_L0_O5_W2_X0` | away-from-surface dilution | 1 | 2 |
+| E14 | `A0_B16_C0_L0_O5_W4_X0` | zero deepest meridional velocity | 1 | 2 |
+| E16 | `A0_B16_C0_L0_O5_W3_X0` | zero `iceVolumeTotal` | 1 | 2 |
+| E17 | `A0_B16_C0_L0_O1_W0_X0` | 1-daily stepping (vs E11's 5-daily) | 1 | 2 |
 
 ### Node budget
 
-atm 98 + ocn 21 = **119 nodes against 96 reserved**. In aggregate the campaign
+atm 108 + ocn 21 = **129 nodes against 96 reserved**. In aggregate the campaign
 is roughly 7,400 node-hours against 12,100 available — about 61% — so this is a
 concurrency limit, not a capacity one. It drains in priority order:
 
@@ -159,7 +161,7 @@ concurrency limit, not a capacity one. It drains in priority order:
 | P1 | 14 | 14 | the four bolded baselines at B16 S01 — E01 E02 E05 E11 |
 | P2 | 42 | 56 | the single-seed science ablations, including E15/E16/E17 |
 | P3 | 28 | 84 | seeds S02/S03 of the bolded four |
-| P4 | 35 | 119 | the B08/B32 batch sweeps |
+| P4 | 45 | 129 | the B08/B32 batch sweeps, at both L0 and L1 |
 
 P1+P2+P3 = 84 nodes, all of which start immediately; only P4 queues. A
 single-seed ablation is the only measurement of its factor that exists, whereas
@@ -211,6 +213,40 @@ Deliberately not used: `FSNS` (residual/full 1.28), `FSUTOA` (1.14), `SHFLX`
 first three it is the diurnal cycle, which the model can resolve from `SOLIN`.
 `DTENDTTW` would additionally confound the moisture-budget corrector, which
 consumes it.
+
+---
+
+## Learning rate and batch size
+
+`L0` holds the base learning rate (1e-4) at every batch size. `L1` scales it by
+`sqrt(batch / 16)`:
+
+| batch | L0 | L1 |
+|---|---|---|
+| B08 | 1.000e-4 | **7.071e-5** |
+| B16 | 1.000e-4 | *(identical to L0 — the generator rejects it)* |
+| B32 | 1.000e-4 | **1.414e-4** |
+
+Neither is "correct", which is why both run. Linear scaling, lr ∝ batch (Goyal
+et al. 2017), is derived for SGD with momentum and rests on one large step
+approximating *k* small ones. Square-root scaling (Krizhevsky 2014; Hoffer et
+al. 2017) instead keeps the gradient-noise level fixed, since the update
+variance goes as lr² / batch. **Both realms use an Adam-family optimizer** —
+`FusedAdam` for the atmosphere, `AdamW` for the ocean — which normalizes by the
+gradient's second moment and so is already partly invariant to gradient scale;
+√B is the better prior there than linear. There is also a ceiling: above a
+critical batch size (McCandlish et al. 2018) more batch buys little whatever the
+learning rate, but B08–B32 on a 456 M-parameter model is far below it.
+
+**L0 is the campaign default.** With one seed per batch arm, changing batch and
+learning rate together produces a result nobody can attribute. The cost is that
+a null at B32-L0 is ambiguous — "B32 does not help" and "B32 needed a bigger
+step" look identical. E01 therefore carries both: `B08_L0`, `B08_L1`, `B32_L0`,
+`B32_L1`, all on the baseline experiment so nothing else varies. Three-way
+comparison against `B16_L0` separates the two explanations.
+
+`check_campaign.py` verifies the learning rate numerically against the factor
+word rather than trusting a flag, because a wrong lr is invisible in a run id.
 
 ---
 
@@ -546,7 +582,7 @@ Ready:
   `stats-2026-08-13/`, `landfrac5d/`, `landfrac1d/`. Group `e3smdata`, mode
   `g+rX,o-rwx`; all five users named on the reservation are in that group and the
   path is group-traversable end to end. No config references personal `$PSCRATCH`.
-- All 33 configs pass `fme.ace.validate_config` and `check_campaign.py`, and all
+- All 35 configs pass `fme.ace.validate_config` and `check_campaign.py`, and all
   pass the real submit path via `submit-campaign.sh --preflight` — staging,
   `.env`, per-run `--nodes` and the validator, everything but the `sbatch` call.
 - `config-train-cpl.yaml` regenerated from the baselines; `make_cpl_config.py
@@ -559,21 +595,21 @@ Ready:
   `e3sm-aig/SamudrACE-E3SMv3` with name, group, job type and all eleven tags
   populated from the generated `.env`.
 
+- **Scratch quota is not a constraint.** `myquota` reports 47.39 of 120 TiB used
+  and 2.73 of 10 M inodes. The campaign's per-epoch checkpoints are **8.0 TiB**
+  (5.7 atmosphere + 2.3 ocean) in about 4,400 files, against 72.6 TiB and 7.27 M
+  inodes free.
+
 Open:
 
-1. **Scratch quota vs per-epoch checkpoints** — order 8 TB; check `myquota` from
-   a login node.
-2. **E17 uses the 5-day ocean statistics.** Fine for a cadence comparison; a
-   production O1 run wants its own.
-3. **Soil moisture** is item 5 of the page's preamble and is not implemented —
-   no `H2OSOI`/`TSOI` in any config, and the stats cover only atmosphere and
-   ocean. Needs the ELM history stream plus a stats recompute.
-4. **The clock control.** `global_mean_co2` is a `(time,)` scalar with no spatial
+1. **E17's 1-day ocean statistics** are being computed; until they land E17 uses
+   the 5-day set.
+2. **The clock control.** `global_mean_co2` is a `(time,)` scalar with no spatial
    structure, monotone over the record, so a model can use it as a clock rather
    than a forcing. `make_time_ramp.py` builds a matched physics-free ramp and is
    one command from being another run. It separates "the CO₂ channel works" from
    "the model learned to read a clock". Not on the page's list.
-5. **Checkpoint selection is in-sample.** `save_all_checkpoints(valid_loss,
+3. **Checkpoint selection is in-sample.** `save_all_checkpoints(valid_loss,
    inference_error)` selects on `valid_loss` over the 1990–95 window — an
    interpolation window between the two training blocks — and on
    `inference_error`, the weighted sum over inference blocks
@@ -594,6 +630,7 @@ Open:
 | **A weight set wins** | it improves its target variables without degrading `time_mean/rmse/channel_mean`. W2 is mean-normalized so this comparison means something |
 | **AMP is worth it** | s/batch and whether the loss curve tracks E05's — nothing else. At `checkpointing: 3` the bf16 memory saving is 0.4 GB, and checkpointing itself costs only 3–5%, so E10 has to beat an efficient baseline |
 | **A batch size wins** | samples per second, and whether the validation curve at equal *sample count* — not equal step count — matches B16 |
+| **A learning rate scaling wins** | B32-L1 beats B32-L0 on validation at equal sample count. If it does, a B32-L0 deficit against B16 was a step-size problem rather than a batch-size one; if it does not, the batch-size reading stands |
 | **1-daily ocean is worth it** | E17 beats E11 on 12-year drift at equal **wall clock**, not equal epochs. It sees 5× the samples per epoch, so an equal-epoch comparison flatters it |
 
 **Report the epoch a number came from.** With `checkpoint_save_epochs: 1` every
@@ -686,7 +723,7 @@ by its 8 inference ICs. **Never submit any of this to a 4-hour queue.**
 | `config-train-cpl.yaml` | coupled; not in the aug26 list, regenerate with `make_cpl_config.py` after any baseline change |
 | `make_ablation_config.py` | the generator; `RUNLIST` transcribes the page |
 | `check_campaign.py` | asserts every emitted config matches its run id; run by `generate-campaign.sh` |
-| `runs/*.yaml`, `runs/*.env` | 33 generated runs plus wandb/sizing provenance |
+| `runs/*.yaml`, `runs/*.env` | 35 generated runs plus wandb/sizing provenance |
 | `runs/MANIFEST.tsv` | priority, runid, realm, nodes, ranks, batch, seed, note |
 | `sbatch-scripts/generate-campaign.sh` | regenerates `runs/` and checks it |
 | `sbatch-scripts/submit-campaign.sh` | walks the manifest in priority order; `--dry-run`, `--preflight` |

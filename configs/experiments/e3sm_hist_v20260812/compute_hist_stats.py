@@ -45,7 +45,9 @@ import xarray as xr
 from netCDF4 import Dataset  # type: ignore[import-untyped]
 
 RUN_DIR = "/global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run"
-AUX_DIR = "/pscratch/sd/m/mahf708/e3sm-hist-aux/landfrac5d"
+CFS_AUX = "/global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical"
+AUX_DIR = f"{CFS_AUX}/landfrac5d"
+AUX_DIR_1D = f"{CFS_AUX}/landfrac1d"
 FILL_THRESHOLD = 1e19
 
 
@@ -237,7 +239,37 @@ OCEAN_STREAMS = [
     ),
 ]
 
-REALMS = {"atmosphere": ATMOSPHERE_STREAMS, "ocean": OCEAN_STREAMS}
+def _as_1d(stream: "Stream") -> "Stream":
+    """The same stream on the 1-day axis.
+
+    The 1-day MPAS streams are the un-suffixed ones; LANDFRAC has to come from
+    the matching aux tree because it is materialised per ocean axis. Everything
+    else -- rename, overwrite, combine, mask_and_scale -- is identical, which is
+    the point: the only difference between O5 and O1 statistics is the averaging
+    window of the underlying data.
+    """
+    out = dataclasses.replace(
+        stream,
+        key=stream.key.replace("5d", "1d"),
+        file_pattern=stream.file_pattern
+        .replace("fmeDepthCoarsening5D.", "fmeDepthCoarsening.")
+        .replace("fmeDerivedFields5D.", "fmeDerivedFields.")
+        .replace("fmeSeaiceDerivedFields5D.", "fmeSeaiceDerivedFields.")
+        .replace("landfrac5d.", "landfrac1d."),
+        data_path=AUX_DIR_1D if stream.data_path == AUX_DIR else stream.data_path,
+    )
+    if "5D." in out.file_pattern:
+        raise ValueError(f"a 5D pattern survived the cadence switch: {out.file_pattern}")
+    return out
+
+
+OCEAN_1D_STREAMS = [_as_1d(s) for s in OCEAN_STREAMS]
+
+REALMS = {
+    "atmosphere": ATMOSPHERE_STREAMS,
+    "ocean": OCEAN_STREAMS,
+    "ocean-1d": OCEAN_1D_STREAMS,
+}
 _STREAMS_BY_KEY = {s.key: s for realm in REALMS.values() for s in realm}
 
 

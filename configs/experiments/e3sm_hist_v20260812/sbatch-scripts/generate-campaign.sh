@@ -35,6 +35,15 @@ OUT="${1:-$EXP/runs}"
 LB=()
 [ -n "${CAMPAIGN_LOCAL_BATCH:-}" ] && LB=(--local-batch "$CAMPAIGN_LOCAL_BATCH")
 
+# Clear stale output first. `runs/` is entirely generated, and a factor-word
+# change renames every file in it -- without this the old ids linger beside the
+# new ones and someone can launch an orphan by hand. check_campaign.py would
+# flag them, but only if it is pointed at them.
+if [ -d "$OUT" ]; then
+    find "$OUT" -maxdepth 1 -type f \( -name '*.yaml' -o -name '*.env' \) -delete
+    rm -f "$OUT/MANIFEST.tsv"
+fi
+
 python3 "$GEN" --all -o "$OUT" --owner "$OWNER" --campaign-root "$ROOT" "${LB[@]}"
 
 # Assert every emitted config says what its run id says it says. validate_config

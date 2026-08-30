@@ -73,7 +73,7 @@ def check(path: pathlib.Path) -> list[str]:
 
     try:
         exp, campaign, realm, word, seed = path.stem.split(".")
-        aero, batch_w, co2, ocean, weights, amp = word.split("_")
+        aero, batch_w, co2, lr_w, ocean, weights, amp = word.split("_")
     except ValueError:
         return [f"run id is not <exp>.<date>.<realm>.<tuning_set>.S<seed>: {path.stem}"]
 
@@ -147,6 +147,21 @@ def check(path: pathlib.Path) -> list[str]:
                      f"O1 block {block.get('name')!r} has "
                      f"{block['n_forward_steps']} forward steps; a 12-year "
                      f"rollout on a daily axis is 4380")
+
+    # L0 holds the base learning rate; L1 scales it by sqrt(batch / 16). Checked
+    # numerically rather than by flag, because a wrong lr is invisible in a run id.
+    base = 1e-4
+    want(lr_w in ("L0", "L1"), f"unknown learning-rate set {lr_w}")
+    expected = base if lr_w == "L0" else base * (batch / 16) ** 0.5
+    actual = d["optimization"]["lr"]
+    want(
+        abs(actual - expected) < 1e-12,
+        f"{lr_w} at {batch_w} implies lr {expected:.6g}, config has {actual:.6g}",
+    )
+    want(
+        not (lr_w == "L1" and batch == 16),
+        "L1 at B16 is identical to L0 -- the scaling is relative to batch 16",
+    )
 
     amp_on = d["optimization"]["enable_automatic_mixed_precision"]
     want((amp == "X1") == amp_on, f"{amp} but AMP={amp_on}")

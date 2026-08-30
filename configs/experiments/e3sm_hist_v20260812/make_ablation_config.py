@@ -34,6 +34,7 @@ The tuning set is a fixed-order factor word, `A?_B??_C?_O?_W?_X?`:
     A3 both
     B08/B16/B32 batch size (global; see "Sizing")
     C0 no CO2                C1 with CO2
+    L0 baseline lr           L1 lr x sqrt(batch / 16)
     O1 1-daily ocean step    O5 5-daily ocean step
     W0 equal weights         W1 flux upweight
     W2 away-from-surface dilution
@@ -170,6 +171,39 @@ W4_ZERO_NAMES = {
 }
 ZERO_NAMES = {"3": W3_ZERO_NAMES, "4": W4_ZERO_NAMES}
 
+# ------------------------------------------------------------ learning rate --
+
+# L0 holds the baseline learning rate at every batch size; L1 scales it by
+# sqrt(batch / 16).
+#
+# Neither is "correct" and that is the point of running both. Linear scaling
+# (Goyal et al. 2017) is derived for SGD with momentum; sqrt scaling
+# (Krizhevsky 2014, Hoffer et al. 2017) keeps the gradient-noise level fixed,
+# since the update variance goes as lr^2 / batch. Both realms use an
+# Adam-family optimizer -- FusedAdam for the atmosphere, AdamW for the ocean --
+# which normalizes by the gradient's second moment and so is already partly
+# invariant to gradient scale; sqrt is the better prior there than linear.
+#
+# L0 is the campaign default because with one seed per batch arm, changing batch
+# and learning rate together gives a result no one can attribute. L1 exists so
+# that a null at B32 can be told apart from "B32 needed a bigger step": with
+# B32-L0, B32-L1 and B16-L0 in hand the two explanations separate.
+LR_REFERENCE_BATCH = 16
+
+
+def learning_rate(base_lr: float, factors: "Factors") -> float:
+    if factors.lr == "0":
+        return base_lr
+    if factors.lr != "1":
+        raise SizingError(f"unknown learning-rate set L{factors.lr}")
+    if factors.batch == LR_REFERENCE_BATCH:
+        raise SizingError(
+            f"L1 at B{LR_REFERENCE_BATCH:02d} is the same as L0 -- the scaling is "
+            f"relative to batch {LR_REFERENCE_BATCH}, so it would be a duplicate run"
+        )
+    return base_lr * (factors.batch / LR_REFERENCE_BATCH) ** 0.5
+
+
 # ----------------------------------------------------- inference conditions --
 
 # 16 ICs cover 4, 8 and 16 ranks. The 32-rank (B32) atmosphere run needs 32, so
@@ -240,13 +274,14 @@ class Factors:
     aerosol: str = "0"
     batch: int = 16
     co2: str = "0"
+    lr: str = "0"
     ocean_step: str = "5"
     weights: str = "0"
     amp: str = "0"
 
     def word(self) -> str:
         return (
-            f"A{self.aerosol}_B{self.batch:02d}_C{self.co2}"
+            f"A{self.aerosol}_B{self.batch:02d}_C{self.co2}_L{self.lr}"
             f"_O{self.ocean_step}_W{self.weights}_X{self.amp}"
         )
 
@@ -261,6 +296,9 @@ class Experiment:
     # Extra single-seed runs at a different batch size, per "add exp with
     # Batch8 / Batch32" on the page.
     batch_variants: tuple[int, ...] = ()
+    # The same batch sizes again with the learning rate scaled by sqrt(B/16),
+    # so a batch-size result can be told apart from a step-size one.
+    lr_scaled_batch_variants: tuple[int, ...] = ()
     priority: int = 2
 
 
@@ -270,7 +308,11 @@ RUNLIST: list[Experiment] = [
     # -- atmosphere ---------------------------------------------------------
     Experiment("E01", "atm", Factors(),
                "baseline: no CO2, no aerosol, equal weights",
-               seeds=(1, 2, 3), batch_variants=_B, priority=1),
+               seeds=(1, 2, 3), batch_variants=_B,
+               # Paired with the L0 arms above: B08/B32 at both the baseline
+               # learning rate and the sqrt-scaled one, on the baseline
+               # experiment so nothing else varies.
+               lr_scaled_batch_variants=_B, priority=1),
     Experiment("E02", "atm", Factors(co2="1"),
                "+ CO2",
                seeds=(1, 2, 3), batch_variants=_B, priority=1),
@@ -374,6 +416,17 @@ def expand(runlist: list[Experiment]) -> list[Run]:
                     f"{e.note} @ batch {batch}",
                     # Batch sweeps are the last thing worth machine time: they
                     # answer an optimizer question, not a science question.
+                    priority=4,
+                )
+            )
+        for batch in e.lr_scaled_batch_variants:
+            runs.append(
+                Run(
+                    e.exp,
+                    e.realm,
+                    dataclasses.replace(e.factors, batch=batch, lr="1"),
+                    1,
+                    f"{e.note} @ batch {batch}, lr x sqrt({batch}/16)",
                     priority=4,
                 )
             )
@@ -549,6 +602,9 @@ def build(baseline: dict, run: Run, epochs: int, with_aod: bool) -> dict:
     if run.factors.amp == "1":
         config["optimization"]["enable_automatic_mixed_precision"] = True
 
+    base_lr = config["optimization"]["lr"]
+    config["optimization"]["lr"] = learning_rate(base_lr, run.factors)
+
     weights = loss_weights(
         run.factors.weights, config["stepper"]["step"]["config"]["out_names"], run.realm
     )
@@ -600,6 +656,7 @@ def env_file(run: Run, campaign_root: str, owner: str) -> str:
             f"A{run.factors.aerosol}",
             f"B{run.factors.batch:02d}",
             f"C{run.factors.co2}",
+            f"L{run.factors.lr}",
             f"O{run.factors.ocean_step}",
             f"W{run.factors.weights}",
             f"X{run.factors.amp}",
