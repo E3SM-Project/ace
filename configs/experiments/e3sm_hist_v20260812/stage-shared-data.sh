@@ -58,9 +58,12 @@ for p in "$SRC_STATS" "$SRC_LANDFRAC"; do
 done
 
 mkdir -p "$DEST_ROOT"
-# -n: never clobber an already-staged copy; re-run is safe.
-cp -rn "$SRC_STATS"    "$DEST_STATS"
-cp -rn "$SRC_LANDFRAC" "$DEST_LANDFRAC"
+# -n: never clobber an already-staged copy; re-run is safe. The trailing `/.`
+# matters -- `cp -r src dest` with dest already a directory would nest the copy
+# at $DEST_STATS/$(basename $SRC_STATS) instead of merging into it.
+mkdir -p "$DEST_STATS" "$DEST_LANDFRAC"
+cp -rn "$SRC_STATS/."    "$DEST_STATS/"
+cp -rn "$SRC_LANDFRAC/." "$DEST_LANDFRAC/"
 
 # Group-readable, not world-readable: the project group is the audience.
 chgrp -R e3smdata "$DEST_ROOT" 2>/dev/null || \

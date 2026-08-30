@@ -619,6 +619,11 @@ def build(baseline: dict, run: Run, epochs: int, with_aod: bool) -> dict:
     return config
 
 
+# Normalization statistics directories, keyed by ocean cadence. The path
+# fragment is unique enough to substitute inside a full path.
+OCEAN_STATS = {"5": "/train-only/ocean/", "1": "/train-only/ocean-1d/"}
+
+
 def apply_ocean_cadence(config: dict, run: Run) -> None:
     """Switch the ocean from the 5-day streams to the 1-day ones."""
 
@@ -633,6 +638,15 @@ def apply_ocean_cadence(config: dict, run: Run) -> None:
             dp = node.get("data_path")
             if isinstance(dp, str) and dp.rstrip("/").endswith("landfrac5d"):
                 node["data_path"] = LANDFRAC_DIR["1"]
+            # The 1-day set is a strict superset of the 5-day one (221 variables
+            # against 127) but its scales differ where it matters: TAUY 1.48x,
+            # precipitation rates 1.40-1.43x, TAUX 1.22x, SHFLX 1.21x. Borrowing
+            # the 5-day scales would mis-normalize exactly the channels a
+            # cadence experiment is about.
+            for key in ("global_means_path", "global_stds_path"):
+                sp = node.get(key)
+                if isinstance(sp, str):
+                    node[key] = sp.replace(OCEAN_STATS["5"], OCEAN_STATS["1"])
             for v in node.values():
                 walk(v)
         elif isinstance(node, list):
@@ -644,6 +658,8 @@ def apply_ocean_cadence(config: dict, run: Run) -> None:
         block["n_forward_steps"] = int(block["n_forward_steps"] * 5)
     if any("5D." in str(v) for v in (config,)):
         raise SizingError(f"{run.runid}: a 5D stream survived the cadence switch")
+    if OCEAN_STATS["5"] in str(config):
+        raise SizingError(f"{run.runid}: 5-day ocean statistics survived the switch")
 
 
 def env_file(run: Run, campaign_root: str, owner: str) -> str:

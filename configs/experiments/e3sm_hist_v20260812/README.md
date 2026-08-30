@@ -73,8 +73,7 @@ The coupled config uses a **different entry point** — `fme.coupled.train` and
 | `make_cpl_config.py` | generates the above from the other two |
 | `make_ablation_config.py` | **generates the whole campaign** from the two baselines |
 | `check_campaign.py` | asserts every run config matches its run id (run after generating) |
-| `runs/` | the 30 generated run configs, their `.env` provenance, and `MANIFEST.tsv` |
-| `make_time_ramp.py` | builds the physics-free clock control (built, unscheduled) |
+| `runs/` | the 35 generated run configs, their `.env` provenance, and `MANIFEST.tsv` |
 | `EXPERIMENTS.md` | campaign design, schedule, blockers, decision rules |
 | `make_smoke_config.py` | derives a short test config from a production one |
 | `make_landfrac_ocn.py` | builds LANDFRAC/sea_surface_fraction on the ocean axis (`--cadence 5d|1d`) |

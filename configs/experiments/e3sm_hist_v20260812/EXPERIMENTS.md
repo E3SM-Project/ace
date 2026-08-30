@@ -7,11 +7,11 @@ is downstream of it. Where this file and the page disagree, the page wins.
 This file describes the campaign as it stands. `AGENTS.md` is the working log
 and holds the history.
 
-Not tracked in git. The backup of record is the last section of the *Historical
-Ablation Campaign* artifact
-(<https://claude.ai/code/artifact/ccd2b27e-fae3-4090-83f7-a07cf351664b>), which
-embeds this file verbatim inside `<pre class="source" id="md-source">`. The
-publish pipeline strips HTML comments, so find that block by its `id`.
+Tracked on `e3sm/exps/hist-v2026.8.0`. The *Historical Ablation Campaign*
+artifact (<https://claude.ai/code/artifact/ccd2b27e-fae3-4090-83f7-a07cf351664b>)
+renders the same material and embeds this file verbatim inside
+`<pre class="source" id="md-source">`; the publish pipeline strips HTML comments,
+so find that block by its `id`. Update both together or they drift.
 
 ---
 
@@ -79,6 +79,8 @@ alphabetical by position:
 | `O` | `O1` 1-daily ocean step · `O5` 5-daily |
 | `W` | `W0` equal · `W1` flux upweight · `W2` away-from-surface dilution · `W3`/`W4` zero one poor channel |
 | `X` | `X0` baseline · `X1` AMP (bf16 autocast) |
+
+`C1 − C0` measures whether the model uses the channel, not whether it responds to CO₂. `co2vmr` in the h0 stream is strictly increasing at every 6-hourly timestep from 311.4 ppm (1940) to 551.0 ppm (2065) with no seasonal cycle, so Spearman(`co2vmr`, time) = 1.000 exactly: over this record CO₂ *is* a clock, up to a monotone warp the first layer absorbs. Separating forcing response from time-indexing needs CO₂ varied against a fixed time axis, which is an inference-time counterfactual on a trained checkpoint, not another training arm.
 
 Each factor is a separate `WANDB_TAG` as well as being inside
 `WANDB_JOB_TYPE`, so "every C1 run" is a filter rather than a regex.
@@ -315,20 +317,34 @@ comparison against E11's 150 epochs, O1 gets **27 epochs**.
 
 ### Statistics
 
-The committed ocean statistics were computed on the 5-day stream. Measured
-comparison of 1-day against 5-day over 12 sampled months across 1950/1975/2000:
+**E17 has its own.** `train-only/ocean-1d/` holds 221 variables against the
+5-day set's 127, a strict superset, computed over 1940–1989 and 2000–2039 from
+4 sharded passes over 2.42 TiB. `apply_ocean_cadence` points every O1 run there
+and raises if a 5-day stats path survives the switch.
+
+Means agree throughout and the median standard-deviation ratio is **1.0004**,
+but the spread is not uniform:
 
 | variable | std ratio 1D/5D |
 |---|---|
-| `temperatureCoarsened_0`, `_18`, `sst`, `ssh`, `iceAreaTotal` | 1.000 – 1.005 |
-| `latentHeatFlux` | **1.115** |
-| `velocityMeridionalCoarsened_18` | **1.130** |
+| `temperature*`, `salinity*`, `sst`, `ssh` | 1.000 |
+| `velocityMeridionalCoarsened_*` (surface) | 1.15 – 1.30 |
+| `SHFLX` | **1.207** |
+| `TAUX` | **1.216** |
+| `surface_precipitation_rate` | **1.401** |
+| `frozen_precipitation_rate` | **1.432** |
+| `TAUY` | **1.481** |
+| `airStressZonal`, `airStressMeridional` | **0.842**, **0.823** |
 
-Means agree to four significant figures throughout. Slow fields are unaffected
-by the averaging window; flux-like and deep-velocity channels are ~12% wider at
-daily resolution. **E17 uses the 5-day statistics**, which is defensible for a
-cadence comparison and leaves a ~12% normalization error confined to those
-channels. A production O1 run should get its own from `compute_hist_stats.py`.
+The state channels are insensitive to the averaging window and the
+high-frequency ones are not, which is why borrowing the 5-day scales would have
+mis-normalized by up to 48% exactly the channels a cadence experiment is about.
+The two `airStress*` ratios run the other way, so the 1-day and 5-day streams do
+not carry the same averaging for those two; do not read a cadence signal in them.
+
+`layerThicknessCoarsened_0`, `layerThicknessCoarsened_0_inst` and
+`icebergHeatFlux` are dropped as constant over the window in both sets, so no
+config gains or loses a channel by switching.
 
 ### What the cadence means for coupling
 
@@ -600,16 +616,18 @@ Ready:
   (5.7 atmosphere + 2.3 ocean) in about 4,400 files, against 72.6 TiB and 7.27 M
   inodes free.
 
+- **E17 has its own 1-day ocean statistics.** 221 variables against the 5-day
+  set's 127, a strict superset. The median 1-day/5-day standard-deviation ratio
+  is 1.0004 and the state channels (`temperature*`, `salinity*`, `sst`, `ssh`)
+  are 1.000, but the high-frequency channels are not: `TAUY` 1.481,
+  `frozen_precipitation_rate` 1.432, `surface_precipitation_rate` 1.401, `TAUX`
+  1.216, `SHFLX` 1.207, surface velocities 1.15–1.30. `airStressZonal` and
+  `airStressMeridional` go the other way, 0.842 and 0.823. Borrowing the 5-day
+  set would have mis-scaled the forcing channels by up to 48%.
+
 Open:
 
-1. **E17's 1-day ocean statistics** are being computed; until they land E17 uses
-   the 5-day set.
-2. **The clock control.** `global_mean_co2` is a `(time,)` scalar with no spatial
-   structure, monotone over the record, so a model can use it as a clock rather
-   than a forcing. `make_time_ramp.py` builds a matched physics-free ramp and is
-   one command from being another run. It separates "the CO₂ channel works" from
-   "the model learned to read a clock". Not on the page's list.
-3. **Checkpoint selection is in-sample.** `save_all_checkpoints(valid_loss,
+1. **Checkpoint selection is in-sample.** `save_all_checkpoints(valid_loss,
    inference_error)` selects on `valid_loss` over the 1990–95 window — an
    interpolation window between the two training blocks — and on
    `inference_error`, the weighted sum over inference blocks
@@ -731,7 +749,6 @@ by its 8 inference ICs. **Never submit any of this to a 4-hour queue.**
 | `stage-shared-data.sh` | moves aux inputs to CFS; re-run is a no-op |
 | `make_landfrac_ocn.py` | LANDFRAC/sea_surface_fraction on the ocean axis, `--cadence 5d\|1d` |
 | `compute_hist_stats.py` | normalization statistics |
-| `make_time_ramp.py` | the clock control, built and unscheduled |
 | `make_smoke_config.py` | short test config from a production one |
 | `README.md` | launch recipes, verified numbers, gotchas |
 | `AGENTS.md` | working log and history |
