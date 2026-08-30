@@ -45,7 +45,7 @@ uv run torchrun --nproc_per_node 4 -m fme.ace.train $PSCRATCH/smoke-ocn.yaml
 # 3. a production run (submits to the batch queue, resumes automatically)
 ./sbatch-scripts/run-train.sh ocn
 
-# 4. the whole 2026-08-31 campaign: 30 runs generated from the two baselines
+# 4. the whole 2026-08-31 campaign: 35 runs generated from the two baselines
 ./sbatch-scripts/generate-campaign.sh --list      # run list + node budget
 ./sbatch-scripts/generate-campaign.sh             # writes runs/
 ./sbatch-scripts/submit-campaign.sh --dry-run     # what would be queued
