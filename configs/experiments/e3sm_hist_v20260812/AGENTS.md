@@ -242,7 +242,7 @@ cutting runs.
 labelled by the run id, so a silent disagreement between the id and the file is
 the worst failure mode available.
 
-`check_campaign.py` asserts the factor word against the file for all 30 runs in
+`check_campaign.py` asserts the factor word against the file for all 35 runs in
 about a second, plus the invariants that are easy to break by hand: IC counts
 divisible by the rank count, `force_positive_names` growing with the aerosol
 outputs, `embed_dim`/`noise_embed_dim` still at the page's values, the loader
@@ -253,17 +253,17 @@ automatically after generating.
 Verified against a negative control: a config with four planted errors (CO2
 removed while the word still says `C1`, `embed_dim` back to 512,
 `num_data_workers` back to 2, `12yr_test` start off by four) is caught on all
-four, and the clean set reports `checked 30 configs, 0 with problems`.
+four, and the clean set reports `checked 35 configs, 0 with problems`.
 
 ### Verified
 
-* All 30 generated configs pass `fme.ace.validate_config --config_type train`.
+* All 35 generated configs pass `fme.ace.validate_config --config_type train`.
 * `config-train-cpl.yaml` regenerated from the new baselines;
   `make_cpl_config.py --check` clean and `fme.coupled.validate_config` passes.
 * `submit-campaign.sh --dry-run` exercised at `--max-priority 3` and `--only ocn`,
-  and `--preflight` run over all 30: it stages each config, sources its `.env`,
+  and `--preflight` run over all 35: it stages each config, sources its `.env`,
   applies the per-run `--nodes` and runs the validator -- everything except the
-  `sbatch` call. Reports `30 runs, 111 nodes -- all staged and validated`.
+  `sbatch` call. Reports `35 runs, 129 nodes -- all staged and validated`.
 * `make_smoke_config.py` still produces valid configs from both new baselines,
   so the documented 20-minute smoke path is not broken by the aggregator blocks.
 * Reservation confirmed by `scontrol show res _CAP_aigs_hist`: 96 nodes,
@@ -295,7 +295,7 @@ consecutive clean ones**.
 
 In the units that decide the campaign: an 8,210-step epoch is **7.2 h** at m1 and
 **2.11 h** at m2, so `max_epochs: 30` is **216 h** against a 126 h window, or
-**63 h** with 2x margin. Both baselines now carry the m2 settings and all 30 run
+**63 h** with 2x margin. Both baselines now carry the m2 settings and all 35 run
 configs were regenerated; the coupled config was regenerated and revalidated.
 
 Caveats, stated because they matter:
@@ -304,7 +304,7 @@ Caveats, stated because they matter:
   bundle is measured end-to-end at exactly the configuration that will run.
 * **`time_buffer_pool_size: 2` is a sampling change too** — with one slot,
   consecutive output batches come from the same preloaded window; with two they
-  interleave. Better statistically, applied identically to all 30 runs, but
+  interleave. Better statistically, applied identically to all 35 runs, but
   results are not comparable to earlier runs at pool size 1.
 * **The ocean was then measured too, and is starved worse.** E11 baseline,
   2 nodes / 8 ranks, both arms run concurrently (so contended, i.e. a lower
@@ -341,7 +341,7 @@ it does not "dissolve" the node problem, it trades it.** Halving the ranks at
 fixed global batch halves the nodes *and* doubles the epoch: 4 nodes and 2.11
 h/epoch (63 h for 30) versus 2 nodes and 3.79 h/epoch (114 h). Both fit the
 126 h window. What differs is when the science lands -- at local batch 1,
-P1+P2+P3 is 76 nodes, starts immediately, and the headline E01/E02/E05
+P1+P2+P3 is 84 nodes, starts immediately, and the headline E01/E02/E05
 comparisons finish **Wednesday night**; at local batch 2 everything runs at once
 with 32 nodes spare but nothing finishes until **Friday morning**.
 
@@ -359,7 +359,7 @@ Every requeue pays it again — six times over a 63 h run at a 12 h walltime.
 **Checkpoint storage, by arithmetic rather than measurement.** 456 M parameters
 with `checkpoint_save_epochs: {step: 1}` (full, optimizer state included) plus
 `ema_checkpoint_save_epochs: {step: 1}` (weights only) is order 9 GB per epoch
-per run, so order 8 TB across 30 runs x 30 epochs. `myquota` fails on a compute
+per run, so order 9 TB across 35 runs x 30 epochs. `myquota` fails on a compute
 node; check it from a login node before Monday.
 
 ### Experiment ids renamed A##/O## -> E##

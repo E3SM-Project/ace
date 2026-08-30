@@ -37,7 +37,7 @@ Model settings, per the page:
 
 Samudra has no `embed_dim`/`noise_embed_dim`, and its loss is unweighted MSE.
 
-### wandb: 1D only
+### wandb: 1D logs, and what gets a picture
 
 2D image metrics are off, via the **typed** aggregator configs — not the
 deprecated boolean-flag variants, which `dacite` matches by shape and which
@@ -45,14 +45,123 @@ silently re-enable the images:
 
 | aggregator | off | on |
 |---|---|---|
-| inference | `zonal_mean`, `video`, `trend`, `seasonal`, `near_zero_fraction`, `enso_coefficient`, `step_diagnostics.correction_maps` | `histogram`, `mean`, `mean_norm`, `power_spectrum`, `annual`, `enso_index`, `ipo_index` |
-| validation (one-step) | `snapshot`, `mean_map` | `mean`, `mean_norm`, `power_spectrum`, `ensemble` |
+| inference | `zonal_mean`, `video`, `trend`, `seasonal`, `near_zero_fraction`, `enso_coefficient`, `ipo_index`, `step_diagnostics.correction_maps` | `histogram`, `mean`, `mean_norm`, `power_spectrum`, `annual`, `enso_index`, `time_mean_denorm`, `time_mean_norm` |
+| validation (one-step) | `snapshot`, `mean_map`, `ensemble_denorm.log_mean_maps` | `mean`, `mean_norm`, `power_spectrum`, `ensemble` scalars |
 
-**`time_mean_denorm` / `time_mean_norm` stay on.** They emit
-`time_mean/rmse/<var>` and `time_mean/bias/<var>` — the scalars every run is
-compared on — and build the bias map in the same call, with no separate switch
-(`fme/ace/aggregator/inference/time_mean.py`, `get_logs`). Disabling them to
-remove the image removes the metric. Removing the image alone is a code change.
+`ipo_index` is off because it can never build here — it needs >80 years and the
+scored rollout is 12, so every run logged four "metric not supported" warnings
+and nothing else.
+
+### The upload budget: 100 GB, and one PNG per channel
+
+MEASURED 2026-08-30 by counting the PNGs W&B actually uploaded:
+
+| | images per epoch | MB per epoch |
+|---|---|---|
+| atmosphere (both blocks fired) | 506 | 55 |
+| ocean (both blocks fired) | 484 | 24 |
+
+Where they came from, per epoch:
+
+| source | atm | ocn |
+|---|---|---|
+| `time_mean/gen_map/<var>` + `time_mean/bias_map/<var>` | 232 | 324 |
+| `time_mean_norm/gen_map/<var>` | 100 | 160 |
+| `val/ensemble/{crps,ssr_bias,ensemble_mean_rmse}/mean_map/<var>` | 174 | — |
+
+Extrapolated to the campaign at production cadence that is order **50 GB** in
+maps alone — half the account — plus roughly 9 GB of per-variable spectrum
+figures, 7 GB of annual-mean figures and 5 GB of histogram payloads. About 70%
+of the account for one week of runs, leaving nothing for the fine-tuning and
+coupled work the plan says comes next.
+
+**The lever is which channels get plotted, not whether.** Every scalar is
+untouched either way, so nothing that a comparison depends on is at stake — only
+the pictures.
+
+| | plotted | of | dropped |
+|---|---|---|---|
+| atmosphere | **38** | 50 | interior levels 2, 3, 5 of `T`/`STW`/`U`/`V` |
+| ocean | **28** | 80 | interior levels 3–8 and 10–16 of the four coarsened stacks |
+
+Every flux and every surface/2m/10m field is plotted. The atmosphere keeps the
+two top and two bottom levels of each stack plus one mid-column reference
+(index 0 is TOA, 7 is the surface); the ocean keeps the top three, one mid-depth
+reference and the two deepest, which is where W4's zeroed channel lives.
+
+Three metrics share the one list — `time_mean_denorm`, `time_mean_norm` and
+`power_spectrum` `plot_variables`, plus `histogram.variables` — so one screen
+shows the same channels as maps, spectra and distributions. `check_campaign.py`
+asserts the four lists are identical, are a strict subset of `out_names`, and
+contain no name that is not an output: a typo there fails silently, it simply
+never plots.
+
+**The mechanism.** `TimeMeanMetricConfig` gained two fields on this branch,
+modelled on `PowerSpectrumMetricConfig`'s existing toggles:
+
+* `report_plot: bool = True` — master switch. `False` emits no map images at
+  all, and changes no scalar.
+* `plot_variables: list[str] | None = None` — narrows what the master allows.
+
+Both gate image emission only: `rmse/<var>`, `bias/<var>`, `ref_bias/<var>`,
+`ref_rmse/<var>` and `rmse/channel_mean` are emitted for every channel
+regardless, and `get_dataset` still returns `gen_map-<var>` and
+`bias_map-<var>` as DataArrays for every channel.
+
+The one image metric with no per-variable control is the validation ensemble's
+`crps` / `ssr_bias` / `ensemble_mean_rmse` mean maps —
+`OneStepEnsembleMetricConfig` has only `log_mean_maps`, a bool. That is 174 PNGs
+per atmosphere epoch, 47% of the atmosphere's map bytes, duplicating information
+the inference time-means already carry, so it is **off**. Flip
+`ensemble_denorm.log_mean_maps: true` if someone wants it back; it is
+all-or-nothing.
+
+`save_per_epoch_diagnostics: true` is the safety net: every aggregator flushes
+its full fields to `experiment_dir` as netCDF each epoch (~66 MB/epoch, ~2 GB
+per atmosphere run, 0.5% of what the checkpoints cost). Any channel can be
+plotted from there at whatever colour scale and projection you want, including
+the interior levels that are not uploaded.
+
+### Verified: what one epoch actually uploads
+
+W&B run `bench.2026-08-30.atm-plots-4380` (`ejvnljzy`) — the production
+atmosphere config with only the training window shortened, and a 3-year rollout
+so `annual` and `enso_index` build (they need >2 years and are silently skipped
+below that, which is why a short benchmark looks emptier than production).
+One epoch, both inference blocks:
+
+| | files | MB |
+|---|---|---|
+| PNG (maps) | **228** | **27.04** |
+| plotly (1D charts) | **272** | **5.73** |
+| scalars | 2,675 keys | — |
+
+Every one of the 228 is accounted for: 38 plotted channels x 3 map metrics
+(`time_mean/gen_map`, `time_mean/bias_map`, `time_mean_norm/gen_map`) x 2 blocks.
+No other metric emits a PNG.
+
+The 1D charts are plotly, not images — `annual` 58 per block, `power_spectrum`
+38, `histogram` 38, `enso_index` 2. `power_spectrum` and `histogram` follow the
+plot list; `annual` and `enso_index` are unrestricted, and at 21 KB per chart
+they are not worth restricting.
+
+At production cadence — `inference` every epoch, `12yr_test` every fifth:
+
+| | per epoch | per run | campaign |
+|---|---|---|---|
+| atmosphere | 19.7 MB | 0.59 GB | **14.8 GB** (25 runs) |
+| ocean | ~8.2 MB | 1.2 GB | **11 GB** (10 runs) |
+| | | | **~26 GB of 100** |
+
+Against ~70 GB if every channel were plotted, and against ~0 if none were. The
+epoch cost is unchanged within noise: 2,039 s at a 219-window rollout, with the
+two block summaries at 109 s and 27 s — plotting 38 channels costs about what
+plotting 58 did.
+
+**Pin `time_mean_norm.target: norm` when you write that block.** dacite builds
+the field from the yaml alone, so the dataclass default (`denorm`) wins over the
+`default_factory`, and the config then fails `__post_init__` with a
+`UnionMatchError` on `inference` that names neither the field nor the reason.
 
 ---
 
@@ -138,8 +247,20 @@ person's identity, use a team **service account**. Keys live in `~/.netrc` or
 | E10 | `A3_B16_C1_L0_O5_W0_X1` | AMP | 1 | 4 |
 | E15 | `A3_B16_C1_L0_O5_W3_X0` | zero `STW_1` | 1 | 4 |
 
-E03 → E04 → E05 is cumulative: E03 adds the aerosol *inputs*, E04 swaps them for
-the *outputs*, E05 has both. The three decompose the aerosol question.
+The aerosol arms are a **2x2 factorial**, not a chain. E04 removes the inputs
+that E03 added, so "E03 then E04 then E05" is not cumulative:
+
+| | no aerosol outputs | aerosol outputs |
+|---|---|---|
+| **no aerosol inputs** | E02 (`A0`) | E04 (`A2`) |
+| **aerosol inputs** | E03 (`A1`) | E05 (`A3`) |
+
+Analyse it as a factorial: the input main effect is (E03-E02) and (E05-E04), the
+output main effect is (E04-E02) and (E05-E03), and the interaction is
+(E05-E03)-(E04-E02). E05-E02 on its own is not "the aerosol effect" -- it moves
+the predictors, the target dimensionality and the training objective at once.
+All four cells share `C1`, so CO2 is held fixed across the square; E06 is the
+separate `A3_C0` cell that opens the aerosol/GHG interaction.
 
 ### Ocean — E11–E14, E16, E17
 
@@ -314,6 +435,23 @@ At `DEFAULT_EPOCHS` — O5 150, O1 30 — including setup on 12 h segments:
 
 Comparable, and both comfortably inside the window. For an equal-wall-clock
 comparison against E11's 150 epochs, O1 gets **27 epochs**.
+
+**What E17 actually varies.** `apply_ocean_cadence` swaps the streams, the
+LANDFRAC axis, the statistics, `max_epochs` and the scored inference horizon,
+but it leaves `stepper_training.n_forward_steps: 4` alone. The training rollout
+is therefore 4 *steps* in both arms, which is 20 physical days at O5 and 4 at
+O1. E17 is "daily cadence **and** a 5x shorter physical training rollout", not a
+cadence ablation with everything else held fixed. Two ways to read it:
+
+* **As shipped** — report it under that longer name. It is still the honest
+  answer to "should we train the ocean on daily data", because the 4-step
+  rollout is what a daily-cadence run would naturally use.
+* **Matched horizon** — set O1 to `n_forward_steps: 20` so both arms train
+  across 20 physical days. That isolates cadence, and costs roughly 5x the
+  training step time, which does not fit E17's current 28.8 h budget.
+
+The shipped choice is the first. Do not describe E17 as a clean cadence
+ablation in a figure caption.
 
 ### Statistics
 
@@ -596,6 +734,200 @@ resuming.
 
 ---
 
+## Measurements — 2026-08-30: a whole production epoch
+
+Everything above measures **training**, with inference removed. That is not what
+an epoch costs. The committed atmosphere config runs a 16-IC, 12-year weighted
+rollout every epoch — `InlineInferenceConfig.epochs` defaults to
+`Slice()`, which is "every epoch" (`train_config.py:120`) — plus the held-out
+12-year block every fifth. This section prices the whole thing.
+
+Method: the production config with **only** the training window shortened
+(1940–1943, 275 batches instead of 8,212) and the inference blocks shortened
+(365 forward steps instead of 17,520), both firing every epoch. Validation
+window, aggregators, checkpoint cadence, loader settings, model and node count
+are all at production values. Two epochs, 4 nodes / 16 ranks, no other job on
+the allocation. Configs and logs under
+`$PSCRATCH/fme-bench/2026-08-30/`; W&B run `bench.2026-08-30.atm-infer-365`
+(`fmn11h7u`) in group `bench.2026-08-30`.
+
+### Atmosphere — where an epoch actually goes
+
+| phase | epoch 1 | epoch 2 | scales with |
+|---|---|---|---|
+| training (275 batches) + train-evaluation | 332.1 s | 311.5 s | batches |
+| validation, 1990–95, production window | 201.7 s | 200.5 s | **fixed** |
+| `inference` block, 365 steps | 284.8 s | 271.6 s | windows (see below) |
+| ├ rollout | 118.2 s | 91.6 s | windows |
+| └ aggregator summary + flush + next-block setup | 166.6 s | 180.0 s | **fixed** |
+| `epoch_total_seconds` | **818.6** | **783.7** | |
+| wandb log | 26.9 s | | fixed |
+| checkpoint write, ~20 GB | 31.1 s | | fixed |
+
+Repeatable to 4.3% between the two epochs. The two numbers that extrapolate:
+
+* **Steady training rate 0.887 s/batch** (steps 40→260, 220 batches), against
+  0.925 measured on 2026-08-29. The production epoch is 8,212 batches.
+* **Steady inference rate 2.17–2.25 s per 20-step window**, i.e. **0.109 s per
+  forward step**, flat across 19 windows in four separate blocks. A production
+  block is 17,520 steps = 876 windows.
+
+### The extrapolation is 48x, so it was tested
+
+A second run at `n_forward_steps: 2920` — 146 windows per block, 7.7x the
+rollout — checks whether the per-window cost drifts as the rollout grows
+(aggregator state, deeper reads into the record). W&B run
+`bench.2026-08-30.atm-infer-2920`. Per-window cost by position in the rollout:
+
+| windows | n | mean | median | worst |
+|---|---|---|---|---|
+| 1–20 | 19 | 2.444 s | 2.325 s | 3.72 s |
+| 21–50 | 30 | 2.351 s | 2.325 s | 2.77 s |
+| 51–80 | 30 | 2.808 s | 2.319 s | **15.91 s** |
+| 81–110 | 30 | 3.957 s | 2.320 s | **36.11 s** |
+| 111–146 | 36 | 2.320 s | 2.317 s | 2.38 s |
+| all | 145 | **2.782 s** | **2.32 s** | |
+
+**The median is flat to within 0.4% across the whole rollout** — there is no
+drift, so the linear model holds. The mean is 20% higher because of two
+filesystem stalls (15.9 s and 36.1 s) in 146 windows: the same bimodal
+CFS-metadata signature as the training loader, not a property of inference.
+
+Setup and the other phases reproduced: 21.7 min setup (against 22.4), 329.4 s
+training for the same 275 batches (against 332.1 and 311.5), 203.6 s validation
+(against 201.7 and 200.5). `epoch_total_seconds` 1570.3.
+
+So the production block is bounded, not point-estimated:
+
+| basis | s / block | per 30-epoch run |
+|---|---|---|
+| median, no stalls | 876 x 2.32 + 90 = **2,120 s** | |
+| mean, stalls included | 876 x 2.78 + 90 = **2,530 s** | |
+
+### Atmosphere — the production epoch
+
+| phase | seconds | note |
+|---|---|---|
+| training, 8,212 batches at 0.887 s | 7,284 | |
+| train-evaluation pass | 68 | fixed |
+| validation | 202 | measured directly, production window |
+| `inference`, weight 1.0, **every epoch** | 2,120 – 2,530 | 876 windows, median / mean-with-stalls |
+| `12yr_test`, weight 0.0, every 5th epoch | 424 – 506 | amortised |
+| wandb log + checkpoint write | 58 | |
+| **total** | **10,156 – 10,648 s = 2.82 – 2.96 h** | |
+
+**A 30-epoch atmosphere run is 85–89 h of epochs, not 63 h.** The inline
+inference the old figure omitted is 25–29% of an epoch.
+
+### Dataset setup is 22 minutes, not 9
+
+Measured on the same run, 4 nodes / 16 ranks, clean:
+
+| | seconds |
+|---|---|
+| train loader open | 1,286 |
+| validation loaders (warm page cache) | 0.9 |
+| two inference loaders | 42.4 |
+| stepper construction | 16 |
+| **total, process start to first batch** | **1,346 s = 22.4 min** |
+
+The train loader's cost is **independent of the training window** — this run
+subset to three years and still paid 21.4 minutes, because the glob
+`eam.h0.*.nc` matches all 1,501 files and the subset is applied after the time
+coordinates are decoded. The ranks sit in `D` state at ~10% CPU throughout: it
+is metadata I/O, not compute.
+
+**It is paid on every job start and every requeue.** At a 12 h walltime an
+85–89 h run is 8 starts, so **3.0 h of setup**, and the run is **88–92 h** end
+to end. Against the 126 h reservation window that is a **1.37–1.44x margin**,
+not the 2x the 63 h figure implied.
+
+### Ocean — measured at production rollout length, no extrapolation
+
+The ocean's scored rollout is 876 steps, short enough to run at full length in a
+benchmark, so these are direct measurements. E11 baseline, 2 nodes / 8 ranks,
+alone on the allocation, training window cut to 1940–1960 (91 batches); W&B run
+`bench.2026-08-30.ocn-infer-876`.
+
+| phase | epoch 1 | epoch 2 | production scaling |
+|---|---|---|---|
+| training (91 batches) + train-evaluation | 264.3 s | 280.7 s | 150 s fixed + 1.34 s/batch |
+| validation, 1990–95 | 32.3 s | 32.2 s | fixed |
+| both 876-step inference blocks | 543.5 s | 631.4 s | **already production length** |
+| `epoch_total_seconds` | **840.1** | **944.4** | |
+| wandb log | 58.7 s | | fixed |
+| checkpoint write | 8.3 s | | fixed |
+
+Setup, clean: train loader 676 s, everything else warm, **837 s = 14.0 min**
+total — close to the 10.5 min measured on 2026-08-29.
+
+Per-window cost is noisier than the atmosphere's: 3.52, 3.71 and 5.01 s per
+20-step window across the four blocks, against the atmosphere's 2.17–2.32. The
+ocean reads a four-way `merge`, which is why.
+
+| phase | seconds | note |
+|---|---|---|
+| training, 411 batches | 701 | 150 fixed + 411 x 1.34 |
+| validation | 32 | |
+| `inference`, weight 1.0, **every epoch** | 294 | mean of four measured blocks |
+| `12yr_test`, every 5th epoch | 59 | amortised |
+| wandb log + checkpoint write | 67 | |
+| **total** | **1,153 s = 0.32 h** | |
+
+**A 150-epoch ocean run is 48 h of epochs, not 24 h**, plus 1.2 h of setup over
+five 12 h segments: **~49 h**. Inference is 31% of an ocean epoch — a larger
+share than the atmosphere's, because the ocean's training epoch is 10x shorter.
+
+E17 (O1) scales from the same numbers: 5x the samples per epoch, a 4,380-step
+rollout (219 windows), 30 epochs, and the 50.7 min setup the 1-day streams cost.
+That is order **40 h**, against the 28.8 h in "Measured cost of O1" above.
+
+### Ocean checkpoint sizes
+
+| file | size |
+|---|---|
+| `ckpt_NNNN.tar` (weights + optimizer) | 1.335 GB |
+| `ema_ckpt_NNNN.tar` | 0.341 GB |
+| `best_ckpt.tar`, `best_inference_ckpt.tar` | 0.341 GB each |
+
+**1.68 GB accumulates per epoch**, so ~250 GB per 150-epoch ocean run and
+~2.3 TB across the ten ocean runs.
+
+### Checkpoint I/O
+
+Written every epoch by the atmosphere baseline:
+
+| file | size | every epoch? |
+|---|---|---|
+| `ckpt_NNNN.tar` (weights + optimizer) | 7.30 GB | yes, accumulates |
+| `ema_ckpt_NNNN.tar` (weights) | 1.82 GB | yes, accumulates |
+| `ckpt.tar` (restart) | 7.30 GB | yes, overwritten |
+| `best_ckpt.tar`, `best_inference_ckpt.tar` | 1.82 GB each | when improved |
+
+**~20 GB written per epoch, of which 9.12 GB accumulates.** 31 s of wall clock,
+so 0.3% of an epoch — the cost is capacity, not time: **~275 GB per atmosphere
+run**, 6.8 TB across the 25 atmosphere runs, 2.3 TB across the ten ocean runs,
+**~9.2 TB** for the campaign. `CAMPAIGN_ROOT` defaults to `$PSCRATCH/aug26`, which is one person's
+quota and one person's purge clock. Decide on a shared root before launch.
+
+### The levers, if the budget gets tight
+
+Priced against the 10,011 s epoch, in the order they cost least science:
+
+| change | saves per epoch | saves per 30-epoch atm run | costs |
+|---|---|---|---|
+| `12yr_test` every 10th epoch instead of 5th | ~230 s | ~1.9 h | half as many held-out scores |
+| weighted `inference` every 2nd epoch | ~1,150 s | ~9.6 h | checkpoint selection sees every other epoch |
+| weighted `inference` rollout 12 yr → 6 yr | ~1,060 s | ~8.8 h | selection horizon no longer matches the reported one |
+| first two together | ~1,380 s | ~11.5 h | |
+
+**None is applied.** At 88–92 h the run fits the window, and changing the
+selection metric mid-design is worse than a 1.4x margin. These are what to pull
+if P1 comes in slower than this benchmark, not before. Watch
+`epoch_total_seconds` on E01 for the first three epochs: above ~3.3 h/epoch the
+run does not finish inside the reservation and the second lever is the one to
+pull.
+
 ## Status
 
 Ready:
@@ -638,11 +970,19 @@ Open:
    inference_error)` selects on `valid_loss` over the 1990–95 window — an
    interpolation window between the two training blocks — and on
    `inference_error`, the weighted sum over inference blocks
-   (`train_config.py:284`). Only the `inference` block carries weight 1.0 and all
-   16 of its initial conditions are inside the training window; `12yr_test`, the
-   held-out 2040s rollout, is weight 0.0 and influences nothing. Selecting on the
-   held-out set would contaminate it, so this is the right setup — but every
-   reported number has to name which of the two it came from.
+   (`train_config.py:284`). Only the `inference` block carries weight 1.0;
+   `12yr_test`, the held-out 2040s rollout, is weight 0.0 and influences nothing.
+   Selecting on the held-out set would contaminate it, so this is the right
+   setup — but every reported number has to name which of the two it came from.
+
+   **The whole trajectory has to be in-sample, not just the start.** The scored
+   rollout is 12 years long, so an initial condition three years before the end
+   of a training block runs nine years past it. The `1980` and `2030` starts did
+   exactly that — `1980 → 1992` reached into the 1990–95 validation split and
+   `2030 → 2042` into the held-out test period — so both moved back three years,
+   to `1977 → 1989` and `2027 → 2039`. `check_campaign.py` now recomputes every
+   weighted block's end date against the training windows and fails the config if
+   any trajectory leaves them, in both realms and at both ocean cadences.
 
 ---
 

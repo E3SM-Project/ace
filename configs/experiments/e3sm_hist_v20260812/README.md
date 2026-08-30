@@ -165,7 +165,7 @@ The coupled config uses a **different entry point** — `fme.coupled.train` and
   5-day axis and keeps the coupled realms' first timestamps equal; both are
   enforced at runtime and fail the run otherwise.
 * **`make_landfrac_ocn.py`** — produces a data file no config can synthesise.
-* **`make_ablation_config.py`** — the campaign's 30 runs differ in channel
+* **`make_ablation_config.py`** — the campaign's 35 runs differ in channel
   lists, loss weights, batch size and rank count, and three of those cannot be
   expressed as `--override` dotlists at all (they index into YAML lists). The
   script is also where the divisibility rules and the `12yr_test` final-epoch
@@ -175,7 +175,7 @@ The coupled config uses a **different entry point** — `fme.coupled.train` and
 
 ## Weights & Biases
 
-All 33 runs go to **one** project so both realms sit in the same workspace:
+All 35 runs go to **one** project so both realms sit in the same workspace:
 
 | | |
 |---|---|
