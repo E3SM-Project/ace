@@ -276,8 +276,9 @@ separate `A3_C0` cell that opens the aerosol/GHG interaction.
 ### Node budget
 
 atm 108 + ocn 21 = **129 nodes against 96 reserved**. In aggregate the campaign
-is roughly 7,400 node-hours against 12,100 available — about 61% — so this is a
-concurrency limit, not a capacity one. It drains in priority order:
+is roughly 10,000 node-hours against 12,100 available — about **83%** once
+inline inference is counted — so this is a concurrency limit that is also close
+to a capacity one. It drains in priority order:
 
 | pri | nodes | cumulative | what |
 |---|---|---|---|
@@ -290,6 +291,9 @@ P1+P2+P3 = 84 nodes, all of which start immediately; only P4 queues. A
 single-seed ablation is the only measurement of its factor that exists, whereas
 a third seed refines an error bar there are already two samples of, and a batch
 sweep answers an optimizer question rather than a science one.
+
+**Expect P4 not to finish.** At 83% utilisation the campaign has no room for a
+45-node tail, which is exactly why the batch sweep is the thing at the back.
 
 ---
 
@@ -433,22 +437,33 @@ At `DEFAULT_EPOCHS` — O5 150, O1 30 — including setup on 12 h segments:
 | E11 (O5), 150 epochs | 23.8 h | 1.1 h (3 starts) | **24.9 h** |
 | E17 (O1), 30 epochs | 26.3 h | 2.5 h (3 starts) | **28.8 h** |
 
-Comparable, and both comfortably inside the window. For an equal-wall-clock
-comparison against E11's 150 epochs, O1 gets **27 epochs**.
+**Both totals are training-only, and neither is a run total.** Inline
+inference runs every epoch and is ~31% of an ocean epoch. Priced with it, E11 is
+~49 h and E17 is ~49 h — see "Ocean — measured at production rollout length"
+below for the arithmetic. They are equal-wall-clock at the shipped
+`DEFAULT_EPOCHS["ocn-O1"] = 30`, which is why that number stands.
+
+Earlier drafts said 27 epochs here and ~24 on the published page. Both came from
+cost models that left inference out of one side or the other. **The generator is
+the number of record; this file follows it.**
 
 **What E17 actually varies.** `apply_ocean_cadence` swaps the streams, the
 LANDFRAC axis, the statistics, `max_epochs` and the scored inference horizon,
 but it leaves `stepper_training.n_forward_steps: 4` alone. The training rollout
 is therefore 4 *steps* in both arms, which is 20 physical days at O5 and 4 at
-O1. E17 is "daily cadence **and** a 5x shorter physical training rollout", not a
-cadence ablation with everything else held fixed. Two ways to read it:
+O1. It also points at its own normalization statistics (see "Statistics"), whose
+surface-velocity and flux scales differ from the 5-day set's by up to ~1.3–1.5x,
+which re-weights the per-channel MSE relative to E11. So E17 is "daily cadence
+**and** a 5x shorter physical training rollout **and** a different effective loss
+weighting", not a cadence ablation with everything else held fixed. Two ways to
+read it:
 
 * **As shipped** — report it under that longer name. It is still the honest
   answer to "should we train the ocean on daily data", because the 4-step
   rollout is what a daily-cadence run would naturally use.
 * **Matched horizon** — set O1 to `n_forward_steps: 20` so both arms train
   across 20 physical days. That isolates cadence, and costs roughly 5x the
-  training step time, which does not fit E17's current 28.8 h budget.
+  training step time, which does not fit E17's ~49 h budget.
 
 The shipped choice is the first. Do not describe E17 as a clean cadence
 ablation in a figure caption.
@@ -567,9 +582,11 @@ generator solves `start = max_epochs % step` and asserts the last fire equals
 
 126 hours, 504 node-days, ending **Saturday** 2026-09-05.
 
-At the measured 2.11 h/epoch, a 30-epoch atmosphere run is 63 h, so P1+P2+P3 all
-start Monday morning and the headline E01/E02/E05 comparisons complete Wednesday
-night. P4 runs in the freed nodes.
+At the measured **2.82–2.96 h/epoch** — inline inference included, see the
+2026-08-30 measurements — a 30-epoch atmosphere run is **88–92 h**, not the 63 h
+a training-only figure suggests. P1+P2+P3 still all start Monday morning and the
+headline E01/E02/E05 comparisons land Thursday night, but the margin on the
+window is **1.4x** rather than 2x, and P4 should not be expected to finish.
 
 ### Two operational musts
 
@@ -579,6 +596,32 @@ night. P4 runs in the freed nodes.
 2. **Drop the flag for anything crossing Saturday 15:00.** A 12 h segment that
    cannot finish before the reservation ends will not start inside it; a requeued
    continuation runs on the normal allocation.
+
+### Launch ramp — the Monday morning procedure
+
+**This is the risk that costs the campaign rather than a run.** The margin on
+the window is 1.4x; I/O contention was measured at up to **2.1x** with a single
+competing job; Monday's plan puts ~25 jobs, each 8 workers x 16 ranks, on the
+same 3.7 TB directory, plus a rolling 14–22 min setup storm on every 12 h
+requeue. Do not release 129 nodes at once.
+
+1. **Queue P1 only** — the four bolded baselines, 14 nodes:
+
+       RESERVATION=_CAP_aigs_hist ./sbatch-scripts/submit-campaign.sh --max-priority 1
+
+2. **Let E01 log two epochs** and read `epoch_total_seconds` in wandb. One epoch
+   is not enough: epoch 1 carries the setup and the first checkpoint write.
+3. **Then decide:**
+
+   | `epoch_total_seconds` | what it means | what to do |
+   |---|---|---|
+   | under ~10,600 s (2.95 h) | contention is not biting | release P2+P3: `--max-priority 3`, then P4 as nodes free |
+   | ~10,600–11,900 s (2.95–3.3 h) | tight but survivable | release P2+P3, skip P4 |
+   | over ~11,900 s (3.3 h) | 30 epochs does not fit | pull a lever from "The levers, if the budget gets tight" **before** queueing anything else |
+
+The ramp costs nothing. P1 is the four runs everything else is compared against,
+so they have to go first regardless; the only thing being deferred is the
+release of runs that cannot start until nodes free anyway.
 
 ### Steps per epoch
 
@@ -598,6 +641,11 @@ O1, 90 years × 365 = 32,850 samples, **2,053 steps**.
 ---
 
 ## Measurements — 2026-08-29, A100-80GB
+
+> **Every full-run figure in this section is training-only.** Inline inference
+> was excluded, so the `full run`, `30 epochs` and `63 h` numbers below
+> understate reality by 25–30%. The per-step and per-epoch *measurements* stand;
+> the extrapolations from them are superseded by "Measurements — 2026-08-30".
 
 ### Measurement hygiene: contention is worth 2x
 
@@ -644,6 +692,10 @@ contended and the ratio is the meaningful part:
 | ocn, lowered (contended) | 24.36 | 2.78 h | 150 ep = 417 h | no |
 | ocn, committed (contended) | 3.10 | 0.35 h | 150 ep = 53 h | yes |
 | **ocn, committed (clean)** | **1.390** | **0.16 h** | **150 ep = 24 h** | yes, easily |
+
+The `full run` column is **training only**. With inference the committed rows are
+88–92 h and ~49 h, and the `fits 126 h?` answers become "yes, at 1.4x margin" and
+"yes, at 2.6x".
 
 **Do not lower the worker settings without re-measuring.** For the atmosphere
 three settings changed together, so the attribution among them is unknown, and
@@ -701,6 +753,10 @@ doubles the epoch:
 | **local batch 1** | 4 | **2.11 h** | **63 h** | 119 |
 | local batch 2 | 2 | 3.79 h | 114 h | ~72 |
 
+Training-only again: with inference the two columns are ~2.9 h / 88–92 h and
+~4.6 h / ~140 h, and **local batch 2 no longer fits the window at all** — which
+only strengthens the choice below.
+
 Both fit the window. At local batch 1 the headline comparisons land Wednesday
 night; at local batch 2 nothing finishes before Friday morning. Fifty hours of
 time to look at the result is worth more than removing a queueing problem Slurm
@@ -716,8 +772,8 @@ handles for free.
 | ocean dataset setup, O5 | 10.5 min at 8 ranks, alone (13.1 min contended) |
 | ocean dataset setup, O1 | 50.7 min — 12 dataset opens x 1501 files, 5x the time records each |
 
-Setup is paid again on **every requeue** — six times over a 63 h run at a 12 h
-walltime, about 2 h of window per run.
+Setup is paid again on **every requeue** — eight times over an 88–92 h run at a
+12 h walltime, about 3 h of window per run.
 
 ### Checkpoint storage
 
@@ -878,9 +934,31 @@ ocean reads a four-way `merge`, which is why.
 five 12 h segments: **~49 h**. Inference is 31% of an ocean epoch — a larger
 share than the atmosphere's, because the ocean's training epoch is 10x shorter.
 
-E17 (O1) scales from the same numbers: 5x the samples per epoch, a 4,380-step
-rollout (219 windows), 30 epochs, and the 50.7 min setup the 1-day streams cost.
-That is order **40 h**, against the 28.8 h in "Measured cost of O1" above.
+**E17 (O1), priced from the same measurements.** O1 has 5.00x the samples and a
+5.00x longer scored rollout (4,380 steps against 876), at the measured 1.11x
+per-step penalty — so every sample-proportional phase scales by 5.55x while the
+fixed costs do not:
+
+| phase | O5 | scaling | O1 |
+|---|---|---|---|
+| training | 701 s | 150 s fixed + 2,053 x 1.487 | 3,203 s |
+| validation | 32 s | x5.55 | 178 s |
+| `inference`, weight 1.0 | 294 s | x5.55 | 1,633 s |
+| `12yr_test`, amortised | 59 s | x5.55 | 327 s |
+| wandb log + checkpoint write | 67 s | fixed | 67 s |
+| **epoch total** | **1,153 s = 0.32 h** | | **5,408 s = 1.50 h** |
+
+30 epochs is 45.1 h, plus 4.2 h of setup over five 12 h segments at 50.7 min a
+start: **~49 h**, against E11's ~49 h. **The two arms are equal-wall-clock at the
+shipped `DEFAULT_EPOCHS`**, so O1 keeps 30 epochs and the decision rule's "equal
+wall clock, not equal epochs" is satisfied without changing anything.
+
+*Caveat on this row.* Only O1's **training** step was measured at 1-day cadence;
+the 1.11x per-step penalty is applied to O5's measured inference and validation
+costs rather than measured there. If O1 inference turns out disproportionately
+slower — plausible, since it holds 219 windows in memory against O5's 44 — E17
+runs long and epochs come off the end. `epoch_total_seconds` on E17's first two
+epochs settles it; above ~1.65 h/epoch, cut E17 to 27.
 
 ### Ocean checkpoint sizes
 
@@ -907,8 +985,22 @@ Written every epoch by the atmosphere baseline:
 **~20 GB written per epoch, of which 9.12 GB accumulates.** 31 s of wall clock,
 so 0.3% of an epoch — the cost is capacity, not time: **~275 GB per atmosphere
 run**, 6.8 TB across the 25 atmosphere runs, 2.3 TB across the ten ocean runs,
-**~9.2 TB** for the campaign. `CAMPAIGN_ROOT` defaults to `$PSCRATCH/aug26`, which is one person's
-quota and one person's purge clock. Decide on a shared root before launch.
+**~9.2 TB** for the campaign.
+
+**`CAMPAIGN_ROOT` stays at `$PSCRATCH/aug26` — per submitter, decided 2026-08-30.**
+Each person's runs land in their own scratch, which spreads ~9.2 TB across three
+quotas instead of one and means no one can purge or overwrite anyone else's
+outputs. The cost is that the two submission guards — the checkpoint-resume guard
+and the config-identity guard — see only their own submitter, as does the
+queued-duplicate guard, because `squeue -u $USER` has the same scope. **Nothing
+in the tooling can catch two people submitting the same run id.** What prevents
+that is the ownership rule: every run id has exactly one owner, and only its
+owner submits it. Post the split before Monday and treat it as binding.
+
+Two practical consequences. Checkpoints stay where they were written, so the
+person who owns a run is the person who reads it back; and wandb is the shared
+surface, since all 35 runs report to one project regardless of whose scratch
+they live in.
 
 ### The levers, if the budget gets tight
 
@@ -944,7 +1036,7 @@ Ready:
   --check` clean, `fme.coupled.validate_config` passes.
 
 - **Committed and pushed** to `e3sm/exps/hist-v2026.8.0`. A clone of the branch
-  the page names gets the baselines, the generator, the checker, all 33 run
+  the page names gets the baselines, the generator, the checker, all 35 run
   configs and their `.env` files.
 - **wandb verified end to end.** A run reaches
   `e3sm-aig/SamudrACE-E3SMv3` with name, group, job type and all eleven tags

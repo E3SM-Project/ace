@@ -211,6 +211,38 @@ Submit in priority order and stop early:
 | (none) | all 35 — 129 nodes, so 45 nodes' worth queues behind |
 | `--only atm` / `--only E05` | one realm or one experiment |
 
+### Do not skip the ramp
+
+**Monday morning is `--max-priority 1`, then wait.** The window has a 1.4x
+margin and contention was measured at up to 2.1x with one competing job, so
+releasing 129 nodes at once is the one mistake that costs the campaign rather
+than a run.
+
+1. Queue P1 (14 nodes, the four baselines everything is compared against).
+2. Let E01 log **two** epochs — epoch 1 carries setup and the first checkpoint.
+3. Read `epoch_total_seconds` in wandb:
+   * **< 10,600 s** — release P2+P3 with `--max-priority 3`, P4 as nodes free.
+   * **10,600–11,900 s** — release P2+P3, skip P4.
+   * **> 11,900 s** — stop. 30 epochs no longer fits; cut a lever from
+     EXPERIMENTS.md "The levers, if the budget gets tight" first.
+
+### Where your output goes, and the one rule tooling cannot enforce
+
+`CAMPAIGN_ROOT` defaults to **`$PSCRATCH/aug26` — your own scratch**, and that is
+the decision, not a placeholder. Three quotas beat one, and nobody can purge or
+overwrite anyone else's checkpoints.
+
+The catch: every guard is scoped to you. `run-train.sh` refuses to submit a run
+id that already has a checkpoint in *your* `$PSCRATCH`, refuses one whose config
+or commit disagrees with what already ran there, and refuses one already sitting
+in *your* `squeue`. **None of them can see another person's scratch or queue.**
+Two people submitting the same run id get two independent trainings reporting to
+the same wandb name, and nothing warns either of them.
+
+So: **every run id has exactly one owner, and only its owner submits it.** Agree
+the split before Monday and treat it as binding. wandb is the shared surface —
+all 35 runs report to one project wherever they physically run.
+
 `runs/` is entirely generated. Never hand-edit a file in it: regenerate, or the
 next `generate-campaign.sh` silently reverts you.
 
@@ -326,6 +358,8 @@ Four consequences for how you work:
   the cost does not depend on how much of the record the run actually reads.
 * **Inference is a quarter to a third of an epoch**, and it is what the older
   63 h / 24 h estimates left out. Judge progress by `epoch_total_seconds`.
+  The same correction is why the ocean's O1 arm (E17) keeps 30 epochs: priced
+  with inference, 30 O1 epochs and 150 O5 epochs are both ~49 h.
 * **Watch E01's first three epochs.** Above ~3.3 h/epoch a 30-epoch run does not
   finish inside the reservation; EXPERIMENTS.md "The levers" says what to cut.
 * **Disk grows fast** — ~9.2 TB for the campaign. Check `myquota` from a
