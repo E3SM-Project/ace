@@ -3,6 +3,7 @@ import signal
 import subprocess
 import sys
 import textwrap
+from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -385,3 +386,50 @@ def test_dataloader_worker_without_launcher_env_raises(monkeypatch):
 
     with pytest.raises(ValueError, match="without torchrun or srun"):
         torch_distributed.TorchDistributed()
+
+
+@pytest.mark.parametrize("set_launcher_env", LAUNCHER_ENVS)
+def test_collective_timeout_is_configurable(monkeypatch, set_launcher_env):
+    """A long inline inference must not be aborted by the 30 minute default.
+
+    Ranks first synchronise after the inference window loop, so the whole
+    accumulated rank skew is charged to that one all-reduce. A campaign run
+    needs to be able to raise the limit without editing the code.
+    """
+    set_launcher_env(monkeypatch, rank=0, world_size=8, local_rank=0)
+    monkeypatch.setattr(torch_distributed, "using_gpu", lambda: False)
+    monkeypatch.setattr(torch.distributed, "is_initialized", lambda: False)
+    monkeypatch.setattr(torch.distributed, "get_world_size", lambda: 8)
+    monkeypatch.setattr(torch.distributed, "get_rank", lambda: 0)
+    timeouts: list[timedelta] = []
+    monkeypatch.setattr(
+        torch.distributed,
+        "init_process_group",
+        lambda **kwargs: timeouts.append(kwargs["timeout"]),
+    )
+    monkeypatch.setenv("FME_DIST_TIMEOUT_MINUTES", "180")
+
+    torch_distributed.TorchDistributed()
+
+    assert timeouts == [timedelta(minutes=180)]
+
+
+@pytest.mark.parametrize("set_launcher_env", LAUNCHER_ENVS)
+def test_collective_timeout_defaults_to_thirty_minutes(monkeypatch, set_launcher_env):
+    """Unset, the timeout is torch's own default, so nothing changes silently."""
+    set_launcher_env(monkeypatch, rank=0, world_size=8, local_rank=0)
+    monkeypatch.delenv("FME_DIST_TIMEOUT_MINUTES", raising=False)
+    monkeypatch.setattr(torch_distributed, "using_gpu", lambda: False)
+    monkeypatch.setattr(torch.distributed, "is_initialized", lambda: False)
+    monkeypatch.setattr(torch.distributed, "get_world_size", lambda: 8)
+    monkeypatch.setattr(torch.distributed, "get_rank", lambda: 0)
+    timeouts: list[timedelta] = []
+    monkeypatch.setattr(
+        torch.distributed,
+        "init_process_group",
+        lambda **kwargs: timeouts.append(kwargs["timeout"]),
+    )
+
+    torch_distributed.TorchDistributed()
+
+    assert timeouts == [timedelta(minutes=30)]

@@ -65,6 +65,18 @@ export FME_TORCHRUN=${FME_TORCHRUN:?set by run-train.sh}
 export TRAIN_MODULE=fme.ace.train
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -1)
 export MASTER_PORT=29508       # distinct per realm: two runs on a node collide at 29500
+
+# Collective timeout. Inline inference has no collective between windows: each
+# rank walks its own initial condition and the ranks are only made to meet
+# again in the aggregator's flush_diagnostics all-reduce afterwards, which
+# therefore absorbs the entire accumulated rank skew. Under campaign I/O
+# contention that skew reached ~30 minutes on the 876-window atmosphere
+# inference -- exactly torch's default -- and the leading rank's NCCL watchdog
+# killed jobs 57775795/57775852/57775853/57775871/57775874/57775881 minutes
+# before the trailing rank arrived. Three hours leaves room for the skew to
+# grow with contention; the only cost is that a genuine hang takes that long to
+# be reported, and the walltime requeue still catches it.
+export FME_DIST_TIMEOUT_MINUTES=${FME_DIST_TIMEOUT_MINUTES:-180}
 export FME_OVERRIDE_ARGS="experiment_dir=$FME_OUTPUT_DIR"
 
 # Banner. `set -x` makes the log a wall of trace, and every atmosphere run

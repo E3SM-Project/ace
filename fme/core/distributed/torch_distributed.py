@@ -33,6 +33,26 @@ def _rank_metadata_from_env() -> tuple[int, int]:
     return int(os.environ["RANK"]), int(os.environ["WORLD_SIZE"])
 
 
+def _process_group_timeout() -> timedelta:
+    """How long a collective may wait for the slowest rank before it aborts.
+
+    Ranks synchronise only at the *end* of an inline inference epoch: the window
+    loop has no collective in it, so each rank walks its own initial condition
+    at its own speed and per-rank differences accumulate unchecked. The first
+    all-reduce afterwards, in the aggregator's ``flush_diagnostics``, is where
+    the fastest rank waits out the whole accumulated skew.
+
+    On a 16-rank atmosphere run (876 windows, one initial condition per rank)
+    under campaign I/O contention that skew reached ~30 minutes, which is
+    exactly the default, so the leading rank's NCCL watchdog tore the job down
+    minutes before the trailing rank arrived. Raise
+    ``FME_DIST_TIMEOUT_MINUTES`` when a run dies in ``flush_diagnostics`` with a
+    watchdog timeout on a ``NumelIn=1`` ALLREDUCE; the cost of a larger value is
+    only that a genuine hang takes longer to be reported.
+    """
+    return timedelta(minutes=float(os.environ.get("FME_DIST_TIMEOUT_MINUTES", "30")))
+
+
 class TorchDistributed(DistributedBackend):
     """A non-distributed backend implementation."""
 
@@ -50,13 +70,13 @@ class TorchDistributed(DistributedBackend):
                     torch.distributed.init_process_group(
                         backend="nccl",
                         init_method="env://",
-                        timeout=timedelta(minutes=30),
+                        timeout=_process_group_timeout(),
                     )
                 else:
                     torch.distributed.init_process_group(
                         backend="gloo",
                         init_method="env://",
-                        timeout=timedelta(minutes=30),
+                        timeout=_process_group_timeout(),
                     )
             self.world_size = torch.distributed.get_world_size()
             local_rank = int(os.environ["LOCAL_RANK"])
@@ -74,7 +94,7 @@ class TorchDistributed(DistributedBackend):
                 init_method=f"file://{shared_dist_file}",
                 rank=self.rank,
                 world_size=self.world_size,
-                timeout=timedelta(minutes=30),
+                timeout=_process_group_timeout(),
             )
             if using_gpu():
                 # this assumes one GPU per process in the SLURM setting
