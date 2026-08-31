@@ -131,13 +131,22 @@ stopped the step with `kill -TERM` on srun, and SIGTERM is one of the few
 signals srun does not forward — it aborted the step and all 16 ranks came back
 `Killed`, so no handler ran anywhere. The trap now uses
 `scancel --signal=TERM`, which delivers a real SIGTERM inside the step's
-cgroup, and the lead time is `--signal=B:USR1@300`.
+cgroup, and the lead time is `--signal=B:USR1@300`. Job 57760702 confirmed that
+much — `REAL_EXIT=143`, `Exited with exit code 143`, no `Killed` — and then
+failed to checkpoint for a third reason: the same cgroup-wide SIGTERM kills the
+DataLoader workers, and torch answers their deaths by raising
+`RuntimeError: DataLoader worker ... is killed by signal` in the main thread,
+which landed inside `destroy_process_group` and then inside the checkpoint's
+`get_state`. Both are wrapped against exceptions, so the rank exited 143
+looking clean with its collectives still up. Fixed in
+`fme/core/distributed/shutdown.py` by resetting SIGCHLD before the teardown.
 
 Budget an atmosphere requeue as costing the partial epoch in flight anyway (up
-to 2.9 h, ~1.4 h expected): torchrun's agent SIGKILLs the ranks 30 s after the
-signal reaches it, the collective teardown spends part of that, and the ~20 GB
-atmosphere checkpoint measured 31.1 s to write. The ocean's 8.3 s write fits
-with room to spare. To resume an ad-hoc run by hand:
+to 2.9 h, ~1.4 h expected). The next constraint is real but untested: torchrun's
+agent SIGKILLs the ranks 30 s after the signal reaches it, the collective
+teardown spends part of that, and the ~20 GB atmosphere checkpoint measured
+31.1 s to write. The ocean's 8.3 s write fits with room to spare. To resume an
+ad-hoc run by hand:
 `RESUME_JOB_ID=<jobid> ./sbatch-scripts/run-train.sh atm`.
 
 ### Two guards that will stop you, on purpose

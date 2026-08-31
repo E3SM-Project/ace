@@ -219,9 +219,14 @@ fi
 #   FME_MAIL_TYPE=NONE            turn it off
 #   FME_MAIL_TYPE=ALL             every state change, including STAGE_OUT
 #
-# Volume: roughly (1 + segments) messages per run, where a 63 h atmosphere run
-# at a 12 h walltime is 6 segments. The full 35-run campaign is order 250
+# Volume: roughly (1 + segments) messages per run, where an 88 h atmosphere run
+# at a 12 h walltime is 8 segments. The full 35-run campaign is order 300
 # messages; filter on the subject, which carries the job name and id.
+#
+# TIME_LIMIT_90 lands 1.1 h before the walltime signal on a 12 h job. On a short
+# test job it does not land at all: the signal fires at T-300 s, which is 83% of
+# a 30 minute limit, so the requeue takes the job out of RUNNING before it
+# reaches 90%. Slurm defines no threshold above 90.
 MAIL_USER="${FME_MAIL_USER:-${USER}@nersc.gov}"
 MAIL_TYPE="${FME_MAIL_TYPE:-BEGIN,END,FAIL,REQUEUE,TIME_LIMIT_90}"
 MAIL=()
