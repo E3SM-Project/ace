@@ -197,6 +197,19 @@ def handle_termination_signals(
             signal.signal(signum, signal.SIG_DFL)
             signal.raise_signal(signum)
             return
+        # The scheduler signals every process in the step, so the DataLoader
+        # workers are dying to this same signal, and torch's SIGCHLD handler
+        # (`torch/utils/data/_utils/signal_handling.py`) answers their deaths by
+        # raising `RuntimeError: DataLoader worker ... is killed by signal` in
+        # this thread, at whatever bytecode boundary it next reaches. Everything
+        # below is wrapped against exceptions, so the error does not propagate
+        # -- it lands *inside* the teardown or a callback and abandons it.
+        # Measured on Perlmutter (job 57760702) it took both: the raise landed
+        # first in `destroy_process_group` and then in the restart checkpoint's
+        # `get_state`, leaving the collectives up and no checkpoint written,
+        # while the rank still exited 143 as though it had shut down cleanly.
+        # A worker's death tells us nothing here that we do not already know.
+        signal.signal(signal.SIGCHLD, signal.SIG_DFL)
         if phase is _Phase.COLLECTIVE:
             # a repeated Ctrl-C, or both the scheduler and torchrun signalling.
             # The first handler owns the collective and the deadline already
@@ -244,7 +257,12 @@ def handle_termination_signals(
             phase = _Phase.COMPLETE
         sys.exit(exit_code)
 
-    previous = {sig: signal.getsignal(sig) for sig in TERMINATION_SIGNALS}
+    # SIGCHLD is saved but not installed: `handle` resets it, and a context that
+    # is left rather than exited through -- every test, and any caller that
+    # catches the SystemExit -- has to put back the DataLoader's own handler.
+    previous = {
+        sig: signal.getsignal(sig) for sig in (*TERMINATION_SIGNALS, signal.SIGCHLD)
+    }
     for sig in TERMINATION_SIGNALS:
         signal.signal(sig, handle)
     try:

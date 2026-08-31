@@ -49,6 +49,48 @@ def test_process_group_is_torn_down_before_callbacks_run():
     assert events == ["shutdown", "first callback", "second callback"]
 
 
+def test_a_dying_dataloader_worker_cannot_abandon_the_teardown():
+    """A worker's death must not raise into the teardown or the callbacks.
+
+    The scheduler signals every process in the step, so the DataLoader workers
+    die to the same signal that starts the teardown, and torch answers their
+    deaths from a SIGCHLD handler that raises
+    `RuntimeError: DataLoader worker ... is killed by signal` in this thread
+    (`torch/utils/data/_utils/signal_handling.py`). It surfaces at whichever
+    bytecode boundary the main thread next reaches, which is somewhere inside
+    the work the handler is here to do.
+
+    Nothing propagates, which is the trap: `_shut_down_backend` and
+    `_run_post_shutdown_callbacks` both swallow and log, so the rank still
+    exits 128+signum as though it had shut down cleanly, with its collectives
+    up and no restart checkpoint. Measured on Perlmutter (job 57760702), where
+    it took `destroy_process_group` and then the checkpoint's `get_state`.
+    """
+    events = []
+
+    def worker_died(signum, frame):
+        raise RuntimeError("DataLoader worker (pid 1) is killed by signal: Terminated.")
+
+    def shutdown():
+        # the workers were signalled at the same instant this rank was, so
+        # their SIGCHLD arrives mid-collective
+        signal.raise_signal(signal.SIGCHLD)
+        events.append("shutdown")
+
+    installed = signal.signal(signal.SIGCHLD, worker_died)
+    try:
+        add_post_shutdown_callback(lambda: events.append("callback"))
+        with handle_termination_signals(shutdown=shutdown):
+            with pytest.raises(SystemExit):
+                signal.raise_signal(signal.SIGTERM)
+        assert events == ["shutdown", "callback"]
+        # leaving the context restores the DataLoader's handler, which the
+        # teardown reset
+        assert signal.getsignal(signal.SIGCHLD) is worker_died
+    finally:
+        signal.signal(signal.SIGCHLD, installed)
+
+
 @pytest.mark.parametrize("sig", [signal.SIGTERM, signal.SIGINT])
 def test_exits_with_conventional_code_for_signal(sig):
     with handle_termination_signals(shutdown=lambda: None):
