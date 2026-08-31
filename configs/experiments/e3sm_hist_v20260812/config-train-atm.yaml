@@ -196,7 +196,7 @@ inference:
       # mean/mean_norm, annual and enso_index are 1D, unrestricted and stay on.
   # Held out: initial conditions and the full 12 year rollout are outside the
   # training subsets.
-  - name: 12yr_test
+  - name: 5yr_test
     weight: 0.0
     epochs:
       start: 4

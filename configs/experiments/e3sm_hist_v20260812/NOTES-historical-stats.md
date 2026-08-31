@@ -21,7 +21,7 @@ current configs use (see "Coverage").
 | `atmosphere/`, `ocean/` | the whole record, 1940-01 -> 2065-01 | 182 500 | 9125 |
 
 **Use `train-only/`.**  The full-record set has seen the validation window
-(1990-1995) and the held-out test period (2040 onward, where the `12yr_test`
+(1990-1995) and the held-out test period (2040 onward, where the `5yr_test`
 inference block starts), so normalizing with it leaks those years into training.
 The full-record set is kept because it is the natural "all the data" reference
 and because the difference is small and now quantified (see "Choosing between
@@ -230,7 +230,7 @@ The full-record scale is 31% larger because CO2 keeps rising to 2065.
 
 The training windows are 1940-01-01 -> 1990-01-01 and 2000-01-01 -> 2040-01-01
 (`stop_time` exclusive), identical for both realms.  Validation is 1990-1995 and
-the held-out `12yr_test` rollouts start 2040-01-03, so the **full-record set has
+the held-out `5yr_test` rollouts start 2040-01-03, so the **full-record set has
 seen both**; `train-only/` has seen neither.  Prefer `train-only/`.
 
 Window selection is at file granularity, which lands on the config boundaries

@@ -62,7 +62,7 @@ than letting them surface minutes into an allocation as
     atmosphere's B32 run needs 32, so the list is rewritten (a dotlist override
     cannot index into a yaml list).
 
-It also recomputes `12yr_test`'s `epochs.start`. That block fires on
+It also recomputes `5yr_test`'s `epochs.start`. That block fires on
 `range(max_epochs + 1)[start::step]`, so a `start` chosen for one run length
 silently stops scoring the final epoch at another.
 
@@ -207,7 +207,7 @@ def learning_rate(base_lr: float, factors: "Factors") -> float:
 # ----------------------------------------------------- inference conditions --
 
 # 16 ICs cover 4, 8 and 16 ranks. The 32-rank (B32) atmosphere run needs 32, so
-# the mid-year counterpart of each date is interleaved; the 12yr_test window is
+# the mid-year counterpart of each date is interleaved; the 5yr_test window is
 # extended to quarterly starts over the same eight held-out years.
 IC_TRAIN_WINDOW_32 = [
     f"{y}-{m}-03T12:00:00"
@@ -248,7 +248,7 @@ IC_TEST_WINDOW_32 = [
 #     `make_landfrac_ocn.py --cadence 1d` writes `landfrac1d.<year>.nc`, because
 #     merge members have to share sample_start_times;
 #   * every inference block's `n_forward_steps` scales x5 to cover the same
-#     12-year rollout (876 -> 4380);
+#     5-year rollout (365 -> 1825);
 #   * an epoch holds 5x the samples, so `max_epochs` comes down to keep the run
 #     inside the window (see DEFAULT_EPOCHS).
 # The existing inference initial conditions need no change: the 5-day timestamps
@@ -631,7 +631,7 @@ def apply_sizing(config: dict, run: Run) -> None:
                 )
             block["loader"]["start_indices"]["times"] = list(
                 IC_TEST_WINDOW_32
-                if block.get("name") == "12yr_test"
+                if block.get("name") == "5yr_test"
                 else IC_TRAIN_WINDOW_32
             )
             times = block["loader"]["start_indices"]["times"]

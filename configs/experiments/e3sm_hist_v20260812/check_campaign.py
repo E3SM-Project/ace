@@ -117,9 +117,11 @@ def check_selection_in_sample(d: dict, realm: str, ocean: str) -> list[str]:
 
     A weighted inference block picks the checkpoint, so its *whole trajectory* --
     not just its initial condition -- has to lie inside a training subset. A
-    12-year rollout started three years before the end of a training window runs
-    nine years past it, which is how a "selection is in-sample" claim quietly
-    becomes false.
+    rollout started three years before the end of a training window runs past
+    it, which is how a "selection is in-sample" claim quietly becomes false. The
+    rollout is 5 years now rather than 12, which loosens the constraint but does
+    not remove it, so this is still checked against the span rather than the
+    initial condition.
     """
     import datetime
 
@@ -243,6 +245,7 @@ def check(path: pathlib.Path) -> list[str]:
     # atmosphere epoch at the original 12 years -- so a block that quietly keeps
     # the old length costs hours per run.
     steps_per_year = DAYS_PER_YEAR * 24 // STEP_HOURS[(realm, ocean)]
+    names = [b.get("name") for b in d.get("inference", [])]
     for block in d.get("inference", []):
         want(
             block["n_forward_steps"] == INFERENCE_YEARS * steps_per_year,
@@ -250,6 +253,16 @@ def check(path: pathlib.Path) -> list[str]:
             f"steps; {INFERENCE_YEARS} years at {STEP_HOURS[(realm, ocean)]}-hourly "
             f"is {INFERENCE_YEARS * steps_per_year}",
         )
+    # The held-out block is named for its length, and the name is a wandb key
+    # prefix and an output subdirectory -- so it is what anyone reading a plot
+    # believes the rollout was. It said `12yr_test` for a while after the
+    # rollout became 5 years, which is the drift this pins shut.
+    want(
+        f"{INFERENCE_YEARS}yr_test" in names,
+        f"no {INFERENCE_YEARS}yr_test block; inference blocks are {names}. The "
+        f"held-out block's name states its length, so INFERENCE_YEARS and the "
+        f"name have to move together",
+    )
 
     bad.extend(check_selection_in_sample(d, realm, ocean))
 
@@ -446,7 +459,7 @@ def check_baselines() -> list[str]:
 
     `config-train-atm.yaml` is the file EXPERIMENTS.md calls "E01", and it is
     what anyone reaches for to run one arm ad hoc. The generator recomputes
-    `12yr_test`'s `start` for whatever `max_epochs` it sets, so the generated
+    `5yr_test`'s `start` for whatever `max_epochs` it sets, so the generated
     configs are safe by construction; these two are not, and a `start` left over
     from a different run length silently stops scoring the final epoch.
     """

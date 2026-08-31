@@ -222,8 +222,13 @@ does now:
 * sizes the run: `validation.loader.batch_size` = `batch_size`, and **rewrites
   both initial-condition lists to 32 entries** for the atmosphere's B32 arm,
   because a dotlist `--override` cannot index into a YAML list;
-* re-anchors `12yr_test.epochs.start = max_epochs % step` and asserts the last
-  fire is the final epoch;
+* re-anchors every block's `epochs.start = (max_epochs - 1) % step` and asserts
+  the last fire is the final epoch (`(max_epochs - 1)`, not `max_epochs`: a
+  block fires on `list(range(1, max_epochs + 1))[start::step]`, from 1 because
+  `evaluate_before_training` is off);
+* sets every block's rollout from `INFERENCE_YEARS` and its cadence from
+  `INFERENCE_EVALUATIONS`, so the atmosphere and both ocean cadences cover the
+  same span and are scored the same number of times;
 * writes `FME_NODES` into each `.env`, which `run-train.sh` now passes as
   `--nodes` — without it the B08 and B32 arms would run at the baseline's node
   count.
@@ -247,12 +252,13 @@ about a second, plus the invariants that are easy to break by hand: IC counts
 divisible by the rank count, `force_positive_names` growing with the aerosol
 outputs, `embed_dim`/`noise_embed_dim` still at the page's values, the loader
 settings, the per-epoch checkpoint slices, no personal-scratch input paths, and
-the `12yr_test`-fires-on-the-final-epoch rule. `generate-campaign.sh` runs it
+the fires-on-the-final-epoch rule, and that the held-out block's name still
+states its own rollout length. `generate-campaign.sh` runs it
 automatically after generating.
 
 Verified against a negative control: a config with four planted errors (CO2
 removed while the word still says `C1`, `embed_dim` back to 512,
-`num_data_workers` back to 2, `12yr_test` start off by four) is caught on all
+`num_data_workers` back to 2, `5yr_test` start off by four) is caught on all
 four, and the clean set reports `checked 35 configs, 0 with problems`.
 
 ### Verified
@@ -399,7 +405,7 @@ blocked (classifier-denied) went through without trouble from a compute node.
 `git checkout config-train-ocn.yaml` was used to undo a bad in-place edit and
 discarded that file's uncommitted working-tree changes. The delta was recovered
 by diffing `HEAD` against a `runs/*.yaml` generated from the working tree
-earlier (it was `seed` plus `12yr_test.epochs.start`), and both were being
+earlier (it was `seed` plus `5yr_test.epochs.start`), and both were being
 rewritten anyway. The guidance block above now says not to do this.
 
 ### Interpretations flagged for the page, not settled here
@@ -497,7 +503,7 @@ were correct all along; the "fix" would have introduced off-axis dates.
 
 Definitive re-verification (real code path, full on-disk axis = union of all
 1501 depth5D files: 9125 noleap times, 1940-01-06 .. 2065-01-01): every
-original IC in all four lists (ocn inference 16, ocn 12yr_test 16, cpl IC 8,
+original IC in all four lists (ocn inference 16, ocn 5yr_test 16, cpl IC 8,
 cpl IC_TEST 8) resolves through `TimestampList.as_indices`, which does an
 exact `get_loc` and raises `ValueError` when a date is off-axis; the
 876-step rollout from the latest IC of each list fits on the axis; an
@@ -718,11 +724,11 @@ set `checkpointing >= 1` is suspect.**
   `SLURM_STEP_NUM_NODES` with a fallback, derives `nproc_per_node` from
   `nvidia-smi` when `SLURM_GPUS_PER_NODE` is unset, and echoes the rendezvous
   parameters. Caught by actually running the chain, not by reading it.
-* Added a `12yr_test` held-out inference block to the coupled config. All 8 of
+* Added a `5yr_test` held-out inference block to the coupled config. All 8 of
   its existing initial conditions fell inside the training windows, so the
   finetune had no out-of-sample monitoring at all, unlike atm and ocn. The new
   block uses 8 ICs in 2040–2047, verified to lie on the ocean's 5-day axis, with
-  a 12-year rollout ending inside the record.
+  a 5-year rollout ending inside the record.
 
 **Documentation.** `README.md` rewritten as a reference document; the
 historical log moved here. Corrected stale figures found by audit: coupled

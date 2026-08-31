@@ -189,7 +189,7 @@ inference:
     # build -- it only ever logs "metric not supported" four times an epoch.
     ipo_index:
       enabled: false
-- name: 12yr_test
+- name: 5yr_test
   weight: 0.0
   epochs:
     start: 24

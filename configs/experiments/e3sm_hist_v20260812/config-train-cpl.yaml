@@ -9,7 +9,7 @@ save_per_epoch_diagnostics: true
 inference:
 - name: inference
   weight: 1.0
-  n_coupled_steps: 876
+  n_coupled_steps: 365
   coupled_steps_in_memory: 2
   loader:
     num_data_workers: 2
@@ -78,12 +78,12 @@ inference:
     log_video: false
     log_seasonal_means: false
     log_histograms: false
-- name: 12yr_test
+- name: 5yr_test
   weight: 0.0
   epochs:
     start: 0
     step: 4
-  n_coupled_steps: 876
+  n_coupled_steps: 365
   coupled_steps_in_memory: 2
   loader:
     num_data_workers: 2

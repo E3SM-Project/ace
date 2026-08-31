@@ -145,9 +145,9 @@ The 1D charts are plotly, not images — `annual` 58 per block, `power_spectrum`
 plot list; `annual` and `enso_index` are unrestricted, and at 21 KB per chart
 they are not worth restricting.
 
-At the cadence measured then — `inference` every epoch, `12yr_test` every
-fifth. Both now fire six times per run (see "The inline inference cost"),
-so these are upper bounds by a wide margin:
+At the cadence measured then — `inference` every epoch, the held-out block every
+fifth, both at a 12-year rollout. Both now fire six times per run at 5 years
+(see "The inline inference cost"), so these are upper bounds by a wide margin:
 
 | | per epoch | per run | campaign |
 |---|---|---|---|
@@ -576,7 +576,7 @@ range starts at **1**, not 0, because `evaluate_before_training` is off — and
 that is the off-by-one both the generator and `check_campaign.py` carried until
 2026-08-31. Both solved `start` against `range(max_epochs + 1)`, one element
 longer, so the last fire landed one stride short: at `max_epochs` 30 and step 5,
-`12yr_test` scored epochs 1, 6, ... 26 and **never the final epoch** — the exact
+the held-out block scored epochs 1, 6, ... 26 and **never the final epoch** — the exact
 failure the code was written to prevent. The generator now solves
 `start = (max_epochs - 1) % step` and asserts the last fire equals `max_epochs`;
 the checker duplicates the arithmetic independently.
@@ -895,24 +895,41 @@ Setup is paid again on **every requeue** — eight times over an 88–92 h run a
 
 `checkpoint_save_epochs` writes the full checkpoint including optimizer state
 (`fme/core/generics/trainer.py:775`); `ema_checkpoint_save_epochs` writes weights
-only. At `{step: 1}` that is one of each per epoch per run. With 456 M
-parameters this is order **9 GB per epoch per run**, so order **8 TB** across the
-campaign. *That is arithmetic, not a measurement.*
+only. At `{step: 1}` that is one of each per epoch per run.
 
-Check `myquota` from a **login** node — it fails on a compute node. If it does
-not fit, keep the EMA save every epoch and back the full save off to `{step: 5}`:
-the EMA weights are what gets evaluated, and the optimizer state only matters for
-resuming.
+**Measured 2026-08-31** on a live ocean run at six epochs, where the earlier
+figure was arithmetic:
+
+| | full | EMA | per epoch | per run | x runs |
+|---|---|---|---|---|---|
+| ocean, 150 epochs | 1.27 GB | 0.33 GB | **1.60 GB** | 240 GB | 2.4 TB (10) |
+| atmosphere, 30 epochs | 6.80 GB | ~1.74 GB* | **~8.5 GB** | 256 GB | 6.4 TB (25) |
+| | | | | | **~8.8 TB** |
+
+\* the ocean's EMA is 25.6% of its full checkpoint; no atmosphere run has
+written a per-epoch archive yet, so its full size is the measured `ckpt.tar` and
+its EMA is scaled by that ratio.
+
+Against 65 TB free of a 120 TB quota (`lfs quota -h -u $USER /pscratch`;
+`myquota` works on a **login** node and fails on a compute node), so it fits with
+room. If that changes, back the *full* save off to `{step: 5}` and keep the EMA
+every epoch: the EMA weights are what gets evaluated and the optimizer state
+only matters for resuming. Do not turn the per-epoch saves off entirely — with
+inline inference now scoring six epochs rather than thirty, those checkpoints
+are what makes the skipped rollouts recoverable offline.
 
 ---
 
 ## Measurements — 2026-08-30: a whole production epoch
 
 Everything above measures **training**, with inference removed. That is not what
-an epoch costs. The committed atmosphere config runs a 16-IC, 12-year weighted
-rollout every epoch — `InlineInferenceConfig.epochs` defaults to
-`Slice()`, which is "every epoch" (`train_config.py:120`) — plus the held-out
-12-year block every fifth. This section prices the whole thing.
+an epoch costs. This section prices the whole thing.
+
+**Read it as the configuration of the day.** It measures a 16-IC, 12-year
+weighted rollout every epoch — `InlineInferenceConfig.epochs` was left at its
+`Slice()` default, which is "every epoch" (`train_config.py:120`) — plus the
+held-out 12-year block every fifth. Both are now 5 years on six epochs; what
+that cost, and why it changed, is under "The inline inference cost".
 
 Method: the production config with **only** the training window shortened
 (1940–1943, 275 batches instead of 8,217) and the inference blocks shortened
@@ -988,7 +1005,12 @@ So the production block is bounded, not point-estimated:
 | train-evaluation pass | 68 | fixed |
 | validation | 202 | measured directly, production window |
 | `inference`, weight 1.0, **every epoch** | 2,120 – 2,530 | 876 windows, median / mean-with-stalls |
-| `12yr_test`, weight 0.0, every 5th epoch | 424 – 506 | amortised |
+| `5yr_test`, weight 0.0, every 5th epoch | 424 – 506 | amortised |
+
+**This table is the pre-2026-08-31 configuration**: a 12-year rollout on the
+weighted block every epoch. Both blocks are now 5 years on six epochs, which
+takes the epoch to ~2.4 h and the run to ~72 h — see "The inline inference
+cost".
 | wandb log + checkpoint write | 58 | |
 | **total** | **10,259 – 10,751 s = 2.85 – 2.99 h** | |
 
@@ -1134,9 +1156,14 @@ ocean reads a four-way `merge`, which is why.
 | training, 411 batches | 701 | 150 fixed + 411 x 1.34 |
 | validation | 32 | |
 | `inference`, weight 1.0, **every epoch** | 294 | mean of four measured blocks |
-| `12yr_test`, every 5th epoch | 59 | amortised |
+| `5yr_test`, every 5th epoch | 59 | amortised |
 | wandb log + checkpoint write | 67 | |
 | **total** | **1,153 s = 0.32 h** | |
+
+**Also the pre-2026-08-31 configuration.** At six 5-year evaluations the two
+inference rows amortise to ~10 s rather than 353, so an ocean epoch is ~810 s
+of the measured phases; under campaign contention it is running 1,400–1,900 s.
+See "The inline inference cost".
 
 **A 150-epoch ocean run is 48 h of epochs, not 24 h**, plus 1.2 h of setup over
 five 12 h segments: **~49 h**. Inference is 31% of an ocean epoch — a larger
@@ -1152,7 +1179,7 @@ fixed costs do not:
 | training | 701 s | 150 s fixed + 2,053 x 1.487 | 3,203 s |
 | validation | 32 s | x5.55 | 178 s |
 | `inference`, weight 1.0 | 294 s | x5.55 | 1,633 s |
-| `12yr_test`, amortised | 59 s | x5.55 | 327 s |
+| `5yr_test`, amortised | 59 s | x5.55 | 327 s |
 | wandb log + checkpoint write | 67 s | fixed | 67 s |
 | **epoch total** | **1,153 s = 0.32 h** | | **5,408 s = 1.50 h** |
 
@@ -1226,11 +1253,17 @@ the literal `OVERRIDE_ME` because every launch path overrides it anyway.
 
 Priced against the 10,011 s epoch, in the order they cost least science:
 
+**Three of these were taken on 2026-08-31**, when the campaign turned out not
+to fit the window and inline inference turned out to be killing it outright. The
+weighted block now rolls out 5 years, not 12, and both blocks fire six times per
+run rather than every epoch and every fifth. What is left below is what remains
+available.
+
 | change | saves per epoch | saves per 30-epoch atm run | costs |
 |---|---|---|---|
-| `12yr_test` every 10th epoch instead of 5th | ~230 s | ~1.9 h | half as many held-out scores |
-| weighted `inference` every 2nd epoch | ~1,150 s | ~9.6 h | checkpoint selection sees every other epoch |
-| weighted `inference` rollout 12 yr → 6 yr | ~1,060 s | ~8.8 h | selection horizon no longer matches the reported one |
+| ~~`5yr_test` every 10th epoch instead of 5th~~ | ~230 s | ~1.9 h | *taken: six evaluations per run* |
+| ~~weighted `inference` every 2nd epoch~~ | ~1,150 s | ~9.6 h | *taken: six evaluations per run* |
+| ~~weighted `inference` rollout 12 yr → 6 yr~~ | ~1,060 s | ~8.8 h | *taken: 5 yr* |
 | first two together | ~1,380 s | ~11.5 h | |
 
 **None is applied.** At 88–92 h the run fits the window, and changing the
@@ -1283,7 +1316,7 @@ Open:
    interpolation window between the two training blocks — and on
    `inference_error`, the weighted sum over inference blocks
    (`train_config.py:284`). Only the `inference` block carries weight 1.0;
-   `12yr_test`, the held-out 2040s rollout, is weight 0.0 and influences nothing.
+   `5yr_test`, the held-out 2040s rollout, is weight 0.0 and influences nothing.
    Selecting on the held-out set would contaminate it, so this is the right
    setup — but every reported number has to name which of the two it came from.
 
@@ -1302,7 +1335,7 @@ Open:
 
 | claim | what would have to be true |
 |---|---|
-| **CO₂ helps** | E02 beats E01 on `12yr_test` `time_mean/rmse` for `TS`, `T_*`, `PS`, outside E01's S01–S03 spread |
+| **CO₂ helps** | E02 beats E01 on `5yr_test` `time_mean/rmse` for `TS`, `T_*`, `PS`, outside E01's S01–S03 spread |
 | **Aerosols help** | E05 beats E02 on the same metric; E06 then says whether the two forcings are separable |
 | **A weight set wins** | it improves its target variables without degrading `time_mean/rmse/channel_mean`, by more than E05's S01–S03 spread on the same metric. W2 is mean-normalized so this comparison means something |
 | **AMP is worth it** | s/batch and whether the loss curve tracks E05's — nothing else. At `checkpointing: 3` the bf16 memory saving is 0.4 GB, and checkpointing itself costs only 3–5%, so E10 has to beat an efficient baseline |

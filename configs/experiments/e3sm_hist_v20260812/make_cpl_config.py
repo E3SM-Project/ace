@@ -134,15 +134,17 @@ TRAIN_WINDOWS = [
 ]
 VAL_A = {"start_time": "1990-01-06", "stop_time": "1995-01-01"}
 # Checkpoint-selection initial conditions. This block is weight 1.0, so what has
-# to be in-sample is the whole 876-step (12-year) trajectory, not just its first
-# timestep. 2035 used to be here and ran to 2047, seven years into the held-out
-# period; 2027 ends 2039, inside the second training window.
+# to be in-sample is the whole 365-step (5-year) trajectory, not just its first
+# timestep. 2035 used to be here and ran past the second training window when
+# the rollout was 12 years; the list is kept as it is because a shorter rollout
+# only makes the in-sample constraint easier -- 2027 now ends 2032, well inside
+# that window.
 IC = [f"{y}-01-06T00:00:00" for y in [1945, 1955, 1965, 1975, 2005, 2015, 2025, 2027]]
-# Held-out initial conditions, mirroring the 12yr_test block the atm and ocn
+# Held-out initial conditions, mirroring the 5yr_test block the atm and ocn
 # configs carry. Without this the coupled finetune has no out-of-sample
 # monitoring at all. These start after the second training window ends
-# (2040-01-01) and are on the ocean's 5-day axis; a 12-year rollout from 2047
-# ends in 2059, inside the record.
+# (2040-01-01) and are on the ocean's 5-day axis; a 5-year rollout from 2047
+# ends in 2052, inside the record.
 IC_TEST = [f"{y}-01-06T00:00:00" for y in range(2040, 2048)]
 
 # Inference aggregator, shared by both blocks.
@@ -180,7 +182,7 @@ cfg = {
         {
             "name": "inference",
             "weight": 1.0,
-            "n_coupled_steps": 876,
+            "n_coupled_steps": 365,  # 5 years on the ocean's 5-day axis
             "coupled_steps_in_memory": 2,
             "loader": {
                 "num_data_workers": 2,
@@ -194,11 +196,12 @@ cfg = {
         },
         {
             # weight 0.0: monitored, never used to select the best checkpoint.
-            # Run every 4th epoch so it lands on the first and last of the 5.
-            "name": "12yr_test",
+            # A block fires on list(range(1, max_epochs + 1))[start::step], so
+            # start 0 / step 4 lands on epochs 1 and 5 -- the first and last.
+            "name": "5yr_test",
             "weight": 0.0,
             "epochs": {"start": 0, "step": 4},
-            "n_coupled_steps": 876,
+            "n_coupled_steps": 365,  # 5 years on the ocean's 5-day axis
             "coupled_steps_in_memory": 2,
             "loader": {
                 "num_data_workers": 2,

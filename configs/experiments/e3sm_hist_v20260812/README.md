@@ -168,7 +168,7 @@ The coupled config uses a **different entry point** — `fme.coupled.train` and
 * **`make_ablation_config.py`** — the campaign's 35 runs differ in channel
   lists, loss weights, batch size and rank count, and three of those cannot be
   expressed as `--override` dotlists at all (they index into YAML lists). The
-  script is also where the divisibility rules and the `12yr_test` final-epoch
+  script is also where the divisibility rules and the `5yr_test` final-epoch
   rule are enforced, on a login node, before an allocation is burned.
 
 ---
@@ -664,10 +664,10 @@ each component's `best_ckpt.tar` (a stepper checkpoint, not the training-state
 ### Inference blocks
 
 Each config carries a `weight: 1.0` block scored during training and a
-`weight: 0.0` `12yr_test` block that is monitored but never selects the best
-checkpoint. The coupled `12yr_test` initial conditions start in 2040, after the
+`weight: 0.0` `5yr_test` block that is monitored but never selects the best
+checkpoint. The coupled `5yr_test` initial conditions start in 2040, after the
 second training window closes, so the finetune has genuine out-of-sample
-monitoring; a 876-step (12-year) rollout from the last of them ends in 2059,
+monitoring; a 365-step (5-year) rollout from the last of them ends in 2052,
 inside the 2065 record.
 
 ### Ocean forcing: EAM names, MPAS data
@@ -692,7 +692,7 @@ That is paid on every start and requeue. The daily `fmeDepthCoarsening` also car
 Four things move together, which is why `make_ablation_config.py` handles it
 rather than a `sed`: the three MPAS file patterns, the LANDFRAC aux file (which
 must be on the matching axis — `make_landfrac_ocn.py --cadence 1d`), each
-inference block's `n_forward_steps` (876 → 4380 for the same 12-year rollout),
+inference block's `n_forward_steps` (365 → 1825 for the same 5-year rollout),
 and `max_epochs` (an epoch holds 5× the samples). `check_campaign.py` rejects a
 config whose four merge members disagree on cadence — that either fails at load
 on time alignment or silently trains on the intersection.
@@ -793,7 +793,7 @@ Headlines (details in `NOTES-historical-stats.md`):
   *variable* does, and that re-reads the run (~23 min on three nodes).
 * **Why `train-only/`**: it covers 1940–1990 and 2000–2040, exactly the training
   windows. The full-record set spans 1940–2065 and has therefore seen the
-  validation window and the `12yr_test` period, which is leakage. Restricting
+  validation window and the `5yr_test` period, which is leakage. Restricting
   is nearly free — of 503 numbers, all temperatures, winds, fluxes, salinities,
   velocities, precipitation, `PS`, `TS` and `LANDFRAC` move under 2%.
 
