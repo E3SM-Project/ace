@@ -30,8 +30,24 @@
 #
 #     RESERVATION=_CAP_aigs_hist ./submit-campaign.sh
 #
-# Drop it for anything continuing past the window's end (Sat 2026-09-05 15:00);
-# a 12 h segment that cannot finish inside the reservation will not start in it.
+# Keep it right to the end of the window (Sat 2026-09-05 15:00). A segment whose
+# walltime runs past the reservation end still starts in it and is killed when
+# the reservation ends -- inside a reservation `--time` is unconstrained and may
+# exceed both the QOS maximum and the reservation itself
+# (docs.nersc.gov/jobs/reservations). What that kill does not do is give the
+# 300 s USR1 warning, which is keyed to `--time`: the job instead takes Slurm's
+# plain SIGTERM with KillWait=30, which should reach preempt_handler and leave
+# room for an 11 s checkpoint, but has never been run. Prefer a `--time` that
+# fits.
+#
+# Segment length is a choice, not a limit. Dataset setup is 22.5 min per
+# atmosphere start and 50.7 min per O1 ocean start, paid again on every requeue,
+# so 12 h costs an 88-92 h run about 3.0 h of the 126 h window. Halve that with
+#
+#     RESERVATION=_CAP_aigs_hist FME_TIME=24:00:00 ./submit-campaign.sh
+#
+# on one line -- a bare `FME_TIME=...` on its own line is a non-exported shell
+# assignment and never reaches run-train.sh.
 
 # Email is on by default (run-train.sh sets it): $USER@nersc.gov on BEGIN, END,
 # FAIL, REQUEUE and TIME_LIMIT_90. The whole campaign is order 250 messages, so
