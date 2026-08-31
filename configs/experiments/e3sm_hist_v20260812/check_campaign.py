@@ -74,6 +74,14 @@ LEGACY_AGGREGATOR_FIELDS = (
 # block's `n_forward_steps` into the physical span of the trajectory it scores.
 STEP_HOURS = {("atm", "O5"): 6, ("atm", "O1"): 6, ("ocn", "O5"): 120, ("ocn", "O1"): 24}
 
+# Deliberately duplicated from make_ablation_config.INFERENCE_YEARS, like the
+# rest of this file: a checker that imports the thing it checks proves nothing.
+# Combined with STEP_HOURS this pins every realm and cadence at once -- 7300
+# steps for the atmosphere, 365 at 5-daily, 1825 at 1-daily -- so a stale
+# rollout length cannot survive in one config while the others are updated.
+INFERENCE_YEARS = 5
+DAYS_PER_YEAR = 365  # noleap
+
 
 def _training_windows(d: dict) -> list[tuple[str, str]]:
     """Every (start_time, stop_time) the train loader actually reads."""
@@ -229,13 +237,19 @@ def check(path: pathlib.Path) -> list[str]:
         else:
             want(len(one) == 4 and not five,
                  f"O1 but streams are mixed: 1-day={one} 5-day={five}")
-            # A 12-year scored rollout is 876 steps at 5-daily and 4380 at 1-daily.
-            for block in d.get("inference", []):
-                want(block["n_forward_steps"] % 4380 == 0
-                     or block["n_forward_steps"] >= 4380,
-                     f"O1 block {block.get('name')!r} has "
-                     f"{block['n_forward_steps']} forward steps; a 12-year "
-                     f"rollout on a daily axis is 4380")
+    # Rollout length, in years rather than steps, so the atmosphere and both
+    # ocean cadences are held to the same physical span. Inline inference is the
+    # single most expensive optional thing these runs do -- it was 45% of an
+    # atmosphere epoch at the original 12 years -- so a block that quietly keeps
+    # the old length costs hours per run.
+    steps_per_year = DAYS_PER_YEAR * 24 // STEP_HOURS[(realm, ocean)]
+    for block in d.get("inference", []):
+        want(
+            block["n_forward_steps"] == INFERENCE_YEARS * steps_per_year,
+            f"block {block.get('name')!r} rolls out {block['n_forward_steps']} "
+            f"steps; {INFERENCE_YEARS} years at {STEP_HOURS[(realm, ocean)]}-hourly "
+            f"is {INFERENCE_YEARS * steps_per_year}",
+        )
 
     bad.extend(check_selection_in_sample(d, realm, ocean))
 
@@ -286,14 +300,16 @@ def check(path: pathlib.Path) -> list[str]:
             f"it was measured at 3.4x slower",
         )
 
-    # 12yr_test must fire on the final epoch. It runs on
-    # range(max_epochs + 1)[start::step], so a start chosen for one run length
-    # silently stops scoring the last epoch at another.
+    # Every inference block must fire on the final epoch. A block runs on
+    # list(range(1, max_epochs + 1))[start::step] -- from 1, because
+    # evaluate_before_training is off -- so a start chosen for one run length,
+    # or against the wrong range, silently stops scoring the last epoch.
     for block in d.get("inference", []):
         sched = block.get("epochs")
         if not sched:
             continue
-        fires = range(d["max_epochs"] + 1)[sched.get("start") :: sched.get("step")]
+        epochs = list(range(1, d["max_epochs"] + 1))
+        fires = epochs[sched.get("start") :: sched.get("step")]
         want(
             bool(fires) and fires[-1] == d["max_epochs"],
             f"block {block.get('name')!r} never fires on the final epoch "
@@ -444,13 +460,14 @@ def check_baselines() -> list[str]:
             sched = entry.get("epochs") or {}
             if not sched:
                 continue
-            fires = range(d["max_epochs"] + 1)[sched.get("start") :: sched.get("step")]
+            epochs = list(range(1, d["max_epochs"] + 1))
+            fires = epochs[sched.get("start") :: sched.get("step")]
             if not (fires and fires[-1] == d["max_epochs"]):
                 bad.append(
                     f"{path.name}: {entry.get('name')!r} last fires at "
                     f"{fires[-1] if fires else 'never'}, not max_epochs "
                     f"{d['max_epochs']} (start={sched.get('start')}, "
-                    f"step={sched.get('step')}). Use start = max_epochs % step."
+                    f"step={sched.get('step')}). Use start = (max_epochs - 1) % step."
                 )
     return bad
 

@@ -145,7 +145,9 @@ The 1D charts are plotly, not images — `annual` 58 per block, `power_spectrum`
 plot list; `annual` and `enso_index` are unrestricted, and at 21 KB per chart
 they are not worth restricting.
 
-At production cadence — `inference` every epoch, `12yr_test` every fifth:
+At the cadence measured then — `inference` every epoch, `12yr_test` every
+fifth. Both now fire six times per run (see "The inline inference cost"),
+so these are upper bounds by a wide margin:
 
 | | per epoch | per run | campaign |
 |---|---|---|---|
@@ -398,8 +400,8 @@ Switching cadence changes four things together, which is why
 2. `LANDFRAC`/`sea_surface_fraction` must be materialised on the matching axis —
    merge members have to share `sample_start_times`. `make_landfrac_ocn.py
    --cadence 1d` writes `landfrac1d.<year>.nc`;
-3. every inference block's `n_forward_steps` scales ×5, 876 → **4380**, to cover
-   the same 12-year rollout;
+3. every inference block's `n_forward_steps` scales ×5, 365 → **1825**, to cover
+   the same 5-year rollout;
 4. an epoch holds 5× the samples, so `max_epochs` comes down —
    `DEFAULT_EPOCHS["ocn-O1"]` is 30 against O5's 150.
 
@@ -437,11 +439,14 @@ At `DEFAULT_EPOCHS` — O5 150, O1 30 — including setup on 12 h segments:
 | E11 (O5), 150 epochs | 23.8 h | 1.1 h (3 starts) | **24.9 h** |
 | E17 (O1), 30 epochs | 26.3 h | 2.5 h (3 starts) | **28.8 h** |
 
-**Both totals are training-only, and neither is a run total.** Inline
-inference runs every epoch and is ~31% of an ocean epoch. Priced with it, E11 is
-~49 h and E17 is ~49 h — see "Ocean — measured at production rollout length"
-below for the arithmetic. They are equal-wall-clock at the shipped
-`DEFAULT_EPOCHS["ocn-O1"] = 30`, which is why that number stands.
+**Both totals are training-only, and neither is a run total.** They were
+equal-wall-clock at ~49 h each when inference ran every epoch at 12 years — see
+"Ocean — measured at production rollout length" below for that arithmetic, and
+"The inline inference cost" for why it no longer does. At six 5-year
+evaluations the inference term is ~1 h rather than ~24 h, so both totals are now
+within ~1 h of the training-only figures above, and they stay equal-wall-clock
+at the shipped `DEFAULT_EPOCHS["ocn-O1"] = 30`, which is why that number
+stands.
 
 Earlier drafts said 27 epochs here and ~24 on the published page. Both came from
 cost models that left inference out of one side or the other. **The generator is
@@ -564,12 +569,88 @@ at the baseline's node count.
 halving every atmosphere run's node count. It fits (28.7 GB/GPU measured) — see
 "Measurements" for why the campaign does not use it.
 
-### `12yr_test` and the final epoch
+### Inference cadence and the final epoch
 
-`12yr_test` fires on `range(max_epochs + 1)[start::step]`, so a `start` chosen
-for one run length silently stops scoring the final epoch at another. The
-generator solves `start = max_epochs % step` and asserts the last fire equals
-`max_epochs`.
+An inference block fires on `list(range(1, max_epochs + 1))[start::step]`. The
+range starts at **1**, not 0, because `evaluate_before_training` is off — and
+that is the off-by-one both the generator and `check_campaign.py` carried until
+2026-08-31. Both solved `start` against `range(max_epochs + 1)`, one element
+longer, so the last fire landed one stride short: at `max_epochs` 30 and step 5,
+`12yr_test` scored epochs 1, 6, ... 26 and **never the final epoch** — the exact
+failure the code was written to prevent. The generator now solves
+`start = (max_epochs - 1) % step` and asserts the last fire equals `max_epochs`;
+the checker duplicates the arithmetic independently.
+
+Cadence is set as **evaluations per run, not epochs between them**
+(`INFERENCE_EVALUATIONS = 6`). E11 (150 epochs at 5-day) and E17 (30 epochs at
+1-day) are sample-matched by construction, so a fixed epoch stride would score
+one of them five times as often as the other and make the two curves
+incomparable. Six points, both blocks on the same epochs so the train-window and
+held-out scores can be read against each other:
+
+| | `max_epochs` | step | fires on |
+|---|---|---|---|
+| atmosphere | 30 | 5 | 5, 10, 15, 20, 25, 30 |
+| ocean O5 | 150 | 25 | 25, 50, 75, 100, 125, 150 |
+| ocean O1 (E17) | 30 | 5 | 5, 10, 15, 20, 25, 30 |
+
+### The inline inference cost
+
+Inline inference is not cheap monitoring. It is a free-running rollout, and at
+the original 12-year length it was **45% of an atmosphere epoch** — measured on
+job 57775795, epoch 1: 8,217 training steps at 0.901 s = **2.06 h**, validation
+**4 min**, and the `inference` block alone **≥1.7 h** (rank 0's window loop ran
+11:34:25 → 13:04:46; the slowest rank had still not arrived at 13:18:13). Two
+blocks are configured, so an epoch on which both fired spent more wall clock
+rolling out than training.
+
+Length is also what **killed every atmosphere run on 2026-08-31**. The window
+loop holds no collective: each rank walks its own initial condition, so per-rank
+speed differences accumulate unchecked and the first all-reduce afterwards —
+`flush_diagnostics` → `get_reduced_diagnostics` → `reduce_mean` — absorbs the
+whole accumulated skew. At 876 windows under campaign I/O contention that skew
+reached ~30 minutes, which is exactly torch's default collective timeout, so the
+*leading* rank's NCCL watchdog tore the job down minutes before the trailing one
+arrived. Nine of sixteen runs died this way within twelve minutes of each other.
+Two changes answer it, and both are needed:
+
+* `FME_DIST_TIMEOUT_MINUTES` (default 30) sets the collective timeout; the
+  campaign's sbatch scripts set **180**. This is the guard, not the fix.
+* `INFERENCE_YEARS = 5` shortens the rollout, which shortens the drift in
+  proportion. This is the fix.
+
+Rollout length is stated in **years**, because "5 years" means the same thing to
+the atmosphere at 6-hourly and to the ocean at 5-day and the step counts follow
+from `STEP_HOURS`. Five rather than two or three: the aggregators reduce over
+whole years, and a rollout wants enough of them to say something about drift.
+
+| | steps/year | 5-year rollout |
+|---|---|---|
+| atmosphere, 6-hourly | 1,460 | **7,300** (was 17,520) |
+| ocean O5, 5-day | 73 | **365** (was 876) |
+| ocean O1, 1-day | 365 | **1,825** (was 4,380) |
+
+Effect on a 30-epoch atmosphere run, scaling the measured block cost:
+
+| | training | inference | run |
+|---|---|---|---|
+| before: 12 yr, `inference` every epoch | 63.6 h | 61 h | **125 h** |
+| after: 5 yr, both blocks x6 | 63.6 h | 8.5 h | **72 h** |
+
+Inference falls from 49% of a run to 12%, and the run fits the 126 h window with
+margin instead of exceeding it. **What is not lost:** validation still runs every
+epoch at ~4 minutes, so the per-epoch loss curve and best-validation checkpoint
+selection are untouched; `trainer.py` guards the inference-error selection on
+`inference_error is not None`, so epochs without a rollout simply do not compete
+for `best_inference_ckpt.tar`. And `checkpoint_save_epochs: {step: 1}` keeps
+every epoch's weights, so any skipped rollout can be run offline afterwards
+without holding a reservation open for it.
+
+The ocean also drops `forward_steps_in_memory` 20 → 10. That is a **memory**
+knob, not a cost one: it bounds how many forward steps are held between loader
+reads, so it lowers peak memory and *raises* the number of reads for a given
+rollout. Watch the ocean rollout wall clock after this change rather than
+assuming it went down.
 
 ---
 
@@ -582,11 +663,13 @@ generator solves `start = max_epochs % step` and asserts the last fire equals
 
 126 hours, 504 node-days, ending **Saturday** 2026-09-05.
 
-At the measured **2.82–2.96 h/epoch** — inline inference included, see the
-2026-08-30 measurements — a 30-epoch atmosphere run is **88–92 h**, not the 63 h
-a training-only figure suggests. P1+P2+P3 still all start Monday morning and the
-headline E01/E02/E05 comparisons land Thursday night, but the margin on the
-window is **1.4x** rather than 2x, and P4 should not be expected to finish.
+A 30-epoch atmosphere run is **~72 h**: 63.6 h of training at the measured
+2.12 h/epoch plus 8.5 h of inline inference. The 88–92 h figure this section
+used to carry was correct for a 12-year rollout scored every epoch, and the
+2026-08-31 measurement made it worse still — 125 h, past the window — which is
+why the rollout is now 5 years on six epochs. See "The inline inference cost".
+P1+P2+P3 all start Monday morning and the headline E01/E02/E05 comparisons land
+Wednesday night; P4 is the part that should not be expected to finish.
 
 ### Two operational musts
 

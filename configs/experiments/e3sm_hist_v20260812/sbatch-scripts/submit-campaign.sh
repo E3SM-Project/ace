@@ -54,10 +54,11 @@
 # either filter on the subject or submit with FME_MAIL_TYPE=FAIL,TIME_LIMIT_90
 # to hear only about trouble.
 
-# run-train.sh refuses a dirty worktree and refuses to submit into an output
-# directory that already holds a checkpoint, so a campaign submission fails
-# fast rather than half-queueing. Commit first; pass --resume per run to
-# continue runs that already exist.
+# run-train.sh refuses a dirty worktree, so a campaign submission fails fast
+# rather than half-queueing. Commit first. Runs that already have a checkpoint
+# are continued from it, so re-running this script after a crash restarts what
+# died and leaves the rest alone -- except for runs still in the queue, which
+# it refuses, because two jobs writing one ckpt.tar corrupts the run.
 set -euo pipefail
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)

@@ -30,10 +30,13 @@
 # that box are atmosphere-only (Samudra has neither), and the ocean loss is
 # already unweighted MSE, which is the "equal loss weighting" the box asks for.
 #
-# `12yr_test` fires on range(max_epochs + 1)[start::step], so `start` has to be
-# chosen against max_epochs or the final epoch is never scored. With
-# max_epochs 150 and step 5, start 0 fires on 0, 5, ... 150. make_ablation_config.py
-# recomputes it whenever it changes max_epochs.
+# Every inference block fires on list(range(1, max_epochs + 1))[start::step] --
+# range from 1, because evaluate_before_training is off -- so `start` has to be
+# chosen against max_epochs or the final epoch is never scored. With max_epochs
+# 150 and step 25, start 24 fires on 25, 50, ... 150. make_ablation_config.py
+# recomputes both whenever it changes max_epochs, holding the number of
+# evaluations fixed rather than the stride; see INFERENCE_EVALUATIONS there for
+# why that is the invariant that matters.
 #
 # Launch through sbatch-scripts/run-train.sh, and during the hackathon window
 # export RESERVATION=_CAP_aigs_hist. See README.md and EXPERIMENTS.md.
@@ -62,8 +65,11 @@ ema_checkpoint_save_epochs:
 inference:
 - name: inference
   weight: 1.0
-  n_forward_steps: 876
-  forward_steps_in_memory: 20
+  epochs:
+    start: 24
+    step: 25
+  n_forward_steps: 365
+  forward_steps_in_memory: 10
   loader:
     start_indices:
       times:
@@ -186,10 +192,10 @@ inference:
 - name: 12yr_test
   weight: 0.0
   epochs:
-    start: 0
-    step: 5
-  n_forward_steps: 876
-  forward_steps_in_memory: 20
+    start: 24
+    step: 25
+  n_forward_steps: 365
+  forward_steps_in_memory: 10
   loader:
     start_indices:
       times:

@@ -260,6 +260,49 @@ LANDFRAC_DIR = {
 }
 OCEAN_STEPS_PER_DAY = {"5": 1 / 5, "1": 1.0}
 
+# ------------------------------------------------------------ inference cost --
+
+# Inline inference is not cheap monitoring, it is a free-running rollout, and at
+# the shipped 12-year length it cost 45% of an atmosphere epoch: 2.06 h of
+# training against >=1.7 h of inference, measured on job 57775795. Two blocks
+# are configured, so an epoch on which both fire spent more wall clock rolling
+# out than training, and 30 epochs x 30 runs of that does not fit a 126 h
+# reservation.
+#
+# Length is also what killed every atmosphere run on 2026-08-31. The window loop
+# holds no collective, so the ranks drift apart freely and the all-reduce that
+# ends the rollout absorbs the whole accumulated skew; at 876 windows that skew
+# reached the 30 minute collective timeout. A shorter rollout shortens the drift
+# in proportion, so it is the direct fix for the crash as well as for the cost.
+# See EXPERIMENTS.md "The inline inference cost".
+#
+# Stated in physical units, because "5 years" means the same thing to the
+# atmosphere at 6-hourly and to the ocean at 5-day and the step counts follow
+# from it. Five rather than two or three: the aggregators reduce over whole
+# years, and a rollout wants enough of them to say something about drift.
+#
+# What is NOT lost: validation still runs every epoch at ~4 minutes, so the
+# per-epoch loss curve and best-validation checkpoint selection are untouched.
+# What drops is the per-epoch ROLLOUT score -- and every epoch's weights are
+# saved (checkpoint_save_epochs step 1), so any skipped rollout can be run
+# offline afterwards without holding a reservation open for it.
+INFERENCE_YEARS = 5
+STEPS_PER_YEAR = {"atm": 1460, "ocn": 73}  # 6-hourly; 5-day. O1 is scaled x5.
+
+# Evaluations per run rather than epochs between them. E11 (150 epochs at 5-day)
+# and E17 (30 epochs at 1-day) are sample-matched by construction, so a fixed
+# epoch stride would score one of them five times as often as the other and make
+# the two curves incomparable. Six points, always including the final epoch.
+INFERENCE_EVALUATIONS = 6
+
+# Ocean only, halved from 20 on request (2026-08-31). This bounds how many
+# forward steps are held between loader reads: it lowers peak memory and RAISES
+# the number of reads for a given rollout, so it is a memory knob and not a cost
+# one. Watch the ocean rollout wall clock after this change rather than assuming
+# it went down.
+OCEAN_FORWARD_STEPS_IN_MEMORY = 10
+
+
 LOCAL_BATCH = {"atm": 1, "ocn": 2}
 GPUS_PER_NODE = 4
 # Keyed by realm, and for the ocean by cadence: a 1-day epoch holds 5x the
@@ -604,23 +647,40 @@ def apply_sizing(config: dict, run: Run) -> None:
 
 
 def apply_epoch_schedule(config: dict, epochs: int) -> None:
-    """Set max_epochs and re-anchor 12yr_test so the final epoch is scored.
+    """Set max_epochs and give every inference block the same fixed number of
+    evaluations, ending on the final epoch.
 
-    `12yr_test` fires on `range(max_epochs + 1)[start::step]`. With the default
-    start of 0 the last fire is the largest multiple of `step` at or below
-    max_epochs, which is the final epoch only when step divides max_epochs.
-    Solving for it directly is one line and removes a whole class of "the run
-    finished but the held-out score is from five epochs ago".
+    FME fires a block on ``list(range(1, max_epochs + 1))[start::step]``. The
+    range starts at 1 because ``evaluate_before_training`` is off, and that is
+    what the previous version of this function got wrong: it solved ``start``
+    against ``range(max_epochs + 1)``, one element longer, so the last fire
+    landed one stride short and the final epoch was never scored -- the exact
+    failure the function exists to prevent. With max_epochs 30 and step 5 it
+    fired on 1, 6, ... 26.
+
+    Every block gets the same schedule, so the train-window and held-out scores
+    land on the same epochs and can be read against each other.
     """
     config["max_epochs"] = epochs
+    step = max(1, epochs // INFERENCE_EVALUATIONS)
+    start = (epochs - 1) % step
+    fires = list(range(1, epochs + 1))[start::step]
+    assert fires and fires[-1] == epochs, (start, step, epochs, fires)
     for block in config.get("inference", []):
-        sched = block.get("epochs")
-        if not sched:
-            continue
-        step = sched.get("step") or 1
-        sched["start"] = epochs % step
-        fires = range(epochs + 1)[sched["start"] :: step]
-        assert fires and fires[-1] == epochs, (sched, epochs)
+        block["epochs"] = {"start": start, "step": step}
+
+
+def apply_inference_cost(config: dict, run: Run) -> None:
+    """Set every inference block's rollout length from INFERENCE_YEARS.
+
+    Called before apply_ocean_cadence, which multiplies the result by 5 to keep
+    the O1 runs covering the same span of simulated time as the O5 ones.
+    """
+    steps = INFERENCE_YEARS * STEPS_PER_YEAR[run.realm]
+    for block in config.get("inference", []):
+        block["n_forward_steps"] = steps
+        if run.realm == "ocn":
+            block["forward_steps_in_memory"] = OCEAN_FORWARD_STEPS_IN_MEMORY
 
 
 def build(baseline: dict, run: Run, epochs: int, with_aod: bool) -> dict:
@@ -629,6 +689,7 @@ def build(baseline: dict, run: Run, epochs: int, with_aod: bool) -> dict:
     apply_channels(config, run, with_aod)
     apply_sizing(config, run)
     apply_epoch_schedule(config, epochs)
+    apply_inference_cost(config, run)
 
     if run.factors.amp == "1":
         config["optimization"]["enable_automatic_mixed_precision"] = True

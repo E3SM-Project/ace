@@ -16,8 +16,11 @@ ema_checkpoint_save_epochs:
 inference:
 - name: inference
   weight: 1.0
-  n_forward_steps: 4380
-  forward_steps_in_memory: 20
+  epochs:
+    start: 4
+    step: 5
+  n_forward_steps: 1825
+  forward_steps_in_memory: 10
   loader:
     start_indices:
       times:
@@ -134,10 +137,10 @@ inference:
 - name: 12yr_test
   weight: 0.0
   epochs:
-    start: 0
+    start: 4
     step: 5
-  n_forward_steps: 4380
-  forward_steps_in_memory: 20
+  n_forward_steps: 1825
+  forward_steps_in_memory: 10
   loader:
     start_indices:
       times:

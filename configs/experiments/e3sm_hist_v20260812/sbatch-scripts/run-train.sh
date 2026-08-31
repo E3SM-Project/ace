@@ -4,7 +4,13 @@
 #     ./run-train.sh atm|ocn|cpl                        # the committed config
 #     ./run-train.sh atm <runid> [--after <jobid>]      # a campaign run
 #     ./run-train.sh atm <runid> --no-submit            # stage + validate only
-#     ./run-train.sh atm <runid> --resume               # continue an existing run
+#     ./run-train.sh atm <runid> --start-from-scratch   # discard it and retrain
+#
+# Re-running a run id continues it. There is no separate resume command: the
+# trainer picks up <output>/training_checkpoints/ckpt.tar whenever it is there,
+# so the same line that started a run also restarts it after a requeue, a
+# crash, or a fix. --start-from-scratch is the opposite, and it moves the old
+# output aside rather than deleting it.
 #
 # With a run id, the config is taken from ../runs/<runid>.yaml, the matching
 # ../runs/<runid>.env is sourced so the run is named in wandb and sized
@@ -47,15 +53,15 @@ REALM="${1:-}"
 case "$REALM" in
     atm|ocn) VALIDATOR=fme.ace.validate_config ;;
     cpl)     VALIDATOR=fme.coupled.validate_config ;;
-    *) echo "usage: $0 atm|ocn|cpl [runid] [--after <jobid>] [--no-submit] [--resume] [--force]" >&2; exit 2 ;;
+    *) echo "usage: $0 atm|ocn|cpl [runid] [--after <jobid>] [--no-submit] [--force] [--start-from-scratch]" >&2; exit 2 ;;
 esac
 shift
 
 RUNID=""
 AFTER=""
 NOSUBMIT=0
-RESUME=0
 FORCE=0
+SCRATCH=0
 SIZE=()
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -64,14 +70,22 @@ while [ $# -gt 0 ]; do
         # on Sunday: it exercises staging, the .env, the sizing and the config
         # validator without queueing anything.
         --no-submit) NOSUBMIT=1; shift ;;
-        # Continue an existing run in place. Required whenever the output
-        # directory already holds a checkpoint, because the trainer resumes
-        # from it unconditionally (fme/core/generics/trainer.py, `resuming`).
-        --resume) RESUME=1; shift ;;
-        # Resume even though the config or the commit has changed. This makes
-        # one logical run two different experiments; only for a deliberate
-        # restart after a code fix.
+        # Accepted and ignored: continuing in place is the default now. The
+        # trainer resumes from ckpt.tar unconditionally
+        # (fme/core/generics/trainer.py, `resuming`), so this flag only ever
+        # said "yes, I know" -- and a campaign that requeues and gets restarted
+        # after a fix asks that question constantly. Kept so the command lines
+        # already written down keep working.
+        --resume) shift ;;
+        # Submit a run id that is already sitting in the queue. That is the one
+        # remaining guard, because two jobs interleaving writes to one ckpt.tar
+        # corrupts the run rather than failing it.
         --force) FORCE=1; shift ;;
+        # Discard an existing run and train it again from step zero. The old
+        # output directory is MOVED aside rather than deleted -- it holds every
+        # epoch's checkpoint, which is hours of GPU time, and a rename on the
+        # same filesystem costs nothing.
+        --start-from-scratch) SCRATCH=1; shift ;;
         *)       RUNID="$1"; shift ;;
     esac
 done
@@ -189,23 +203,40 @@ if [ -n "$RUNID" ]; then
             [ "$FORCE" != 1 ] && exit 1
         fi
     fi
-    if [ -f "$OUT/training_checkpoints/ckpt.tar" ] && [ "$RESUME" != 1 ]; then
-        echo "$OUT already holds a checkpoint. Training would resume from it, not start over." >&2
-        echo "  continue it:  ./run-train.sh $REALM $RUNID --resume" >&2
-        echo "  start over:   move or delete $OUT first" >&2
-        exit 1
+    # Continuing is the default. The trainer resumes from ckpt.tar whether or
+    # not anyone asked it to, so refusing here only ever forced a second,
+    # identical command with a flag on it.
+    if [ "$SCRATCH" = 1 ]; then
+        if [ -d "$OUT" ]; then
+            SUPERSEDED="$OUT.superseded.$(date +%Y%m%dT%H%M%S)"
+            mv "$OUT" "$SUPERSEDED"
+            echo "--start-from-scratch: moved the previous run to $SUPERSEDED" >&2
+            echo "  nothing is deleted; remove it yourself once you are sure." >&2
+        else
+            echo "--start-from-scratch: $OUT does not exist yet, nothing to move" >&2
+        fi
+    elif [ -f "$OUT/training_checkpoints/ckpt.tar" ]; then
+        echo "resuming $RUNID from $OUT/training_checkpoints/ckpt.tar" >&2
+        echo "  (--start-from-scratch to train it again from step zero)" >&2
     fi
+
+    # A changed config is reported, not refused. The commit is no longer
+    # compared at all: this campaign is being fixed while it runs, so the commit
+    # differs on essentially every restart and a guard that fires every time
+    # teaches people to pass --force by reflex, which is worse than no guard.
+    # What is worth keeping is the record, so the superseded job_config is kept
+    # rather than overwritten -- otherwise the only evidence of what a run's
+    # earlier epochs were trained under is gone.
     if [ -f "$PREV_CFG" ]; then
         PREV_SHA=$(sha256sum "$PREV_CFG" | cut -d' ' -f1)
         THIS_SHA=$(cat "$CONFIG_DIR/CONFIG_SHA256")
-        PREV_COMMIT=$(cat "$OUT/job_config/COMMIT" 2>/dev/null || echo unknown)
-        THIS_COMMIT=$(cat "$CONFIG_DIR/COMMIT" 2>/dev/null || echo unknown)
-        if [ "$PREV_SHA" != "$THIS_SHA" ] || [ "$PREV_COMMIT" != "$THIS_COMMIT" ]; then
-            echo "$RUNID has already run, and this submission does not match it:" >&2
-            [ "$PREV_SHA" != "$THIS_SHA" ] && echo "  config  $PREV_SHA -> $THIS_SHA" >&2
-            [ "$PREV_COMMIT" != "$THIS_COMMIT" ] && echo "  commit  $PREV_COMMIT -> $THIS_COMMIT" >&2
-            echo "  Resuming would make one run id two experiments. Pass --force if that is really what you want." >&2
-            [ "$FORCE" != 1 ] && exit 1
+        if [ "$PREV_SHA" != "$THIS_SHA" ]; then
+            STAMP=$(date +%Y%m%dT%H%M%S)
+            echo "NOTE: $RUNID's config has changed since its last segment:" >&2
+            echo "  config  $PREV_SHA -> $THIS_SHA" >&2
+            echo "  earlier epochs were trained under the old one; keeping it as" >&2
+            echo "  job_config.$STAMP/ next to the output." >&2
+            cp -r "$OUT/job_config" "$OUT/job_config.$STAMP" 2>/dev/null || true
         fi
     fi
 fi
