@@ -24,6 +24,7 @@ class MockWandB:
         # snapshot so an explicit `name` is needed to rename subsequent runs.
         self._env_name_snapshot: str | None = None
         self._env_name_snapshot_taken = False
+        self._marked_preempting = False
 
     def configure(self, log_to_wandb: bool, metrics_log_dir: str | None = None):
         dist = Distributed.get_instance()
@@ -106,6 +107,14 @@ class MockWandB:
         # snapshot persists, mirroring wandb's setup singleton across finish().
         self._id = None
         self._last_step = 0
+
+    def mark_preempting(self):
+        self._marked_preempting = self._enabled
+
+    @property
+    def marked_preempting(self) -> bool:
+        """Whether the run was reported to the server as awaiting a requeue."""
+        return self._marked_preempting
 
     @property
     def runs(self) -> list[dict[str, Any]]:

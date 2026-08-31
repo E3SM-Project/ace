@@ -343,6 +343,10 @@ class Trainer:
                     self._save_restart_checkpoints()
 
         add_post_shutdown_callback(save_restart_checkpoints_on_terminate)
+        # after the checkpoint, deliberately: callbacks run in registration
+        # order and this one talks to the network, while the checkpoint is the
+        # thing worth the remaining time.
+        add_post_shutdown_callback(WandB.get_instance().mark_preempting)
 
     def switch_off_grad(self, model: torch.nn.Module):
         for param in model.parameters():

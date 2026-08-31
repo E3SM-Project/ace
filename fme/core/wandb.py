@@ -168,6 +168,20 @@ class WandB:
             wandb.finish()
         self._id = None
 
+    def mark_preempting(self):
+        """Tell wandb the run is stopping to be resumed, not failing.
+
+        A requeued segment exits 128+signum from the termination handler, and
+        wandb reads that exit code as a failure: the run shows `failed` until
+        the next segment resumes it. Over a campaign of many runs at a walltime
+        shorter than they need, that is most of the dashboard most of the time,
+        and it hides the runs that really did fail. `mark_preempting` is
+        wandb's own answer to this and reports to the server immediately rather
+        than flushing the run.
+        """
+        if self._enabled:
+            wandb.mark_preempting()
+
     def watch(self, modules):
         if self._enabled:
             wandb.watch(modules)

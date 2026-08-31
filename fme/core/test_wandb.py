@@ -17,6 +17,26 @@ def test_wandb_direct_initialization_raises():
         Image(np.zeros((10, 10)))
 
 
+def test_mark_preempting_reports_only_when_enabled():
+    """A requeued segment must not leave its run looking like a failure.
+
+    The termination handler exits 128+signum, which wandb reads as a failure,
+    so a run that is only waiting for its next segment shows `failed`. Marking
+    it preempting is what distinguishes the two on the dashboard, and over a
+    campaign whose runs outlast the walltime it is the difference between a
+    board of failures and a board that means something.
+    """
+    with mock_wandb() as wandb:
+        wandb.configure(log_to_wandb=True)
+        wandb.mark_preempting()
+        assert wandb.marked_preempting
+
+    with mock_wandb() as wandb:
+        wandb.configure(log_to_wandb=False)
+        wandb.mark_preempting()
+        assert not wandb.marked_preempting
+
+
 class TestDiskLoggingIntegration:
     def test_metrics_written_to_disk_via_mock_wandb(self, tmp_path):
         log_dir = str(tmp_path / "metrics")
