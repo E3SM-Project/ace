@@ -1254,9 +1254,11 @@ another.
   `NETCDF3_64BIT_DATA` with no chunking and no compression, on a filesystem with
   a **16 MiB block size**. netCDF-3 interleaves record variables by timestep, so
   one variable's consecutive timesteps sit **19.3 MiB apart** — every read is a
-  ~259 KB strided hit into a distinct block, readahead cannot help, and a job
-  drags most of a file's extent across the wire to use the 28% of it the model
-  actually reads. One atmosphere epoch touches **2.42 TiB of extent for 0.68 TiB
+  ~259 KB strided hit into a distinct block, and a job drags most of a file's
+  extent across the wire to use the 28% of it the model actually reads.
+  Measured on a compute node, a strided read costs **20.5 ms** against
+  **4.5 ms** for a dense one in the same file — the 16 MiB block does get
+  reused, which is why 8 workers per rank hide the cost entirely. One atmosphere epoch touches **2.42 TiB of extent for 0.68 TiB
   of useful data**; all 35 runs together are order **5 GiB/s useful and up to
   11 GiB/s of extent, sustained for five days** — roughly 800 TiB read over the
   week against 6 TiB of distinct input. Follow the launch ramp above rather than
