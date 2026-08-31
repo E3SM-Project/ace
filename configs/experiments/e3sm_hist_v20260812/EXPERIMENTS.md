@@ -593,9 +593,42 @@ window is **1.4x** rather than 2x, and P4 should not be expected to finish.
 1. **`RESERVATION=_CAP_aigs_hist`.** `run-train.sh` passes `--reservation` when
    that variable is set, and nothing sets it for you. Without it jobs sit in the
    regular queue while 96 reserved nodes idle.
-2. **Drop the flag for anything crossing Saturday 15:00.** A 12 h segment that
-   cannot finish before the reservation ends will not start inside it; a requeued
-   continuation runs on the normal allocation.
+2. **Keep the flag to the end of the window.** Inside a reservation `--time` is
+   unconstrained: it may exceed both the QOS maximum and the reservation's own
+   duration, and such a job starts normally and is killed when the reservation
+   ends (docs.nersc.gov/jobs/reservations). What that kill does not deliver is
+   the 300 s `USR1` warning, which is keyed to `--time`, so a `--time` that fits
+   is still preferable. Segment length is a choice, not a limit: `FME_TIME=`
+   overrides it per submission, and at 24 h an 88-92 h run pays 4 setups instead
+   of 8.
+
+### The walltime requeue, measured
+
+Verified end to end on 2026-08-30 across five jobs and both realms. At `--time`
+minus 300 s the batch shell takes `USR1` and answers with `scancel
+--signal=TERM`, which slurmstepd delivers to every pid in the step's cgroup:
+
+| stage | atmosphere, 16 ranks | ocean, 8 ranks |
+| --- | --- | --- |
+| collective teardown | 587 ms | under 1 s |
+| restart checkpoint | 6.8 GiB in 10.4 s | 1.24 GiB in 4.4 s |
+| rank exit | 143 | 143 |
+
+The next segment logs `skip first N batches since these were already processed
+for this epoch` and resumes the step counter where it stopped, so **a requeue
+costs the 22.5 min dataset setup and the queue wait, not the partial epoch.**
+The 31.1 s in the checkpoint table above is the whole per-epoch write of ~20 GB
+including EMA and epoch-numbered copies, not the single file this path writes.
+
+The binding constraint is torchrun's agent, which SIGKILLs the ranks 30 s after
+the signal reaches it (`PContext.close` defaults to `timeout=30`), so the
+checkpoint has to fit inside whatever the teardown leaves of that budget.
+
+wandb reports a requeued run as `preempted` rather than `failed`
+(`wandb.mark_preempting`, registered after the checkpoint). Its **Logs tab
+overwrites between segments** — it is line-indexed and the index restarts each
+segment — so the durable records are `<experiment_dir>/out.log` and
+`joblogs/*.out`, both of which append.
 
 ### Launch ramp — the Monday morning procedure
 
