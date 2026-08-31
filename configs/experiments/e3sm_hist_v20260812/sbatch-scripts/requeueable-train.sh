@@ -19,14 +19,18 @@
 # written at every epoch boundary, so a requeue always resumes from at most one
 # epoch back.
 #
-# Whether it resumes from *less* than that is not yet established. FME registers
-# save_restart_checkpoints_on_terminate as a post-shutdown callback
-# (trainer.py:345), so a SIGTERM should also write a mid-epoch restart
-# checkpoint -- but shutdown.py's own docstring notes torchrun SIGKILLs each
-# rank about 30 s after the signal reaches the agent, against a ~31 s measured
-# write for the full checkpoint set. Until the B:USR1 path above is tested end
-# to end, assume a requeue costs the partial epoch in flight: up to 2.9 h for
-# the atmosphere, ~1.4 h expected, per requeue.
+# Whether it resumes from *less* than that is doubtful, and the budget is why.
+# FME registers save_restart_checkpoints_on_terminate as a post-shutdown
+# callback (trainer.py:322), so SIGTERM does start a mid-epoch restart
+# checkpoint -- but torchrun's agent gives the ranks one shared 30 s before
+# SIGKILL (PContext.close defaults to timeout=30 and LocalElasticAgent._shutdown
+# calls it with no argument), the collective teardown spends part of it, and the
+# full checkpoint set measured ~31 s to write. Budget a requeue as costing the
+# partial epoch in flight -- up to 2.9 h for the atmosphere, ~1.4 h expected --
+# and treat a mid-epoch checkpoint that does land as a bonus. Trying costs
+# nothing: save_checkpoint writes .<uuid>.tmp and os.replace()s it
+# (trainer.py:676-694), so a write cut short cannot damage the checkpoint
+# already on disk.
 #
 # Required environment (exported by the calling sbatch script):
 #   TRAIN_CONFIG  absolute path to the config yaml (on shared FS, never /tmp)
@@ -86,5 +90,8 @@ rc=$?
 # log tail: time_buffer teardown prints scary-but-harmless tracebacks on
 # successful runs (README "Known issues").
 echo "REAL_EXIT=$rc"
-sleep 120
+# No trailing sleep. It used to hold the task open while this script's own
+# `scontrol requeue` took effect; the batch script owns the requeue now and
+# blocks on srun to issue it, so sleeping here would only spend the walltime
+# lead time that the teardown and checkpoint write need.
 exit $rc

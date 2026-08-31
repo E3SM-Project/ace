@@ -122,13 +122,22 @@ use those, not a stopwatch.
 Resume is automatic — a requeued segment picks up from
 `<output>/training_checkpoints/ckpt.tar`, which is written at every epoch
 boundary, so it resumes from at most one epoch back. **Whether it also skips
-batches already done inside the current epoch is not established** — measured
-2026-08-30 (job 57758390), a walltime requeue left `training_checkpoints/`
-empty, because `--signal=USR1@120` without a `B:` prefix reaches the python
-ranks, which have no SIGUSR1 handler. That is now `--signal=B:USR1@120` with
-the requeue trap in the batch script; until it is tested end to end, budget a
-requeue as costing the partial epoch in flight (up to 2.9 h atm, ~1.4 h
-expected). To resume an ad-hoc run by hand:
+batches already done inside the current epoch is not established.** Two
+walltime requeues were measured on 2026-08-30 and neither produced a mid-epoch
+checkpoint. Job 57758390: `--signal=USR1@120` without a `B:` prefix reaches the
+python ranks, which have no SIGUSR1 handler, so they died at default
+disposition. Job 57759729: with `B:` the routing was right, but the batch trap
+stopped the step with `kill -TERM` on srun, and SIGTERM is one of the few
+signals srun does not forward — it aborted the step and all 16 ranks came back
+`Killed`, so no handler ran anywhere. The trap now uses
+`scancel --signal=TERM`, which delivers a real SIGTERM inside the step's
+cgroup, and the lead time is `--signal=B:USR1@300`.
+
+Budget an atmosphere requeue as costing the partial epoch in flight anyway (up
+to 2.9 h, ~1.4 h expected): torchrun's agent SIGKILLs the ranks 30 s after the
+signal reaches it, the collective teardown spends part of that, and the ~20 GB
+atmosphere checkpoint measured 31.1 s to write. The ocean's 8.3 s write fits
+with room to spare. To resume an ad-hoc run by hand:
 `RESUME_JOB_ID=<jobid> ./sbatch-scripts/run-train.sh atm`.
 
 ### Two guards that will stop you, on purpose

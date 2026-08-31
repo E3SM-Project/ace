@@ -19,7 +19,7 @@
 #SBATCH --cpus-per-task=128
 #SBATCH -t 12:00:00
 #SBATCH --output=joblogs/%x-%j.out
-#SBATCH --signal=B:USR1@120    # walltime requeue; see the trap at the bottom.
+#SBATCH --signal=B:USR1@300    # walltime requeue; see the trap at the bottom.
                                # B: = batch shell ONLY. Without it Slurm signals
                                # every process in the step, the 16 python ranks
                                # included, and SIGUSR1 has no handler in FME
@@ -28,6 +28,12 @@
                                # before writing a restart checkpoint. Measured
                                # 2026-08-30 on job 57758390: REAL_EXIT=138
                                # (128+SIGUSR1) and an empty training_checkpoints/.
+                               # 300 s rather than 120: the lead time has to
+                               # cover a collective teardown, a ~31 s checkpoint
+                               # write and the step's own exit, and a requeue
+                               # that loses the race to the walltime does not
+                               # happen at all -- TIMEOUT is terminal and
+                               # --requeue does not cover it.
 #SBATCH --requeue
 #SBATCH --open-mode=append
 
@@ -75,17 +81,30 @@ export FME_OVERRIDE_ARGS="experiment_dir=$FME_OUTPUT_DIR"
 mkdir -p "$FME_OUTPUT_DIR/job_config"
 cp -r "$CONFIG_DIR/." "$FME_OUTPUT_DIR/job_config/"
 
-# Walltime requeue. Every layer below already handles SIGTERM correctly --
-# srun forwards it to its tasks, requeueable-train.sh's preempt_handler forwards
-# it to torchrun, torchrun forwards it to the ranks, and FME's handler tears
-# down the collectives and then writes the restart checkpoint. The only thing
-# missing was turning USR1 into that SIGTERM, which is what this trap does.
-# The requeue lives here rather than in requeueable-train.sh because with B:
-# the step never sees USR1 -- and one requeue beats one per node.
+# Walltime requeue. The trap turns USR1 into the SIGTERM that every layer below
+# already handles -- requeueable-train.sh's preempt_handler, torchrun's agent,
+# and FME's handler, which tears the collectives down and then writes the
+# restart checkpoint. The requeue lives here rather than in
+# requeueable-train.sh because with B: the step never sees USR1, and one
+# requeue beats one per node.
+#
+# `scancel --signal`, not `kill -TERM "$srun_pid"`: SIGTERM is one of the few
+# signals srun does not forward. It aborts the step instead ("srun: forcing job
+# termination") and the tasks come back Killed -- SIGKILL, in the same second,
+# so no handler anywhere below ever runs. That is worse than losing the
+# checkpoint: a rank SIGKILLed with its NCCL communicators open faults its
+# NVLink peers and gets the node cordoned (fme/core/distributed/shutdown.py).
+# Measured 2026-08-30 on job 57759729: 16 ranks Killed, no REAL_EXIT line, and
+# an empty training_checkpoints/.
+#
+# scancel without --batch/--full signals the job's steps and not the batch
+# shell, which is the target here. Perlmutter runs proctrack/cgroup, so
+# slurmstepd delivers the signal to every pid in the step's cgroup --
+# requeueable-train.sh, torchrun and the ranks alike.
 srun --nodes=$SLURM_JOB_NUM_NODES --ntasks-per-node=1 --gpus-per-node=4 \
      "$CONFIG_DIR/requeueable-train.sh" &
 srun_pid=$!
-trap 'kill -TERM "$srun_pid" 2>/dev/null; wait "$srun_pid"; scontrol requeue "$SLURM_JOB_ID"' USR1
+trap 'scancel --signal=TERM --quiet "$SLURM_JOB_ID"; wait "$srun_pid"; scontrol requeue "$SLURM_JOB_ID"' USR1
 wait "$srun_pid"
 rc=$?
 echo "srun exited rc=$rc"
