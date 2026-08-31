@@ -7,12 +7,24 @@
 #   USR1                      -> kept only as a fallback; see below
 #
 # Walltime is no longer handled here. The batch script carries
-# `--signal=B:USR1@120`, so USR1 reaches the batch shell alone and never this
+# `--signal=B:USR1@300`, so USR1 reaches the batch shell alone and never this
 # step -- deliberately, because without B: it also reaches the python ranks,
 # which have no SIGUSR1 handler and die before writing a restart checkpoint
 # (measured 2026-08-30, job 57758390: REAL_EXIT=138, empty
 # training_checkpoints/). The batch script's trap converts it into the SIGTERM
 # that every layer here already handles, and owns the `scontrol requeue`.
+#
+# That is a deliberate departure from NERSC's own template
+# (docs.nersc.gov/jobs/examples, "Preemptible Jobs"), which uses a bare
+# `--signal=USR1@60` and puts both traps in this payload script. Their model
+# assumes the application checkpoints on its own schedule and can be killed
+# outright by the USR1 broadcast; FME checkpoints on SIGTERM and on nothing
+# else, so the broadcast has to be kept off the ranks. The preemption half of
+# their template is kept as-is: preemption signals the step, not the batch
+# shell -- "there is no way for job preemption to warn the batch script" --
+# which is what preempt_handler below is for. NERSC's checkpoint/restart tools
+# are not an alternative for either half: DMTCP and MANA are documented as
+# unavailable for GPU applications.
 # Resume is automatic: training relaunches against the same experiment_dir and
 # picks up from <experiment_dir>/training_checkpoints/ckpt.tar (verified for
 # both realms, see README "Checkpointing and resuming"). Checkpoints are
@@ -90,8 +102,13 @@ rc=$?
 # log tail: time_buffer teardown prints scary-but-harmless tracebacks on
 # successful runs (README "Known issues").
 echo "REAL_EXIT=$rc"
-# No trailing sleep. It used to hold the task open while this script's own
-# `scontrol requeue` took effect; the batch script owns the requeue now and
-# blocks on srun to issue it, so sleeping here would only spend the walltime
-# lead time that the teardown and checkpoint write need.
+# Keep a process alive for Slurm to SIGKILL. This is NERSC's own instruction for
+# preemptible jobs ("ensures a process is still running for slurm to send
+# SIGKILL to", docs.nersc.gov/jobs/examples #preemptible-jobs) and it is what
+# makes `--requeue` fire: on preemption Slurm requeues a job it killed, so a
+# step that tidily exits during the grace period is recorded as finished
+# instead. It costs the walltime path 120 s between the ranks exiting and the
+# batch script's `wait` returning to issue its requeue, which is part of why
+# that lead time is 300 s and not NERSC's 60.
+sleep 120
 exit $rc
