@@ -24,7 +24,15 @@
 #SBATCH --cpus-per-task=128
 #SBATCH -t 12:00:00
 #SBATCH --output=joblogs/%x-%j.out
-#SBATCH --signal=USR1@120      # fire the requeue handler 2 min before walltime
+#SBATCH --signal=B:USR1@120    # walltime requeue; see the trap at the bottom.
+                               # B: = batch shell ONLY. Without it Slurm signals
+                               # every process in the step, the 16 python ranks
+                               # included, and SIGUSR1 has no handler in FME
+                               # (shutdown.py TERMINATION_SIGNALS is SIGTERM,
+                               # SIGINT) so they die at default disposition
+                               # before writing a restart checkpoint. Measured
+                               # 2026-08-30 on job 57758390: REAL_EXIT=138
+                               # (128+SIGUSR1) and an empty training_checkpoints/.
 #SBATCH --requeue
 #SBATCH --open-mode=append
 
@@ -79,5 +87,18 @@ export FME_OVERRIDE_ARGS="experiment_dir=$FME_OUTPUT_DIR"
 mkdir -p "$FME_OUTPUT_DIR/job_config"
 cp -r "$CONFIG_DIR/." "$FME_OUTPUT_DIR/job_config/"
 
+# Walltime requeue. Every layer below already handles SIGTERM correctly --
+# srun forwards it to its tasks, requeueable-train.sh's preempt_handler forwards
+# it to torchrun, torchrun forwards it to the ranks, and FME's handler tears
+# down the collectives and then writes the restart checkpoint. The only thing
+# missing was turning USR1 into that SIGTERM, which is what this trap does.
+# The requeue lives here rather than in requeueable-train.sh because with B:
+# the step never sees USR1 -- and one requeue beats one per node.
 srun --nodes=$SLURM_JOB_NUM_NODES --ntasks-per-node=1 --gpus-per-node=4 \
-     "$CONFIG_DIR/requeueable-train.sh"
+     "$CONFIG_DIR/requeueable-train.sh" &
+srun_pid=$!
+trap 'kill -TERM "$srun_pid" 2>/dev/null; wait "$srun_pid"; scontrol requeue "$SLURM_JOB_ID"' USR1
+wait "$srun_pid"
+rc=$?
+echo "srun exited rc=$rc"
+exit $rc

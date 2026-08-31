@@ -3,16 +3,30 @@
 # Same pattern as e3sm_piControl_v20260507/atmosphere/sbatch-scripts/requeueable-train.sh
 # (that directory lives on the e3sm/exps/hist branch, not this one):
 # torchrun is launched in the background so this shell can catch signals.
-#   SIGTERM (preemption)      -> kill torchrun, exit; do NOT requeue
-#   USR1  (walltime, @signal) -> kill torchrun, `scontrol requeue` the job
+#   SIGTERM (preemption, and now also walltime) -> kill torchrun, exit
+#   USR1                      -> kept only as a fallback; see below
+#
+# Walltime is no longer handled here. The batch script carries
+# `--signal=B:USR1@120`, so USR1 reaches the batch shell alone and never this
+# step -- deliberately, because without B: it also reaches the python ranks,
+# which have no SIGUSR1 handler and die before writing a restart checkpoint
+# (measured 2026-08-30, job 57758390: REAL_EXIT=138, empty
+# training_checkpoints/). The batch script's trap converts it into the SIGTERM
+# that every layer here already handles, and owns the `scontrol requeue`.
 # Resume is automatic: training relaunches against the same experiment_dir and
 # picks up from <experiment_dir>/training_checkpoints/ckpt.tar (verified for
 # both realms, see README "Checkpointing and resuming"). Checkpoints are
-# written at every epoch boundary and again on graceful shutdown (atomic
-# tmp-file + rename), and resume skips the batches already processed in the
-# current epoch, so a USR1 requeue mid-epoch continues the epoch. Worst case -
-# the 14 GB restart save killed mid-write - the epoch repeats (plus dataset
-# setup).
+# written at every epoch boundary, so a requeue always resumes from at most one
+# epoch back.
+#
+# Whether it resumes from *less* than that is not yet established. FME registers
+# save_restart_checkpoints_on_terminate as a post-shutdown callback
+# (trainer.py:345), so a SIGTERM should also write a mid-epoch restart
+# checkpoint -- but shutdown.py's own docstring notes torchrun SIGKILLs each
+# rank about 30 s after the signal reaches the agent, against a ~31 s measured
+# write for the full checkpoint set. Until the B:USR1 path above is tested end
+# to end, assume a requeue costs the partial epoch in flight: up to 2.9 h for
+# the atmosphere, ~1.4 h expected, per requeue.
 #
 # Required environment (exported by the calling sbatch script):
 #   TRAIN_CONFIG  absolute path to the config yaml (on shared FS, never /tmp)

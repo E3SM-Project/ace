@@ -25,6 +25,18 @@
 #
 # Email is on by default to $USER@nersc.gov on BEGIN, END, FAIL, REQUEUE and
 # TIME_LIMIT_90. Override with FME_MAIL_USER / FME_MAIL_TYPE, or FME_MAIL_TYPE=NONE.
+# (Those four plus TIME_LIMIT_50/80 are the only thresholds Slurm defines; there
+# is no TIME_LIMIT_95.)
+#
+# QOS and walltime come from the #SBATCH block and can be overridden for a
+# one-off -- a short test run, say -- without editing anything:
+#
+#     FME_QOS=debug FME_TIME=00:30:00 ./run-train.sh atm
+#
+# Prefer these to Slurm's own SBATCH_QOS / SBATCH_TIMELIMIT: those are input
+# environment variables, so `VAR=x` on a line of its own sets a shell variable
+# that is never exported and never reaches sbatch, silently. These become
+# command-line flags, which beat the #SBATCH directives outright.
 # Already-queued jobs can be retrofitted without resubmitting:
 #     scontrol update JobId=<id> MailUser=$USER@nersc.gov \
 #         MailType=BEGIN,END,FAIL,REQUEUE,TIME_LIMIT_90
@@ -220,6 +232,12 @@ else
     echo "mail: $MAIL_TYPE -> $MAIL_USER" >&2
 fi
 
+# One-off overrides of the #SBATCH block. Passed on the command line so they
+# take precedence over the directives in sbatch-train-<realm>.sh.
+EXTRA=()
+[ -n "${FME_QOS:-}" ]  && { EXTRA+=(--qos="$FME_QOS");   echo "qos: $FME_QOS" >&2; }
+[ -n "${FME_TIME:-}" ] && { EXTRA+=(--time="$FME_TIME"); echo "walltime: $FME_TIME" >&2; }
+
 echo "staged config: $CONFIG_DIR/$CONFIG_NAME" >&2
 [ -n "$RUNID" ] && echo "runid: $RUNID -> ${CAMPAIGN_ROOT}/${RUNID}" >&2
 
@@ -245,7 +263,7 @@ NAME=()
 [ -n "$RUNID" ] && NAME=(--job-name="$RUNID")
 
 JOBID=$(sbatch --parsable --chdir="$EXP_DIR" \
-    "${SIZE[@]}" "${DEP[@]}" "${MAIL[@]}" "${NAME[@]}" \
+    "${SIZE[@]}" "${DEP[@]}" "${MAIL[@]}" "${NAME[@]}" "${EXTRA[@]}" \
     "$HERE/sbatch-train-${REALM}.sh")
 echo "submitted ${JOBID}${AFTER:+ (after ${AFTER})}" >&2
 echo "$JOBID"
