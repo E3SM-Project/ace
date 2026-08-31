@@ -17,8 +17,8 @@ inference:
 - name: inference
   weight: 1.0
   epochs:
-    start: 24
-    step: 25
+    start: 14
+    step: 15
   n_forward_steps: 365
   forward_steps_in_memory: 10
   loader:
@@ -137,8 +137,8 @@ inference:
 - name: 5yr_test
   weight: 0.0
   epochs:
-    start: 24
-    step: 25
+    start: 14
+    step: 15
   n_forward_steps: 365
   forward_steps_in_memory: 10
   loader:

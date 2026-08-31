@@ -146,7 +146,7 @@ plot list; `annual` and `enso_index` are unrestricted, and at 21 KB per chart
 they are not worth restricting.
 
 At the cadence measured then — `inference` every epoch, the held-out block every
-fifth, both at a 12-year rollout. Both now fire six times per run at 5 years
+fifth, both at a 12-year rollout. Both now fire ten times per run at 5 years
 (see "The inline inference cost"), so these are upper bounds by a wide margin:
 
 | | per epoch | per run | campaign |
@@ -442,9 +442,9 @@ At `DEFAULT_EPOCHS` — O5 150, O1 30 — including setup on 12 h segments:
 **Both totals are training-only, and neither is a run total.** They were
 equal-wall-clock at ~49 h each when inference ran every epoch at 12 years — see
 "Ocean — measured at production rollout length" below for that arithmetic, and
-"The inline inference cost" for why it no longer does. At six 5-year
-evaluations the inference term is ~1 h rather than ~24 h, so both totals are now
-within ~1 h of the training-only figures above, and they stay equal-wall-clock
+"The inline inference cost" for why it no longer does. At ten 5-year
+evaluations the inference term is ~2 h rather than ~24 h, so both totals are now
+within ~2 h of the training-only figures above, and they stay equal-wall-clock
 at the shipped `DEFAULT_EPOCHS["ocn-O1"] = 30`, which is why that number
 stands.
 
@@ -582,17 +582,21 @@ failure the code was written to prevent. The generator now solves
 the checker duplicates the arithmetic independently.
 
 Cadence is set as **evaluations per run, not epochs between them**
-(`INFERENCE_EVALUATIONS = 6`). E11 (150 epochs at 5-day) and E17 (30 epochs at
+(`INFERENCE_EVALUATIONS = 10`). E11 (150 epochs at 5-day) and E17 (30 epochs at
 1-day) are sample-matched by construction, so a fixed epoch stride would score
 one of them five times as often as the other and make the two curves
-incomparable. Six points, both blocks on the same epochs so the train-window and
+incomparable. Ten points, both blocks on the same epochs so the train-window and
 held-out scores can be read against each other:
 
 | | `max_epochs` | step | fires on |
 |---|---|---|---|
-| atmosphere | 30 | 5 | 5, 10, 15, 20, 25, 30 |
-| ocean O5 | 150 | 25 | 25, 50, 75, 100, 125, 150 |
-| ocean O1 (E17) | 30 | 5 | 5, 10, 15, 20, 25, 30 |
+| atmosphere | 30 | 3 | 3, 6, 9, ... 30 |
+| ocean O5 | 150 | 15 | 15, 30, 45, ... 150 |
+| ocean O1 (E17) | 30 | 3 | 3, 6, 9, ... 30 |
+
+Ten is what makes the 30-epoch runs land on **every third epoch**, which is the
+resolution a learning curve wants; six was readable as a number but not as a
+curve, and the difference is ~6 h per atmosphere run.
 
 ### The inline inference cost
 
@@ -635,9 +639,9 @@ Effect on a 30-epoch atmosphere run, scaling the measured block cost:
 | | training | inference | run |
 |---|---|---|---|
 | before: 12 yr, `inference` every epoch | 63.6 h | 61 h | **125 h** |
-| after: 5 yr, both blocks x6 | 63.6 h | 8.5 h | **72 h** |
+| after: 5 yr, both blocks x10 | 63.6 h | 14.2 h | **78 h** |
 
-Inference falls from 49% of a run to 12%, and the run fits the 126 h window with
+Inference falls from 49% of a run to 18%, and the run fits the 126 h window with
 margin instead of exceeding it. **What is not lost:** validation still runs every
 epoch at ~4 minutes, so the per-epoch loss curve and best-validation checkpoint
 selection are untouched; `trainer.py` guards the inference-error selection on
@@ -663,11 +667,11 @@ assuming it went down.
 
 126 hours, 504 node-days, ending **Saturday** 2026-09-05.
 
-A 30-epoch atmosphere run is **~72 h**: 63.6 h of training at the measured
-2.12 h/epoch plus 8.5 h of inline inference. The 88–92 h figure this section
+A 30-epoch atmosphere run is **~78 h**: 63.6 h of training at the measured
+2.12 h/epoch plus 14.2 h of inline inference. The 88–92 h figure this section
 used to carry was correct for a 12-year rollout scored every epoch, and the
 2026-08-31 measurement made it worse still — 125 h, past the window — which is
-why the rollout is now 5 years on six epochs. See "The inline inference cost".
+why the rollout is now 5 years on ten epochs. See "The inline inference cost".
 P1+P2+P3 all start Monday morning and the headline E01/E02/E05 comparisons land
 Wednesday night; P4 is the part that should not be expected to finish.
 
@@ -915,7 +919,7 @@ Against 65 TB free of a 120 TB quota (`lfs quota -h -u $USER /pscratch`;
 room. If that changes, back the *full* save off to `{step: 5}` and keep the EMA
 every epoch: the EMA weights are what gets evaluated and the optimizer state
 only matters for resuming. Do not turn the per-epoch saves off entirely — with
-inline inference now scoring six epochs rather than thirty, those checkpoints
+inline inference now scoring ten epochs rather than thirty, those checkpoints
 are what makes the skipped rollouts recoverable offline.
 
 ---
@@ -928,7 +932,7 @@ an epoch costs. This section prices the whole thing.
 **Read it as the configuration of the day.** It measures a 16-IC, 12-year
 weighted rollout every epoch — `InlineInferenceConfig.epochs` was left at its
 `Slice()` default, which is "every epoch" (`train_config.py:120`) — plus the
-held-out 12-year block every fifth. Both are now 5 years on six epochs; what
+held-out 12-year block every fifth. Both are now 5 years on ten epochs; what
 that cost, and why it changed, is under "The inline inference cost".
 
 Method: the production config with **only** the training window shortened
@@ -1008,8 +1012,8 @@ So the production block is bounded, not point-estimated:
 | `5yr_test`, weight 0.0, every 5th epoch | 424 – 506 | amortised |
 
 **This table is the pre-2026-08-31 configuration**: a 12-year rollout on the
-weighted block every epoch. Both blocks are now 5 years on six epochs, which
-takes the epoch to ~2.4 h and the run to ~72 h — see "The inline inference
+weighted block every epoch. Both blocks are now 5 years on ten epochs, which
+takes the epoch to ~2.6 h and the run to ~78 h — see "The inline inference
 cost".
 | wandb log + checkpoint write | 58 | |
 | **total** | **10,259 – 10,751 s = 2.85 – 2.99 h** | |
@@ -1160,8 +1164,8 @@ ocean reads a four-way `merge`, which is why.
 | wandb log + checkpoint write | 67 | |
 | **total** | **1,153 s = 0.32 h** | |
 
-**Also the pre-2026-08-31 configuration.** At six 5-year evaluations the two
-inference rows amortise to ~10 s rather than 353, so an ocean epoch is ~810 s
+**Also the pre-2026-08-31 configuration.** At ten 5-year evaluations the two
+inference rows amortise to ~16 s rather than 353, so an ocean epoch is ~816 s
 of the measured phases; under campaign contention it is running 1,400–1,900 s.
 See "The inline inference cost".
 
@@ -1255,14 +1259,14 @@ Priced against the 10,011 s epoch, in the order they cost least science:
 
 **Three of these were taken on 2026-08-31**, when the campaign turned out not
 to fit the window and inline inference turned out to be killing it outright. The
-weighted block now rolls out 5 years, not 12, and both blocks fire six times per
+weighted block now rolls out 5 years, not 12, and both blocks fire ten times per
 run rather than every epoch and every fifth. What is left below is what remains
 available.
 
 | change | saves per epoch | saves per 30-epoch atm run | costs |
 |---|---|---|---|
-| ~~`5yr_test` every 10th epoch instead of 5th~~ | ~230 s | ~1.9 h | *taken: six evaluations per run* |
-| ~~weighted `inference` every 2nd epoch~~ | ~1,150 s | ~9.6 h | *taken: six evaluations per run* |
+| ~~`5yr_test` every 10th epoch instead of 5th~~ | ~230 s | ~1.9 h | *taken: ten evaluations per run* |
+| ~~weighted `inference` every 2nd epoch~~ | ~1,150 s | ~9.6 h | *taken: ten evaluations per run* |
 | ~~weighted `inference` rollout 12 yr → 6 yr~~ | ~1,060 s | ~8.8 h | *taken: 5 yr* |
 | first two together | ~1,380 s | ~11.5 h | |
 

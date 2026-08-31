@@ -33,7 +33,7 @@
 # Every inference block fires on list(range(1, max_epochs + 1))[start::step] --
 # range from 1, because evaluate_before_training is off -- so `start` has to be
 # chosen against max_epochs or the final epoch is never scored. With max_epochs
-# 150 and step 25, start 24 fires on 25, 50, ... 150. make_ablation_config.py
+# 150 and step 15, start 14 fires on 15, 30, ... 150. make_ablation_config.py
 # recomputes both whenever it changes max_epochs, holding the number of
 # evaluations fixed rather than the stride; see INFERENCE_EVALUATIONS there for
 # why that is the invariant that matters.
@@ -66,8 +66,8 @@ inference:
 - name: inference
   weight: 1.0
   epochs:
-    start: 24
-    step: 25
+    start: 14
+    step: 15
   n_forward_steps: 365
   forward_steps_in_memory: 10
   loader:
@@ -192,8 +192,8 @@ inference:
 - name: 5yr_test
   weight: 0.0
   epochs:
-    start: 24
-    step: 25
+    start: 14
+    step: 15
   n_forward_steps: 365
   forward_steps_in_memory: 10
   loader:

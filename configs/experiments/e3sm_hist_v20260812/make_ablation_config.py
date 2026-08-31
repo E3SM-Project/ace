@@ -292,8 +292,13 @@ STEPS_PER_YEAR = {"atm": 1460, "ocn": 73}  # 6-hourly; 5-day. O1 is scaled x5.
 # Evaluations per run rather than epochs between them. E11 (150 epochs at 5-day)
 # and E17 (30 epochs at 1-day) are sample-matched by construction, so a fixed
 # epoch stride would score one of them five times as often as the other and make
-# the two curves incomparable. Six points, always including the final epoch.
-INFERENCE_EVALUATIONS = 6
+# the two curves incomparable. Always including the final epoch.
+#
+# Ten works out to exactly "every 3 epochs" on the 30-epoch runs -- the
+# atmosphere and E17 -- which is the resolution the learning curve wants, and
+# every 15th of the ocean's 150. Six was too sparse to read a curve from and
+# costs only ~6 h per atmosphere run less.
+INFERENCE_EVALUATIONS = 10
 
 # Ocean only, halved from 20 on request (2026-08-31). This bounds how many
 # forward steps are held between loader reads: it lowers peak memory and RAISES
