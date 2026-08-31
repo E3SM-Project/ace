@@ -31,18 +31,22 @@
 # written at every epoch boundary, so a requeue always resumes from at most one
 # epoch back.
 #
-# Whether it resumes from *less* than that is doubtful, and the budget is why.
-# FME registers save_restart_checkpoints_on_terminate as a post-shutdown
-# callback (trainer.py:322), so SIGTERM does start a mid-epoch restart
-# checkpoint -- but torchrun's agent gives the ranks one shared 30 s before
-# SIGKILL (PContext.close defaults to timeout=30 and LocalElasticAgent._shutdown
-# calls it with no argument), the collective teardown spends part of it, and the
-# full checkpoint set measured ~31 s to write. Budget a requeue as costing the
-# partial epoch in flight -- up to 2.9 h for the atmosphere, ~1.4 h expected --
-# and treat a mid-epoch checkpoint that does land as a bonus. Trying costs
-# nothing: save_checkpoint writes .<uuid>.tmp and os.replace()s it
-# (trainer.py:676-694), so a write cut short cannot damage the checkpoint
-# already on disk.
+# It resumes from *less* than that too, measured end to end on job 57761772
+# (2026-08-30). SIGTERM reached the ranks at 20:30:40.047, the collective
+# teardown finished 587 ms later, and save_restart_checkpoints_on_terminate
+# (trainer.py:322) had written 6.8 GiB of ckpt.tar by 20:30:51 -- a 10.4 s
+# write, well inside the 30 s torchrun's agent allows before SIGKILL
+# (PContext.close defaults to timeout=30, and LocalElasticAgent._shutdown calls
+# it with no argument). The next segment logged "skip first 148 batches since
+# these were already processed for this epoch" and ran the remaining 8,069 of
+# the epoch's 8,217.
+#
+# So budget a requeue at the dataset setup plus the queue wait -- about 21 min
+# on CFS for the atmosphere -- not at the partial epoch. The ~31 s figure in
+# EXPERIMENTS.md is the whole per-epoch write of ~20 GB, EMA and epoch-numbered
+# copies included; this one file is a third of it. A write cut short cannot
+# damage the checkpoint already on disk either: save_checkpoint writes
+# .<uuid>.tmp and os.replace()s it (trainer.py:676-694).
 #
 # Required environment (exported by the calling sbatch script):
 #   TRAIN_CONFIG  absolute path to the config yaml (on shared FS, never /tmp)

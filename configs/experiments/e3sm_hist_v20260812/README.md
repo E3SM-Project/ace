@@ -397,13 +397,13 @@ A checkpoint is written at every epoch boundary and again on graceful
 shutdown (atomic tmp-file + rename, so a killed save leaves the previous one
 intact), and resume skips the batches already processed in the current
 epoch — a USR1 requeue mid-epoch therefore continues the epoch rather than
-repeating it. Whether the mid-epoch save survives is a race, and for the
-atmosphere it is a losing one: torchrun's agent SIGKILLs the ranks 30 s after
-the signal reaches it (`PContext.close` defaults to `timeout=30`), the
-collective teardown spends part of that, and the atmosphere's ~20 GB write
-measured 31.1 s. Budget the atmosphere as repeating the epoch from its last
-boundary checkpoint; the ocean's 8.3 s write fits. Budget disk: the coupled
-`ckpt.tar` is 14 GB and is rewritten every epoch.
+repeating it, verified on job 57761772, which resumed with `skip first 148
+batches since these were already processed for this epoch`. The mid-epoch save
+has to beat torchrun's agent, which SIGKILLs the ranks 30 s after the signal
+reaches it (`PContext.close` defaults to `timeout=30`), and it does so with
+room: the collective teardown took 587 ms and the 6.8 GiB restart checkpoint
+10.4 s. Budget disk: the coupled `ckpt.tar` is 14 GB and is rewritten every
+epoch.
 
 ---
 

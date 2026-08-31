@@ -121,10 +121,12 @@ use those, not a stopwatch.
 
 Resume is automatic — a requeued segment picks up from
 `<output>/training_checkpoints/ckpt.tar`, which is written at every epoch
-boundary, so it resumes from at most one epoch back. **Whether it also skips
-batches already done inside the current epoch is not established.** Two
-walltime requeues were measured on 2026-08-30 and neither produced a mid-epoch
-checkpoint. Job 57758390: `--signal=USR1@120` without a `B:` prefix reaches the
+boundary, and from a mid-epoch restart checkpoint when it has one. **It skips
+the batches already done inside the current epoch** — job 57761772 resumed with
+`skip first 148 batches since these were already processed for this epoch`, then
+ran the remaining 8,069 of the epoch's 8,217. Getting there took three
+tries, and the first two walltime requeues on 2026-08-30 produced no mid-epoch
+checkpoint at all. Job 57758390: `--signal=USR1@120` without a `B:` prefix reaches the
 python ranks, which have no SIGUSR1 handler, so they died at default
 disposition. Job 57759729: with `B:` the routing was right, but the batch trap
 stopped the step with `kill -TERM` on srun, and SIGTERM is one of the few
@@ -141,12 +143,12 @@ which landed inside `destroy_process_group` and then inside the checkpoint's
 looking clean with its collectives still up. Fixed in
 `fme/core/distributed/shutdown.py` by resetting SIGCHLD before the teardown.
 
-Budget an atmosphere requeue as costing the partial epoch in flight anyway (up
-to 2.9 h, ~1.4 h expected). The next constraint is real but untested: torchrun's
-agent SIGKILLs the ranks 30 s after the signal reaches it, the collective
-teardown spends part of that, and the ~20 GB atmosphere checkpoint measured
-31.1 s to write. The ocean's 8.3 s write fits with room to spare. To resume an
-ad-hoc run by hand:
+**Budget a requeue at the dataset setup and the queue wait — about 21 min on
+CFS — not at the partial epoch.** The margin is comfortable: torchrun's agent
+SIGKILLs the ranks 30 s after the signal reaches it, and on 57761772 the
+teardown took 587 ms and the 6.8 GiB restart checkpoint 10.4 s. (The 31.1 s in
+`EXPERIMENTS.md` is the whole per-epoch write of ~20 GB, EMA and epoch-numbered
+copies included, not this one file.) To resume an ad-hoc run by hand:
 `RESUME_JOB_ID=<jobid> ./sbatch-scripts/run-train.sh atm`.
 
 ### Two guards that will stop you, on purpose
