@@ -75,6 +75,12 @@ def test_a_dying_dataloader_worker_cannot_abandon_the_teardown():
         # the workers were signalled at the same instant this rank was, so
         # their SIGCHLD arrives mid-collective
         signal.raise_signal(signal.SIGCHLD)
+        # Callable, not SIG_DFL or SIG_IGN. Either of those would stop torch's
+        # handler raising, but they leave CPython with a signal marked pending
+        # and no Python handler to run for it, which it reports as
+        # `OSError: Signal 17 ignored due to race condition` -- the same
+        # arbitrary raise into this thread, under a different name.
+        assert callable(signal.getsignal(signal.SIGCHLD))
         events.append("shutdown")
 
     installed = signal.signal(signal.SIGCHLD, worker_died)

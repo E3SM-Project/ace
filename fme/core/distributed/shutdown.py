@@ -95,6 +95,21 @@ def clear_post_shutdown_callbacks() -> None:
     _post_shutdown_callbacks.clear()
 
 
+def _absorb_child_death(signum: int, frame: types.FrameType | None) -> None:
+    """Do nothing, callably.
+
+    Resetting SIGCHLD to SIG_DFL would also stop torch's handler raising, but it
+    leaves CPython holding a signal marked pending with no Python handler to run
+    for it, and it answers that with
+    `OSError: Signal 17 ignored due to race condition` -- raised into the main
+    thread at an arbitrary bytecode boundary, which is the behaviour being
+    removed. Measured across two runs of the same job: SIG_DFL turned 21
+    `DataLoader worker ... is killed by signal` into 14 of these (57760702
+    against 57761772). A callable that returns is the disposition with no such
+    edge.
+    """
+
+
 def _hard_exit_after(timeout: float, exit_code: int) -> threading.Timer:
     """Exit the process if the graceful teardown has not finished in time.
 
@@ -209,7 +224,7 @@ def handle_termination_signals(
         # `get_state`, leaving the collectives up and no checkpoint written,
         # while the rank still exited 143 as though it had shut down cleanly.
         # A worker's death tells us nothing here that we do not already know.
-        signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+        signal.signal(signal.SIGCHLD, _absorb_child_death)
         if phase is _Phase.COLLECTIVE:
             # a repeated Ctrl-C, or both the scheduler and torchrun signalling.
             # The first handler owns the collective and the deadline already
