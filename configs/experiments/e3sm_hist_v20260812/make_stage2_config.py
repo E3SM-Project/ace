@@ -99,7 +99,42 @@ FORWARD_STEP_MIX = {
     "ocn": [(4, 0.6), (8, 0.2), (12, 0.1), (16, 0.05), (20, 0.05)],
 }
 
-# Fine-tune length, and the parent epoch the weights come from.
+# Cost tracks the *maximum* of the mix, not its mean. Three things are sized
+# from the max: the loader window is `max + n_ic` timesteps for every sample,
+# and inside train_on_batch both `get_forward_data` and `forcing_deriver` run
+# over the whole window before `n_loss_steps` is drawn. Only the rollout itself
+# is short when a short draw comes up, so the 20-step tail carrying 5% of the
+# probability costs almost as much as running every batch at 20.
+#
+# That made the flat ERA5 mix look unaffordable until `time_buffer` was put
+# back. Measured 2026-09-06, 4 nodes, atmosphere, 8213 batches/epoch:
+#
+#     stage-1 reference   window  2, tb 10   0.85 s/step    1.94 h/epoch
+#     flat mix max 20     window 21, tb  0   4.97 s/step   11.3  h/epoch
+#     flat mix max 20     window 21, tb 10   1.76 s/step    4.0  h/epoch
+#
+# The stage-1 row reproduces the campaign's documented 2.12 h/epoch, which is
+# what makes the other two trustworthy. It is not I/O in the filesystem sense:
+# GPU utilisation measured 88.3% during the tb-0 run.
+#
+# `time_buffer` does NOT lengthen the epoch. It pre-loads windows of
+# `n_timesteps + time_buffer` and draws `time_buffer + 1` sub-windows from each,
+# and those windows overlap so that no samples are skipped -- both runs above
+# report ~8215 batches. What it costs is ordering: independent data is seen only
+# every `time_buffer + 1` batches, which `time_buffer_pool_size: 2` partly
+# decorrelates. That is the same trade stage 1 already made, and at 2.8x it is
+# clearly worth it.
+#
+# So the atmosphere keeps the flat ERA5 mix rather than a rollout curriculum.
+# A curriculum would be cheaper still, but there is no evidence here that it
+# converges as well, and stage 2 feeds the coupled fine-tune -- not the place to
+# deviate from the validated recipe to save hours that time_buffer already saved.
+#
+# The ocean gets neither: EXPERIMENTS.md records that time_buffer at a 5-timestep
+# window was killed by the host OOM killer there ("Do not add it to the ocean"),
+# and at 1.45 -> 3.44 s/step its rollout cost needs no help.
+ATM_TIME_BUFFER = 10
+
 STAGE2_EPOCHS = {"atm": 20, "ocn": 40}
 PARENT_FINAL_EPOCH = {"atm": 30, "ocn": 150}
 
@@ -197,6 +232,10 @@ FT_SUFFIX = "FT"
 OUTPUT_ROOT = pathlib.Path("/pscratch/sd/m/mahf708/aug26-ft")
 
 
+def _mix(outcomes):
+    return {"outcomes": [{"steps": k, "probability": pr} for k, pr in outcomes]}
+
+
 def remap_paths(node):
     """Rewrite every CFS input path to its $PSCRATCH copy, in place."""
     if isinstance(node, dict):
@@ -279,12 +318,7 @@ def build_config(parent_dir, realm, ckpt, runid):
     # one. `optimize_last_step_only` is inherited, not set here -- it is true for
     # the atmosphere and false for the ocean, and that difference is a property
     # of the arm rather than of the stage.
-    st["n_forward_steps"] = {
-        "outcomes": [
-            {"steps": steps, "probability": prob}
-            for steps, prob in FORWARD_STEP_MIX[realm]
-        ]
-    }
+    st["n_forward_steps"] = _mix(FORWARD_STEP_MIX[realm])
 
     # Weights only. Optimizer, EMA and scheduler start fresh, which is what the
     # reference recipe does: the parent's Adam moments were accumulated against
@@ -299,8 +333,16 @@ def build_config(parent_dir, realm, ckpt, runid):
     # host memory by the window growth. The ocean was already killed by the OOM
     # killer with time_buffer at a 5-timestep window (see EXPERIMENTS.md).
     for loader in _all_train_loaders(cfg):
-        loader.pop("time_buffer", None)
-        loader.pop("time_buffer_pool_size", None)
+        if realm == "atm":
+            # Keep the stage-1 setting: 4.97 -> 1.76 s/step at the 21-timestep
+            # window, with the epoch the same length either way. Host memory
+            # measured on the compute nodes at the 31-timestep input window:
+            # 122 GB used, 128 GB still free of 251.
+            loader["time_buffer"] = ATM_TIME_BUFFER
+            loader["time_buffer_pool_size"] = 2
+        else:
+            loader.pop("time_buffer", None)
+            loader.pop("time_buffer_pool_size", None)
         # Windows are ~10x (atm) / ~4x (ocn) their stage-1 size, and
         # prefetch_factor multiplies what each of 8 workers holds in flight.
         loader["prefetch_factor"] = 2

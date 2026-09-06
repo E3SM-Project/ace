@@ -458,6 +458,8 @@ logging:
 train_loader:
   batch_size: 32
   num_data_workers: 8
+  time_buffer: 10
+  time_buffer_pool_size: 2
   prefetch_factor: 2
   dataset:
     concat:
@@ -493,6 +495,8 @@ validation:
   loader:
     batch_size: 32
     num_data_workers: 8
+    time_buffer: 10
+    time_buffer_pool_size: 2
     prefetch_factor: 2
     dataset:
       data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
