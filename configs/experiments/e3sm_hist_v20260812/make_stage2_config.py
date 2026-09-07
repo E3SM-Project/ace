@@ -81,8 +81,13 @@ PARENT_ROOTS = [
 ]
 
 # The experiments the campaign is taking forward.
+#
+# E01 is the atmosphere baseline. It was not in the original stage-2 list, but
+# every atmosphere arm is scored against it, and a stage-2 arm compared to a
+# stage-1 baseline measures the fine-tune rather than the ablation. E11 is
+# already here and plays the same role for the ocean.
 ELIGIBLE_EXPERIMENTS = {
-    "atm": {"E02", "E03", "E05", "E07", "E08"},
+    "atm": {"E01", "E02", "E03", "E05", "E07", "E08"},
     "ocn": {"E11", "E12", "E13"},
 }
 

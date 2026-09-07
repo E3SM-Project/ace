@@ -1,0 +1,731 @@
+experiment_dir: /pscratch/sd/m/mahf708/aug26-ft/E01-FT.aug26.atm.A0_B32_C0_L0_O5_W0_X0.S01
+save_checkpoint: true
+save_per_epoch_diagnostics: true
+seed: 1
+validate_using_ema: true
+ema:
+  decay: 0.999
+max_epochs: 20
+checkpoint_save_epochs:
+  step: 1
+ema_checkpoint_save_epochs:
+  step: 1
+inference:
+- name: heldout_1990s
+  weight: 1.0
+  epochs:
+    start: 3
+    step: 3
+  n_forward_steps: 7300
+  forward_steps_in_memory: 20
+  loader:
+    start_indices:
+      times:
+      - '1990-01-03T12:00:00'
+      - '1990-02-03T12:00:00'
+      - '1990-04-03T12:00:00'
+      - '1990-05-03T12:00:00'
+      - '1990-07-03T12:00:00'
+      - '1990-08-03T12:00:00'
+      - '1990-10-03T12:00:00'
+      - '1990-11-03T12:00:00'
+      - '1991-01-03T12:00:00'
+      - '1991-02-03T12:00:00'
+      - '1991-04-03T12:00:00'
+      - '1991-05-03T12:00:00'
+      - '1991-07-03T12:00:00'
+      - '1991-08-03T12:00:00'
+      - '1991-10-03T12:00:00'
+      - '1991-11-03T12:00:00'
+      - '1992-01-03T12:00:00'
+      - '1992-02-03T12:00:00'
+      - '1992-04-03T12:00:00'
+      - '1992-05-03T12:00:00'
+      - '1992-07-03T12:00:00'
+      - '1992-08-03T12:00:00'
+      - '1992-10-03T12:00:00'
+      - '1992-11-03T12:00:00'
+      - '1993-01-03T12:00:00'
+      - '1993-02-03T12:00:00'
+      - '1993-04-03T12:00:00'
+      - '1993-05-03T12:00:00'
+      - '1993-07-03T12:00:00'
+      - '1993-08-03T12:00:00'
+      - '1993-10-03T12:00:00'
+      - '1993-11-03T12:00:00'
+    dataset:
+      data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
+      file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
+      rename:
+        PRECT: surface_precipitation_rate
+        PRECST: frozen_precipitation_rate
+        co2vmr: global_mean_co2
+      reference_pressure_name: P0
+      overwrite:
+        multiply_scalar:
+          surface_precipitation_rate: 1000.0
+          frozen_precipitation_rate: 1000.0
+    num_data_workers: 8
+  aggregator:
+    histogram:
+      enabled: true
+      variables:
+      - PS
+      - TS
+      - LHFLX
+      - SHFLX
+      - surface_precipitation_rate
+      - frozen_precipitation_rate
+      - FLUS
+      - FLUT
+      - FLDS
+      - FSNS
+      - FSUTOA
+      - DTENDTTW
+      - TAUX
+      - TAUY
+      - Qat2m
+      - Uat10m
+      - Vat10m
+      - Tat2m
+      - T_0
+      - T_1
+      - T_4
+      - T_6
+      - T_7
+      - STW_0
+      - STW_1
+      - STW_4
+      - STW_6
+      - STW_7
+      - U_0
+      - U_1
+      - U_4
+      - U_6
+      - U_7
+      - V_0
+      - V_1
+      - V_4
+      - V_6
+      - V_7
+    zonal_mean:
+      enabled: false
+    video:
+      enabled: false
+    trend:
+      enabled: false
+    seasonal:
+      enabled: false
+    near_zero_fraction:
+      enabled: false
+    enso_coefficient:
+      enabled: false
+    step_diagnostics:
+      correction_scalars: true
+      correction_maps: false
+    time_mean_denorm:
+      plot_variables:
+      - PS
+      - TS
+      - LHFLX
+      - SHFLX
+      - surface_precipitation_rate
+      - frozen_precipitation_rate
+      - FLUS
+      - FLUT
+      - FLDS
+      - FSNS
+      - FSUTOA
+      - DTENDTTW
+      - TAUX
+      - TAUY
+      - Qat2m
+      - Uat10m
+      - Vat10m
+      - Tat2m
+      - T_0
+      - T_1
+      - T_4
+      - T_6
+      - T_7
+      - STW_0
+      - STW_1
+      - STW_4
+      - STW_6
+      - STW_7
+      - U_0
+      - U_1
+      - U_4
+      - U_6
+      - U_7
+      - V_0
+      - V_1
+      - V_4
+      - V_6
+      - V_7
+    time_mean_norm:
+      target: norm
+      plot_variables:
+      - PS
+      - TS
+      - LHFLX
+      - SHFLX
+      - surface_precipitation_rate
+      - frozen_precipitation_rate
+      - FLUS
+      - FLUT
+      - FLDS
+      - FSNS
+      - FSUTOA
+      - DTENDTTW
+      - TAUX
+      - TAUY
+      - Qat2m
+      - Uat10m
+      - Vat10m
+      - Tat2m
+      - T_0
+      - T_1
+      - T_4
+      - T_6
+      - T_7
+      - STW_0
+      - STW_1
+      - STW_4
+      - STW_6
+      - STW_7
+      - U_0
+      - U_1
+      - U_4
+      - U_6
+      - U_7
+      - V_0
+      - V_1
+      - V_4
+      - V_6
+      - V_7
+    power_spectrum:
+      plot_variables:
+      - PS
+      - TS
+      - LHFLX
+      - SHFLX
+      - surface_precipitation_rate
+      - frozen_precipitation_rate
+      - FLUS
+      - FLUT
+      - FLDS
+      - FSNS
+      - FSUTOA
+      - DTENDTTW
+      - TAUX
+      - TAUY
+      - Qat2m
+      - Uat10m
+      - Vat10m
+      - Tat2m
+      - T_0
+      - T_1
+      - T_4
+      - T_6
+      - T_7
+      - STW_0
+      - STW_1
+      - STW_4
+      - STW_6
+      - STW_7
+      - U_0
+      - U_1
+      - U_4
+      - U_6
+      - U_7
+      - V_0
+      - V_1
+      - V_4
+      - V_6
+      - V_7
+    ipo_index:
+      enabled: false
+- name: future_2040
+  weight: 0.0
+  epochs:
+    start: 10
+    step: 10
+  n_forward_steps: 14600
+  forward_steps_in_memory: 20
+  loader:
+    start_indices:
+      times:
+      - '2040-01-03T12:00:00'
+      - '2040-02-03T12:00:00'
+      - '2040-04-03T12:00:00'
+      - '2040-05-03T12:00:00'
+      - '2040-07-03T12:00:00'
+      - '2040-08-03T12:00:00'
+      - '2040-10-03T12:00:00'
+      - '2040-11-03T12:00:00'
+      - '2041-01-03T12:00:00'
+      - '2041-02-03T12:00:00'
+      - '2041-04-03T12:00:00'
+      - '2041-05-03T12:00:00'
+      - '2041-07-03T12:00:00'
+      - '2041-08-03T12:00:00'
+      - '2041-10-03T12:00:00'
+      - '2041-11-03T12:00:00'
+      - '2042-01-03T12:00:00'
+      - '2042-02-03T12:00:00'
+      - '2042-04-03T12:00:00'
+      - '2042-05-03T12:00:00'
+      - '2042-07-03T12:00:00'
+      - '2042-08-03T12:00:00'
+      - '2042-10-03T12:00:00'
+      - '2042-11-03T12:00:00'
+      - '2043-01-03T12:00:00'
+      - '2043-02-03T12:00:00'
+      - '2043-04-03T12:00:00'
+      - '2043-05-03T12:00:00'
+      - '2043-07-03T12:00:00'
+      - '2043-08-03T12:00:00'
+      - '2043-10-03T12:00:00'
+      - '2043-11-03T12:00:00'
+    dataset:
+      data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
+      file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
+      rename:
+        PRECT: surface_precipitation_rate
+        PRECST: frozen_precipitation_rate
+        co2vmr: global_mean_co2
+      reference_pressure_name: P0
+      overwrite:
+        multiply_scalar:
+          surface_precipitation_rate: 1000.0
+          frozen_precipitation_rate: 1000.0
+    num_data_workers: 8
+  aggregator:
+    histogram:
+      enabled: true
+      variables:
+      - PS
+      - TS
+      - LHFLX
+      - SHFLX
+      - surface_precipitation_rate
+      - frozen_precipitation_rate
+      - FLUS
+      - FLUT
+      - FLDS
+      - FSNS
+      - FSUTOA
+      - DTENDTTW
+      - TAUX
+      - TAUY
+      - Qat2m
+      - Uat10m
+      - Vat10m
+      - Tat2m
+      - T_0
+      - T_1
+      - T_4
+      - T_6
+      - T_7
+      - STW_0
+      - STW_1
+      - STW_4
+      - STW_6
+      - STW_7
+      - U_0
+      - U_1
+      - U_4
+      - U_6
+      - U_7
+      - V_0
+      - V_1
+      - V_4
+      - V_6
+      - V_7
+    zonal_mean:
+      enabled: false
+    video:
+      enabled: false
+    trend:
+      enabled: false
+    seasonal:
+      enabled: false
+    near_zero_fraction:
+      enabled: false
+    enso_coefficient:
+      enabled: false
+    step_diagnostics:
+      correction_scalars: true
+      correction_maps: false
+    time_mean_denorm:
+      plot_variables:
+      - PS
+      - TS
+      - LHFLX
+      - SHFLX
+      - surface_precipitation_rate
+      - frozen_precipitation_rate
+      - FLUS
+      - FLUT
+      - FLDS
+      - FSNS
+      - FSUTOA
+      - DTENDTTW
+      - TAUX
+      - TAUY
+      - Qat2m
+      - Uat10m
+      - Vat10m
+      - Tat2m
+      - T_0
+      - T_1
+      - T_4
+      - T_6
+      - T_7
+      - STW_0
+      - STW_1
+      - STW_4
+      - STW_6
+      - STW_7
+      - U_0
+      - U_1
+      - U_4
+      - U_6
+      - U_7
+      - V_0
+      - V_1
+      - V_4
+      - V_6
+      - V_7
+    time_mean_norm:
+      target: norm
+      plot_variables:
+      - PS
+      - TS
+      - LHFLX
+      - SHFLX
+      - surface_precipitation_rate
+      - frozen_precipitation_rate
+      - FLUS
+      - FLUT
+      - FLDS
+      - FSNS
+      - FSUTOA
+      - DTENDTTW
+      - TAUX
+      - TAUY
+      - Qat2m
+      - Uat10m
+      - Vat10m
+      - Tat2m
+      - T_0
+      - T_1
+      - T_4
+      - T_6
+      - T_7
+      - STW_0
+      - STW_1
+      - STW_4
+      - STW_6
+      - STW_7
+      - U_0
+      - U_1
+      - U_4
+      - U_6
+      - U_7
+      - V_0
+      - V_1
+      - V_4
+      - V_6
+      - V_7
+    power_spectrum:
+      plot_variables:
+      - PS
+      - TS
+      - LHFLX
+      - SHFLX
+      - surface_precipitation_rate
+      - frozen_precipitation_rate
+      - FLUS
+      - FLUT
+      - FLDS
+      - FSNS
+      - FSUTOA
+      - DTENDTTW
+      - TAUX
+      - TAUY
+      - Qat2m
+      - Uat10m
+      - Vat10m
+      - Tat2m
+      - T_0
+      - T_1
+      - T_4
+      - T_6
+      - T_7
+      - STW_0
+      - STW_1
+      - STW_4
+      - STW_6
+      - STW_7
+      - U_0
+      - U_1
+      - U_4
+      - U_6
+      - U_7
+      - V_0
+      - V_1
+      - V_4
+      - V_6
+      - V_7
+    ipo_index:
+      enabled: false
+logging:
+  log_to_screen: true
+  log_to_wandb: true
+  log_to_file: true
+  project: SamudrACE-E3SMv3
+  entity: e3sm-aig
+train_loader:
+  batch_size: 32
+  num_data_workers: 8
+  time_buffer: 10
+  time_buffer_pool_size: 2
+  prefetch_factor: 2
+  dataset:
+    concat:
+    - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
+      file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
+      rename:
+        PRECT: surface_precipitation_rate
+        PRECST: frozen_precipitation_rate
+        co2vmr: global_mean_co2
+      reference_pressure_name: P0
+      overwrite:
+        multiply_scalar:
+          surface_precipitation_rate: 1000.0
+          frozen_precipitation_rate: 1000.0
+      subset:
+        start_time: '1940-01-01T06:00:00'
+        stop_time: '1990-01-01T00:00:00'
+    - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
+      file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
+      rename:
+        PRECT: surface_precipitation_rate
+        PRECST: frozen_precipitation_rate
+        co2vmr: global_mean_co2
+      reference_pressure_name: P0
+      overwrite:
+        multiply_scalar:
+          surface_precipitation_rate: 1000.0
+          frozen_precipitation_rate: 1000.0
+      subset:
+        start_time: '2000-01-01T06:00:00'
+        stop_time: '2040-01-01T00:00:00'
+validation:
+  loader:
+    batch_size: 32
+    num_data_workers: 8
+    time_buffer: 10
+    time_buffer_pool_size: 2
+    prefetch_factor: 2
+    dataset:
+      data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
+      file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
+      rename:
+        PRECT: surface_precipitation_rate
+        PRECST: frozen_precipitation_rate
+        co2vmr: global_mean_co2
+      reference_pressure_name: P0
+      overwrite:
+        multiply_scalar:
+          surface_precipitation_rate: 1000.0
+          frozen_precipitation_rate: 1000.0
+      subset:
+        start_time: '1990-01-01T06:00:00'
+        stop_time: '1995-01-01T00:00:00'
+  aggregator:
+    snapshot:
+      enabled: false
+    mean_map:
+      enabled: false
+    ensemble_denorm:
+      log_mean_maps: false
+  evaluate_all_steps: false
+optimization:
+  enable_automatic_mixed_precision: false
+  lr: 0.0001
+  optimizer_type: FusedAdam
+  use_gradient_accumulation: true
+  kwargs:
+    weight_decay: 0.01
+stepper_training:
+  n_ensemble: 2
+  n_forward_steps:
+    outcomes:
+    - steps: 1
+      probability: 0.6
+    - steps: 2
+      probability: 0.2
+    - steps: 4
+      probability: 0.1
+    - steps: 12
+      probability: 0.05
+    - steps: 20
+      probability: 0.05
+  optimize_last_step_only: true
+  loss:
+    type: EnsembleLoss
+    kwargs:
+      crps_weight: 0.9
+      energy_score_weight: 0.1
+  parameter_init:
+    weights_path: /pscratch/sd/r/rebassoo/aug26/E01.aug26.atm.A0_B32_C0_L0_O5_W0_X0.S01/training_checkpoints/ckpt_0030.tar
+stepper:
+  step:
+    type: single_module
+    config:
+      residual_prediction: false
+      builder:
+        type: NoiseConditionedSFNO
+        config:
+          embed_dim: 384
+          checkpointing: 3
+          noise_embed_dim: 32
+          noise_type: isotropic
+          filter_type: linear
+          use_mlp: true
+          num_layers: 8
+          operator_type: dhconv
+          separable: false
+          spectral_layers: 3
+          spectral_transform: sht
+          affine_norms: true
+      normalization:
+        network:
+          global_means_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/stats-2026-08-13/train-only/atmosphere/centering.nc
+          global_stds_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/stats-2026-08-13/train-only/atmosphere/scaling-full-field.nc
+        residual:
+          global_means_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/stats-2026-08-13/train-only/atmosphere/centering.nc
+          global_stds_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/stats-2026-08-13/train-only/atmosphere/scaling-residual.nc
+      ocean:
+        surface_temperature_name: TS
+        ocean_fraction_name: OCNFRAC
+        interpolate: true
+      corrector:
+        conserve_dry_air: true
+        moisture_budget_correction: advection_and_precipitation
+        force_positive_names:
+        - STW_0
+        - STW_1
+        - STW_2
+        - STW_3
+        - STW_4
+        - STW_5
+        - STW_6
+        - STW_7
+        - surface_precipitation_rate
+        - frozen_precipitation_rate
+        - FLUS
+        - FLUT
+        - FLDS
+        - FSNS
+        - FSUTOA
+      next_step_forcing_names:
+      - SOLIN
+      in_names:
+      - LANDFRAC
+      - OCNFRAC
+      - ICEFRAC
+      - PHIS
+      - SOLIN
+      - PS
+      - TS
+      - T_0
+      - T_1
+      - T_2
+      - T_3
+      - T_4
+      - T_5
+      - T_6
+      - T_7
+      - STW_0
+      - STW_1
+      - STW_2
+      - STW_3
+      - STW_4
+      - STW_5
+      - STW_6
+      - STW_7
+      - U_0
+      - U_1
+      - U_2
+      - U_3
+      - U_4
+      - U_5
+      - U_6
+      - U_7
+      - V_0
+      - V_1
+      - V_2
+      - V_3
+      - V_4
+      - V_5
+      - V_6
+      - V_7
+      - Qat2m
+      - Uat10m
+      - Vat10m
+      - Tat2m
+      out_names:
+      - PS
+      - TS
+      - T_0
+      - T_1
+      - T_2
+      - T_3
+      - T_4
+      - T_5
+      - T_6
+      - T_7
+      - STW_0
+      - STW_1
+      - STW_2
+      - STW_3
+      - STW_4
+      - STW_5
+      - STW_6
+      - STW_7
+      - U_0
+      - U_1
+      - U_2
+      - U_3
+      - U_4
+      - U_5
+      - U_6
+      - U_7
+      - V_0
+      - V_1
+      - V_2
+      - V_3
+      - V_4
+      - V_5
+      - V_6
+      - V_7
+      - LHFLX
+      - SHFLX
+      - surface_precipitation_rate
+      - frozen_precipitation_rate
+      - FLUS
+      - FLUT
+      - FLDS
+      - FSNS
+      - FSUTOA
+      - DTENDTTW
+      - TAUX
+      - TAUY
+      - Qat2m
+      - Uat10m
+      - Vat10m
+      - Tat2m
