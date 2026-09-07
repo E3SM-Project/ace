@@ -896,11 +896,47 @@ not; know what they mean before changing (or keeping) them.
   implementation detail. Setting it `false` restores one joint graph until
   `step_weights()` — at a large memory cost that was part of the original
   77 GB peak.
-* **The coupled ocean's `EnsembleLoss` with `n_ensemble: 2` degenerates.**
-  `Samudra.forward` takes no noise input, so both ensemble members are
-  identical: the energy-score term is identically zero and CRPS collapses to
-  MAE at twice the ocean forward cost. Either give the ocean a stochastic
-  step or set its loss to MAE with `n_ensemble: 1` and save the compute.
+
+  **It is not a coupled-only flag, and the three sites above are not all of
+  them.** `SingleModuleStepper.predict_generator` ends every iteration with
+  `state = optimizer.detach_if_using_gradient_accumulation(state)`
+  (`fme/ace/stepper/single_module.py:1167`), so with the flag on there is no
+  backpropagation through time anywhere — stage 1 and stage 2 included. Each
+  step's loss backprops through exactly one model application from a detached
+  input. That is the pushforward trick, not a bug: the rollout still runs
+  forward, so the model still trains on its own drifted states, which is the
+  whole point of a multi-step finetune. What is dropped is credit assignment
+  *through* time. The coupled-specific loss is narrower than "no cross-realm
+  gradient" suggests — it is one edge, the ocean's error reaching the
+  atmosphere that produced its fluxes, and upstream tests exactly that edge
+  both ways (`fme/coupled/test_stepper_integrations.py:87,120`: "ocean always
+  has atmos inputs that require grad" with the flag off, "ocean never has
+  inputs that require grad" with it on).
+
+  Every config in this repository sets it `true` — 164 occurrences across four
+  branches, no exceptions, including Elynn's piControl coupled pretrain and
+  finetune. Decided 2026-09-07 to keep it that way for stage 3, so the
+  campaign stays internally consistent rather than making stage 3 the only run
+  that backpropagates through time.
+* **The coupled ocean's `EnsembleLoss` with `n_ensemble: 2` does *not*
+  degenerate, even though `Samudra.forward` takes no noise input.** An earlier
+  version of this note said it did, reasoning that a deterministic ocean gives
+  identical members and so a zero energy score. That is true of an *uncoupled*
+  ocean run and false of this one. `broadcast_ensemble`
+  (`fme/coupled/stepper.py:2178`) copies each batch member with identical
+  inputs, so all spread comes from model stochasticity — and the atmosphere
+  here is a `NoiseConditionedSFNO`, so the copies diverge from the first
+  6-hour step. The ocean is then forced by two different atmospheres and its
+  own members differ. `CoupledTrainStepper`'s docstring (`:2054`) states the
+  rule: "even when the ocean component itself is deterministic, its
+  optimization is effectively stochastic so long as the atmosphere is
+  stochastic". `use_gradient_accumulation: true` does not change this; detach
+  removes gradient, not differing values.
+
+  The real hazard is the mirror case. If the atmosphere is ever made
+  deterministic, the first `n_inner_steps` produce identical members and the
+  ensemble doubles compute for nothing. Tie `n_ensemble: 1` to that change,
+  not to the ocean's determinism.
 
 ## Gotchas
 
