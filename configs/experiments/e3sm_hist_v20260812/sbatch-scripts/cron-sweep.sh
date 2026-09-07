@@ -35,6 +35,14 @@ export SCRATCH=$PSCRATCH
 # failure, which is a genuinely confusing thing to debug at 3am.
 export PATH=${PATH:-/usr/bin:/bin}:$HOME/.local/bin
 
+# And uv needs its cache off $HOME. The home filesystem here does not support
+# flock, so an unredirected uv dies with
+#   error: failed to lock `~/.cache/uv/.lock`: Unknown error 524 (os error 524)
+# The login profile sets UV_CACHE_DIR, which is why this never bites
+# interactively and bites every time under cron.
+export UV_CACHE_DIR=${UV_CACHE_DIR:-$PSCRATCH/.cache/uv}
+export UV_TOOL_DIR=${UV_TOOL_DIR:-$PSCRATCH/.cache/uvtools}
+
 exec >>"$LOG" 2>&1
 echo "===== $(date -Is) ====="
 
