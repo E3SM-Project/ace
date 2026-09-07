@@ -32,6 +32,25 @@ EXP_DIR=$(dirname "$HERE")
 export CAMPAIGN_ROOT=/pscratch/sd/m/mahf708/aug26-ft
 RESERVATION_NAME=${RESERVATION:-_CAP_aigs_hist}
 
+# 24 h rather than the script's 12 h default, because of how stage-1 runs died.
+#
+# E03 and E02.S02 both stopped mid-"Starting flush of reduced diagnostics to
+# disk" with no shutdown message, on 2026-09-05. That flush is the all-reduce
+# that absorbs the whole inference rank skew -- in those same logs it takes
+# 15-46 minutes -- and a job sitting inside it when the walltime signal arrives
+# cannot service SIGTERM, because every rank is blocked in a collective. Slurm
+# then hard-kills at the limit, and TIMEOUT is terminal: --requeue does not
+# cover it. Both runs were lost at epoch 23 of 30.
+#
+# The exposure is per boundary crossing, so it scales with how many segments a
+# run takes. An atmosphere fine-tune is ~3.4 h/epoch for 20 epochs, which is six
+# crossings at 12 h and three at 24 h, with inference firing seven times. The
+# stage-1 atmosphere runs were already raised to 24 h for the same reason.
+#
+# This does not eliminate the race, it halves the number of chances to lose it.
+# The real fix is for the flush not to be able to outlast the signal lead time.
+export FME_TIME=${FME_TIME:-24:00:00}
+
 GO=0
 PATTERN=""
 for arg in "$@"; do
