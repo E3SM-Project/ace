@@ -60,14 +60,23 @@ def overlaps(a, b):
 
 
 def subsets(node, acc=None):
-    """Every `subset` dict anywhere under a dataset definition."""
+    """Every `subset` dict anywhere under a dataset definition.
+
+    Recurses through every value rather than only `merge` and `concat`: a
+    coupled dataset nests its windows one level deeper, as
+    `concat: [{ocean: {merge: [...]}, atmosphere: {...}}]`, and a walker that
+    only knew the two list keys would descend into the concat, find no `subset`
+    on the `{ocean, atmosphere}` member, and report the config as having no
+    time restriction at all -- which reads as "spans the whole record" and
+    would fail loudly, or worse, as nothing to check.
+    """
     acc = [] if acc is None else acc
     if isinstance(node, dict):
-        if "subset" in node and isinstance(node["subset"], dict):
+        if isinstance(node.get("subset"), dict):
             acc.append(node["subset"])
-        for key in ("merge", "concat"):
-            for member in node.get(key) or []:
-                subsets(member, acc)
+        for key, value in node.items():
+            if key != "subset":
+                subsets(value, acc)
     elif isinstance(node, list):
         for member in node:
             subsets(member, acc)
@@ -96,7 +105,18 @@ def realm_of(runid):
 def audit(path):
     """-> (list of (role, label, start, stop), list of failure strings)."""
     cfg = yaml.safe_load(path.read_text())
-    realm = realm_of(path.stem)
+    # The coupled config is the stage-3 finetune and does not carry a run id, so
+    # the realm cannot be read off the filename. Its rollouts are counted in
+    # ocean steps -- an inference block's `n_coupled_steps` is a number of
+    # 5-day ocean steps, with the atmosphere taking 20 steps inside each -- so
+    # the ocean's cadence is the right one for turning a step count into a date.
+    # Detect on the two-realm stepper, not on `stepper_training`: the stage-2
+    # single-realm configs carry that key too, and keying off it silently
+    # measured atmosphere rollouts on the ocean's 5-day cadence -- turning a
+    # 5-year window into a 100-year one and failing every atmosphere config.
+    stepper = cfg.get("stepper") or {}
+    coupled = "ocean" in stepper and "atmosphere" in stepper
+    realm = "ocn" if coupled else realm_of(path.stem)
     spans, failures = [], []
 
     for w in windows(cfg["train_loader"]["dataset"], "1940-01-01", RECORD_END):
@@ -111,9 +131,8 @@ def audit(path):
 
     for block in cfg.get("inference") or []:
         times = sorted(d(t) for t in block["loader"]["start_indices"]["times"])
-        rollout = datetime.timedelta(
-            days=block["n_forward_steps"] * STEP_DAYS[realm]
-        )
+        n_steps = block.get("n_forward_steps", block.get("n_coupled_steps"))
+        rollout = datetime.timedelta(days=n_steps * STEP_DAYS[realm])
         role = "selection" if block.get("weight", 1.0) > 0 else "reporting"
         spans.append((role, block["name"], times[0], times[-1] + rollout))
 

@@ -28,6 +28,12 @@ import sys
 
 import yaml
 
+# The stage-2 generator owns the held-out initial conditions. Importing them
+# rather than restating them means the two stages cannot drift apart silently:
+# if stage 2's lists move off the 1990s gap, stage 3's move with them.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import make_stage2_config as stage2  # noqa: E402
+
 ap = argparse.ArgumentParser()
 ap.add_argument(
     "--atm-ckpt",
@@ -133,19 +139,50 @@ TRAIN_WINDOWS = [
     {"start_time": "2000-01-06", "stop_time": "2040-01-01"},
 ]
 VAL_A = {"start_time": "1990-01-06", "stop_time": "1995-01-01"}
-# Checkpoint-selection initial conditions. This block is weight 1.0, so what has
-# to be in-sample is the whole 365-step (5-year) trajectory, not just its first
-# timestep. 2035 used to be here and ran past the second training window when
-# the rollout was 12 years; the list is kept as it is because a shorter rollout
-# only makes the in-sample constraint easier -- 2027 now ends 2032, well inside
-# that window.
-IC = [f"{y}-01-06T00:00:00" for y in [1945, 1955, 1965, 1975, 2005, 2015, 2025, 2027]]
-# Held-out initial conditions, mirroring the 5yr_test block the atm and ocn
-# configs carry. Without this the coupled finetune has no out-of-sample
-# monitoring at all. These start after the second training window ends
-# (2040-01-01) and are on the ocean's 5-day axis; a 5-year rollout from 2047
-# ends in 2052, inside the record.
-IC_TEST = [f"{y}-01-06T00:00:00" for y in range(2040, 2048)]
+
+# The coupled finetune runs on 4 nodes x 4 GPUs. This number sets three things
+# that have to agree, so it lives here rather than being written out three
+# times: the global train and validation batch (local batch 1), and the number
+# of inference initial conditions, which are sharded across ranks and must
+# divide evenly -- InlineInferenceConfig.__post_init__ enforces that, but it
+# calls Distributed.get_instance(), so on a login node world_size is 1 and the
+# check always passes. A violation therefore cannot be caught by validating the
+# config; it surfaces minutes into an allocation as a dacite UnionMatchError
+# that names none of this. Stage 2 lost two atmosphere runs that way.
+NODES = 4
+RANKS = NODES * 4
+
+# Initial conditions, taken verbatim from the stage-2 generator so stage 3 makes
+# the same claim stage 2 makes.
+#
+# Stage 2 stopped selecting checkpoints on in-sample initial conditions. Its
+# weight-1.0 block runs inside the 1990-2000 gap the training windows leave
+# open, and the 2040s block is reported at weight 0 and chooses nothing, so
+# "the emulator never saw the 1990s or the 2040s" survives the checkpoint
+# selection and not just the gradient. A coupled finetune that went back to
+# selecting on 1945-2027 would undo that at the last step: the shipped model
+# would be the one that scored best on years it trained on.
+#
+# Both lists are the ocean's, not the atmosphere's. CoupledDataset requires the
+# two realms to share their first timestamp, and the ocean's 5-day axis is the
+# coarser of the two -- every ocean stamp exists on the atmosphere's 6-hourly
+# axis, but not the reverse. These stamps were picked off the real ocean time
+# index and verified there; TimestampList.as_indices raises on a stamp that
+# does not exist, minutes into an allocation.
+#
+# Sixteen of each, which is also the rank count: initial conditions are sharded
+# across ranks and InlineInferenceConfig.__post_init__ requires the count to
+# divide evenly. Change the node count and these lists have to change with it.
+IC = list(stage2.OCN_HELDOUT_ICS)
+IC_TEST = list(stage2.OCN_FUTURE_ICS)
+
+for _name, _ics in (("heldout_1990s", IC), ("future_2040", IC_TEST)):
+    if len(_ics) % RANKS:
+        raise SystemExit(
+            f"{_name} has {len(_ics)} initial conditions, which does not divide "
+            f"across {RANKS} ranks; regenerate the list against the real ocean "
+            f"time index rather than padding it."
+        )
 
 # Inference aggregator, shared by both blocks.
 #
@@ -180,7 +217,11 @@ cfg = {
     "save_per_epoch_diagnostics": True,
     "inference": [
         {
-            "name": "inference",
+            # Selection. Every rollout starts and ends inside the 1990-2000 gap
+            # the training windows leave open: the latest IC is 1994-12-27 and
+            # five years from there is 1999-12, so the checkpoint that ships was
+            # chosen on a decade the coupled model never trained on.
+            "name": "heldout_1990s",
             "weight": 1.0,
             "n_coupled_steps": 365,  # 5 years on the ocean's 5-day axis
             "coupled_steps_in_memory": 2,
@@ -195,13 +236,23 @@ cfg = {
             "aggregator": AGGREGATOR,
         },
         {
-            # weight 0.0: monitored, never used to select the best checkpoint.
+            # Reporting only. weight 0.0 keeps this out of checkpoint selection,
+            # which is what lets the 2040s stay a genuine test rather than a
+            # validation set under another name.
+            #
+            # Ten years rather than five, to say something about drift on the
+            # timescale the campaign actually cares about. The last IC is
+            # 2043-12-27, so the longest rollout ends in 2053 -- still short of
+            # the locked window at 2055, which nothing in any stage may touch.
+            #
             # A block fires on list(range(1, max_epochs + 1))[start::step], so
             # start 0 / step 4 lands on epochs 1 and 5 -- the first and last.
-            "name": "5yr_test",
+            # This is the expensive block (730 ocean steps is 14,600 atmosphere
+            # steps per initial condition), so it runs twice, not every epoch.
+            "name": "future_2040",
             "weight": 0.0,
             "epochs": {"start": 0, "step": 4},
-            "n_coupled_steps": 365,  # 5 years on the ocean's 5-day axis
+            "n_coupled_steps": 730,  # 10 years on the ocean's 5-day axis
             "coupled_steps_in_memory": 2,
             "loader": {
                 "num_data_workers": 2,
@@ -225,7 +276,13 @@ cfg = {
         "entity": "e3sm-aig",
     },
     "train_loader": {
-        "batch_size": 8,
+        # Global batch, not per rank: the loader divides it by world size and
+        # refuses a remainder ("batch_size must be divisible by the number of
+        # parallel workers, got 8 and 16" -- measured 2026-09-07 on 4 nodes).
+        # 16 = 4 nodes x 4 GPUs, so local batch stays 1, which is what the
+        # coupled memory footprint is sized for. Change the node count and this
+        # has to change with it, along with the 16 inference initial conditions.
+        "batch_size": RANKS,
         "num_data_workers": 2,
         "prefetch_factor": 1,
         "dataset": {
@@ -237,7 +294,7 @@ cfg = {
     },
     "validation": {
         "loader": {
-            "batch_size": 8,
+            "batch_size": RANKS,
             "num_data_workers": 2,
             "prefetch_factor": 1,
             "dataset": {"ocean": copy.deepcopy(ocn_val), "atmosphere": atmos(VAL_A)},

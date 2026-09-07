@@ -1,5 +1,5 @@
 #!/bin/bash -l
-# coupled finetune (8 ranks, local batch 1)
+# coupled finetune (16 ranks on 4 nodes, local batch 1)
 #
 # Submit from this directory with the driver, which stages the config and
 # validates it before burning an allocation:
@@ -13,7 +13,7 @@
 #SBATCH -q regular
 #SBATCH -C gpu&hbm80g          # all three configs require 80 GB cards
 #SBATCH -J fme-hist-cpl
-#SBATCH --nodes=2
+#SBATCH --nodes=4
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=4
 #SBATCH --cpus-per-task=128
