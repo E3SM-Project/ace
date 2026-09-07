@@ -22,6 +22,22 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=4
 #SBATCH --cpus-per-task=128
+#SBATCH --mem=0                # all of the node's RAM, not the CPU-count default
+                               # Without this Slurm grants DefMemPerCPU x 128 =
+                               # 210,800 MB (205.9 GiB), while the node really
+                               # has 257,100 MB (251 GiB). The loader runs close
+                               # to that ceiling: 8 data workers x 4 ranks per
+                               # node, each holding prefetched windows, measured
+                               # 218-224 GiB RSS on every stage-2 job. They were
+                               # all over the request, and on 2026-09-07
+                               # E12-FT.aug26.ocn (job 57998252) was the one that
+                               # crossed the node's real ceiling and was killed
+                               # OUT_OF_MEMORY at epoch 33 of 40, after 6h50m.
+                               # It died at an epoch boundary, where the loader
+                               # respawns its workers and old and new briefly
+                               # coexist -- which is why an identical sibling
+                               # survived the same age. The nodes are exclusive
+                               # anyway, so capping below the node buys nothing.
 #SBATCH -t 12:00:00
 #SBATCH --output=joblogs/%x-%j.out
 #SBATCH --signal=B:USR1@300    # walltime requeue; see the trap at the bottom.
