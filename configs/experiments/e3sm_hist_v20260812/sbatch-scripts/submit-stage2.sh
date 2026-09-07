@@ -32,6 +32,19 @@ EXP_DIR=$(dirname "$HERE")
 export CAMPAIGN_ROOT=/pscratch/sd/m/mahf708/aug26-ft
 RESERVATION_NAME=${RESERVATION:-_CAP_aigs_hist}
 
+# Fall back to the regular queue once the reservation is gone.
+#
+# sbatch fails outright on an unknown reservation, so after 2026-09-09T15:00
+# every submission here would fail rather than degrade. That is fine when a
+# human is watching and fatal on a timer: the sweeper would report "submitted
+# nothing" every 30 minutes and the campaign would quietly stall. Ask Slurm
+# whether the reservation still exists and drop it if not -- stage 2 has no
+# deadline of its own and is expected to finish in the regular queue.
+if [ -n "$RESERVATION_NAME" ] && ! scontrol show res "$RESERVATION_NAME" >/dev/null 2>&1; then
+    echo "== reservation $RESERVATION_NAME is gone; using the regular queue ==" >&2
+    RESERVATION_NAME=""
+fi
+
 # 24 h rather than the script's 12 h default, because of how stage-1 runs died.
 #
 # E03 and E02.S02 both stopped mid-"Starting flush of reduced diagnostics to
@@ -90,12 +103,20 @@ CONFIGS=("$EXP_DIR"/runs/*-FT.*.yaml)
 # the reservation ends on 2026-09-09 -- so there is no reason to race. Leave
 # RESERVE_HEADROOM nodes for stage 1 to land on and queue the rest behind.
 RESERVE_HEADROOM=${RESERVE_HEADROOM:-16}
-CAP=$(scontrol show res "$RESERVATION_NAME" 2>/dev/null | sed -n 's/.*NodeCnt=\([0-9]*\).*/\1/p' | head -1)
-USED=$(squeue -R "$RESERVATION_NAME" -h -o '%D' 2>/dev/null | paste -sd+ | bc)
-FREE=$(( ${CAP:-0} - ${USED:-0} ))
-BUDGET=$(( FREE - RESERVE_HEADROOM ))
-echo "== reservation $RESERVATION_NAME: $USED/$CAP used, $FREE free," \
-     "$RESERVE_HEADROOM held for stage-1 requeues -> $BUDGET for stage 2 ==" >&2
+if [ -n "$RESERVATION_NAME" ]; then
+    CAP=$(scontrol show res "$RESERVATION_NAME" 2>/dev/null | sed -n 's/.*NodeCnt=\([0-9]*\).*/\1/p' | head -1)
+    USED=$(squeue -R "$RESERVATION_NAME" -h -o '%D' 2>/dev/null | paste -sd+ | bc)
+    FREE=$(( ${CAP:-0} - ${USED:-0} ))
+    BUDGET=$(( FREE - RESERVE_HEADROOM ))
+    echo "== reservation $RESERVATION_NAME: $USED/$CAP used, $FREE free," \
+         "$RESERVE_HEADROOM held for stage-1 requeues -> $BUDGET for stage 2 ==" >&2
+else
+    # No reservation: the regular queue has no capacity for this script to
+    # ration, so the headroom accounting is meaningless. Report nothing rather
+    # than a made-up budget, and label every run as queueing, which it is.
+    BUDGET=0
+    echo "== regular queue: no reservation capacity to ration ==" >&2
+fi
 
 TOTAL=0
 for cfg in "${CONFIGS[@]}"; do
