@@ -152,6 +152,45 @@ VAL_A = {"start_time": "1990-01-06", "stop_time": "1995-01-01"}
 NODES = 4
 RANKS = NODES * 4
 
+# Length of the coupled finetune, and how often each inference block fires.
+#
+# 50 rather than the 5 this used to carry. That 5 was a cost budget, not a
+# science choice: the campaign README derived "~28 h/epoch, ~6 days for 5
+# epochs" from 61.3 s/batch measured 2026-08-24 on 8 ranks, with another job
+# competing for the filesystem. Measured again 2026-09-07 on 16 ranks with the
+# inputs on scratch, the same production settings run at a median 11.4 s/batch
+# (mean 12.0, n=15 intervals, no drift across the epoch), which over this
+# config's 411 batches is ~1.3 h/epoch. Five epochs is seven hours, not six
+# days, and 50 is about three days -- three segments at the 24 h walltime.
+#
+# The schedules are periods, not raw indices, because a block fires on
+# list(range(1, max_epochs + 1))[start::step] and hand-written start/step
+# silently stop meaning what they meant when max_epochs moves. Both periods
+# divide max_epochs, so both blocks fire on the final epoch.
+STAGE3_EPOCHS = 50
+SELECTION_PERIOD = 5  # heldout_1990s: 10 firings, ~17 min each
+REPORTING_PERIOD = 10  # future_2040: 5 firings, ~32 min each -- twice the rollout
+
+
+def _epoch_schedule(period):
+    """Fire on every `period`-th epoch, ending on the last one.
+
+    Inference is not free at these rollout lengths. Measured 2026-09-07 from
+    the coupled smoke run's window timings: ~2.45 s per coupled step at 16
+    initial conditions on 16 ranks. That is ~15 min for the 365-step
+    heldout_1990s block and ~30 min for the 730-step future_2040 one, before
+    the diagnostics flush. Running the selection block every epoch would add
+    ~22% to a 1.3 h epoch, or about 14 hours across 50 epochs; at a period of
+    5 it costs under three.
+    """
+    if STAGE3_EPOCHS % period:
+        raise SystemExit(
+            f"inference period {period} does not divide max_epochs "
+            f"{STAGE3_EPOCHS}, so the block would never fire on the final "
+            f"epoch and the last checkpoint would go unscored"
+        )
+    return {"start": period - 1, "step": period}
+
 # Initial conditions, taken verbatim from the stage-2 generator so stage 3 makes
 # the same claim stage 2 makes.
 #
@@ -212,7 +251,7 @@ cfg = {
     "save_checkpoint": True,
     "validate_using_ema": True,
     "ema": {"decay": 0.9995, "faster_decay_at_start": False},
-    "max_epochs": 5,
+    "max_epochs": STAGE3_EPOCHS,
     # The maps go to disk as netCDF rather than to W&B; see AGGREGATOR.
     "save_per_epoch_diagnostics": True,
     "inference": [
@@ -223,6 +262,7 @@ cfg = {
             # chosen on a decade the coupled model never trained on.
             "name": "heldout_1990s",
             "weight": 1.0,
+            "epochs": _epoch_schedule(SELECTION_PERIOD),
             "n_coupled_steps": 365,  # 5 years on the ocean's 5-day axis
             "coupled_steps_in_memory": 2,
             "loader": {
@@ -251,7 +291,7 @@ cfg = {
             # steps per initial condition), so it runs twice, not every epoch.
             "name": "future_2040",
             "weight": 0.0,
-            "epochs": {"start": 0, "step": 4},
+            "epochs": _epoch_schedule(REPORTING_PERIOD),
             "n_coupled_steps": 730,  # 10 years on the ocean's 5-day axis
             "coupled_steps_in_memory": 2,
             "loader": {

@@ -4,11 +4,14 @@ validate_using_ema: true
 ema:
   decay: 0.9995
   faster_decay_at_start: false
-max_epochs: 5
+max_epochs: 50
 save_per_epoch_diagnostics: true
 inference:
 - name: heldout_1990s
   weight: 1.0
+  epochs:
+    start: 4
+    step: 5
   n_coupled_steps: 365
   coupled_steps_in_memory: 2
   loader:
@@ -89,8 +92,8 @@ inference:
 - name: future_2040
   weight: 0.0
   epochs:
-    start: 0
-    step: 4
+    start: 9
+    step: 10
   n_coupled_steps: 730
   coupled_steps_in_memory: 2
   loader:
