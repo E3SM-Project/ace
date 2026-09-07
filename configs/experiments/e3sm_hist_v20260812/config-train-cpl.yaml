@@ -16,10 +16,10 @@ inference:
     dataset:
       ocean:
         merge:
-        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
           file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDepthCoarsening5D.*.remapped.nc
           mask_and_scale: true
-        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
           file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDerivedFields5D.*.remapped.nc
           mask_and_scale: true
           rename:
@@ -44,15 +44,15 @@ inference:
             surface_precipitation_rate:
               rainFlux: 1.0
               frozen_precipitation_rate: 1.0
-        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
           file_pattern: v3.LR.historical_0101.aigo.mpassi.hist.am.fmeSeaiceDerivedFields5D.*.remapped.nc
           mask_and_scale: true
           rename:
             iceAreaTotal: ocean_sea_ice_fraction
-        - data_path: /global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/landfrac5d
+        - data_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/landfrac5d
           file_pattern: landfrac5d.*.nc
       atmosphere:
-        data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
         file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
         rename:
           PRECT: surface_precipitation_rate
@@ -81,7 +81,7 @@ inference:
       - '1994-04-26T00:00:00'
       - '1994-08-24T00:00:00'
       - '1994-12-27T00:00:00'
-  aggregator: &id001
+  aggregator:
     log_zonal_mean_images: false
     log_video: false
     log_seasonal_means: false
@@ -98,10 +98,10 @@ inference:
     dataset:
       ocean:
         merge:
-        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
           file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDepthCoarsening5D.*.remapped.nc
           mask_and_scale: true
-        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
           file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDerivedFields5D.*.remapped.nc
           mask_and_scale: true
           rename:
@@ -126,15 +126,15 @@ inference:
             surface_precipitation_rate:
               rainFlux: 1.0
               frozen_precipitation_rate: 1.0
-        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
           file_pattern: v3.LR.historical_0101.aigo.mpassi.hist.am.fmeSeaiceDerivedFields5D.*.remapped.nc
           mask_and_scale: true
           rename:
             iceAreaTotal: ocean_sea_ice_fraction
-        - data_path: /global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/landfrac5d
+        - data_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/landfrac5d
           file_pattern: landfrac5d.*.nc
       atmosphere:
-        data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
         file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
         rename:
           PRECT: surface_precipitation_rate
@@ -163,7 +163,11 @@ inference:
       - '2043-06-15T00:00:00'
       - '2043-09-18T00:00:00'
       - '2043-12-27T00:00:00'
-  aggregator: *id001
+  aggregator:
+    log_zonal_mean_images: false
+    log_video: false
+    log_seasonal_means: false
+    log_histograms: false
 logging:
   log_to_screen: true
   log_to_wandb: true
@@ -178,13 +182,13 @@ train_loader:
     concat:
     - ocean:
         merge:
-        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
           file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDepthCoarsening5D.*.remapped.nc
           mask_and_scale: true
           subset:
             start_time: '1940-01-06'
             stop_time: '1990-01-01'
-        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
           file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDerivedFields5D.*.remapped.nc
           mask_and_scale: true
           rename:
@@ -212,7 +216,7 @@ train_loader:
           subset:
             start_time: '1940-01-06'
             stop_time: '1990-01-01'
-        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
           file_pattern: v3.LR.historical_0101.aigo.mpassi.hist.am.fmeSeaiceDerivedFields5D.*.remapped.nc
           mask_and_scale: true
           rename:
@@ -220,13 +224,13 @@ train_loader:
           subset:
             start_time: '1940-01-06'
             stop_time: '1990-01-01'
-        - data_path: /global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/landfrac5d
+        - data_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/landfrac5d
           file_pattern: landfrac5d.*.nc
           subset:
             start_time: '1940-01-06'
             stop_time: '1990-01-01'
       atmosphere:
-        data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
         file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
         rename:
           PRECT: surface_precipitation_rate
@@ -242,13 +246,13 @@ train_loader:
           stop_time: '1990-01-01'
     - ocean:
         merge:
-        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
           file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDepthCoarsening5D.*.remapped.nc
           mask_and_scale: true
           subset:
             start_time: '2000-01-06'
             stop_time: '2040-01-01'
-        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
           file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDerivedFields5D.*.remapped.nc
           mask_and_scale: true
           rename:
@@ -276,7 +280,7 @@ train_loader:
           subset:
             start_time: '2000-01-06'
             stop_time: '2040-01-01'
-        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
           file_pattern: v3.LR.historical_0101.aigo.mpassi.hist.am.fmeSeaiceDerivedFields5D.*.remapped.nc
           mask_and_scale: true
           rename:
@@ -284,13 +288,13 @@ train_loader:
           subset:
             start_time: '2000-01-06'
             stop_time: '2040-01-01'
-        - data_path: /global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/landfrac5d
+        - data_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/landfrac5d
           file_pattern: landfrac5d.*.nc
           subset:
             start_time: '2000-01-06'
             stop_time: '2040-01-01'
       atmosphere:
-        data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
         file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
         rename:
           PRECT: surface_precipitation_rate
@@ -312,13 +316,13 @@ validation:
     dataset:
       ocean:
         merge:
-        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
           file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDepthCoarsening5D.*.remapped.nc
           mask_and_scale: true
           subset:
             start_time: '1990-01-06'
             stop_time: '1995-01-01'
-        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
           file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDerivedFields5D.*.remapped.nc
           mask_and_scale: true
           rename:
@@ -346,7 +350,7 @@ validation:
           subset:
             start_time: '1990-01-06'
             stop_time: '1995-01-01'
-        - data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
           file_pattern: v3.LR.historical_0101.aigo.mpassi.hist.am.fmeSeaiceDerivedFields5D.*.remapped.nc
           mask_and_scale: true
           rename:
@@ -354,13 +358,13 @@ validation:
           subset:
             start_time: '1990-01-06'
             stop_time: '1995-01-01'
-        - data_path: /global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/landfrac5d
+        - data_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/landfrac5d
           file_pattern: landfrac5d.*.nc
           subset:
             start_time: '1990-01-06'
             stop_time: '1995-01-01'
       atmosphere:
-        data_path: /global/cfs/cdirs/e3smdata/simulations/v3.LR.historical_0101.aigo/run
+        data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
         file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
         rename:
           PRECT: surface_precipitation_rate
@@ -464,8 +468,8 @@ stepper:
               checkpoint_strategy: all
           normalization:
             network:
-              global_means_path: /global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/stats-2026-08-13/train-only/ocean/centering.nc
-              global_stds_path: /global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/stats-2026-08-13/train-only/ocean/scaling-full-field.nc
+              global_means_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/stats-2026-08-13/train-only/ocean/centering.nc
+              global_stds_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/stats-2026-08-13/train-only/ocean/scaling-full-field.nc
           corrector:
             type: ocean_corrector
             config:
@@ -704,11 +708,11 @@ stepper:
               affine_norms: true
           normalization:
             network:
-              global_means_path: /global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/stats-2026-08-13/train-only/atmosphere/centering.nc
-              global_stds_path: /global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/stats-2026-08-13/train-only/atmosphere/scaling-full-field.nc
+              global_means_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/stats-2026-08-13/train-only/atmosphere/centering.nc
+              global_stds_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/stats-2026-08-13/train-only/atmosphere/scaling-full-field.nc
             residual:
-              global_means_path: /global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/stats-2026-08-13/train-only/atmosphere/centering.nc
-              global_stds_path: /global/cfs/cdirs/e3smdata/emulator/SamudrACE-E3SMv3/historical/stats-2026-08-13/train-only/atmosphere/scaling-residual.nc
+              global_means_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/stats-2026-08-13/train-only/atmosphere/centering.nc
+              global_stds_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/stats-2026-08-13/train-only/atmosphere/scaling-residual.nc
           ocean:
             surface_temperature_name: TS
             ocean_fraction_name: OCNFRAC

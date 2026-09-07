@@ -363,6 +363,21 @@ if args.atm_ckpt:
         "weights_path": args.atm_ckpt
     }
 
+# Read the inputs from $PSCRATCH, using stage 2's map so all three stages agree
+# on where the data lives.
+#
+# Stage 3 inherited the CFS paths from the atm and ocn configs it composes,
+# which stage 2 had already moved. That is not a cosmetic difference: on
+# 2026-09-07 a coupled run pointed at CFS sat in "Opening data at
+# /global/cfs/..." for over 20 minutes without finishing its dataset index,
+# while the same config on scratch cleared the whole init in about 7. CFS
+# cannot feed this loader's read pattern under campaign contention.
+#
+# Applied after the checkpoint paths are set, and the map only matches the CFS
+# input roots, so a --atm-ckpt/--ocn-ckpt pointing into another user's scratch
+# is left exactly as given -- those are read-only reads we depend on.
+cfg = stage2.remap_paths(cfg)
+
 rendered = yaml.safe_dump(cfg, sort_keys=False, default_flow_style=False, width=100)
 
 if args.check:
