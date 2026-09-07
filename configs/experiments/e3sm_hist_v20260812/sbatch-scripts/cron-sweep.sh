@@ -14,6 +14,14 @@ EXP_DIR=/pscratch/sd/m/mahf708/ace/configs/experiments/e3sm_hist_v20260812
 VENV=/pscratch/sd/m/mahf708/ace/.venv/bin/activate
 LOG=/pscratch/sd/m/mahf708/aug26-ft/sweep-cron.log
 
+# NERSC's login profile does not run here, and run-train.sh stages its config
+# under ${PSCRATCH} with `set -u` (run-train.sh:105). Without these the
+# submission dies with "PSCRATCH: unbound variable" -- which is exactly what
+# the 15:53 tick on 2026-09-07 did, silently, because the sweeper piped
+# submit-stage2.sh through a grep that kept only "submitted" and "refusing".
+export PSCRATCH=/pscratch/sd/m/mahf708
+export SCRATCH=$PSCRATCH
+
 exec >>"$LOG" 2>&1
 echo "===== $(date -Is) ====="
 

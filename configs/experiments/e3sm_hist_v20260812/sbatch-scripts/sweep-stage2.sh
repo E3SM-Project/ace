@@ -98,13 +98,31 @@ if [ ${#outstanding[@]} -eq 0 ]; then
 fi
 
 echo "== ${#outstanding[@]} newly submittable ==" >&2
+failures=0
 for runid in "${outstanding[@]}"; do
     nodes=$(sed -n 's/^FME_NODES=//p' "runs/${runid}.env")
     if [ "$GO" != 1 ]; then
         printf "  would submit  %-46s %s nodes\n" "$runid" "$nodes" >&2
         continue
     fi
-    ./sbatch-scripts/submit-stage2.sh --go "$runid" 2>&1 | grep -E "submitted|refusing" >&2 || true
+    # Do not filter this. The previous version piped it through
+    # `grep -E "submitted|refusing"`, which meant any failure that phrased
+    # itself differently vanished: on 2026-09-07 a submission died with
+    # "PSCRATCH: unbound variable" and the sweeper reported "1 newly
+    # submittable" followed by nothing at all, having silently submitted
+    # nothing. On a timer that is the worst possible failure -- it looks like
+    # success. Keep the whole transcript and say plainly what happened.
+    if ./sbatch-scripts/submit-stage2.sh --go "$runid" 2>&1 | sed 's/^/    /' >&2; then
+        :
+    else
+        echo "  FAILED to submit $runid (see the transcript above)" >&2
+        failures=$((failures + 1))
+    fi
 done
+
+if [ "${failures:-0}" -gt 0 ]; then
+    echo "== $failures of ${#outstanding[@]} submissions failed ==" >&2
+    exit 1
+fi
 
 [ "$GO" = 1 ] || echo "(dry run -- pass --go to submit)" >&2
