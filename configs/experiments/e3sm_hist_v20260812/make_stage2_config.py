@@ -172,20 +172,58 @@ PARENT_FINAL_EPOCH = {"atm": 30, "ocn": 150}
 #
 # Cost: inference wall clock is ceil(n_ICs / n_ranks) x n_steps, so only rollout
 # length and firing frequency are real levers.
-ATM_HELDOUT_ICS = [
-    f"{year}-{month:02d}-03T12:00:00"
-    for year in range(1990, 1994)
-    for month in (1, 4, 7, 10)
-]
-ATM_FUTURE_ICS = [
-    f"{year}-{month:02d}-03T12:00:00"
-    for year in range(2040, 2044)
-    for month in (1, 4, 7, 10)
-]
+# Initial conditions are sharded across ranks, and
+# InlineInferenceConfig.__post_init__ requires n_initial_conditions %
+# world_size == 0. That check calls Distributed.get_instance(), so on a login
+# node world_size is 1 and *any* count validates -- validate_config cannot
+# catch a violation, and dacite swallows the resulting ValueError into an
+# unhelpful "can not match type list to union inference". The B32 atmosphere
+# arm has 32 ranks and died on exactly this. So the count is derived from the
+# arm's rank count rather than fixed, and asserted at generation time.
+IC_FLOOR = 16
+
+
+def ic_count(ranks):
+    """Smallest multiple of `ranks` that is at least IC_FLOOR."""
+    return max(IC_FLOOR, -(-IC_FLOOR // ranks) * ranks)
+
+
+def _month_grid(first_year, last_year):
+    return [(y, m) for y in range(first_year, last_year + 1) for m in range(1, 13)]
+
+
+def _atm_ics(n, first_year, last_year):
+    """`n` initial conditions spread evenly over a range of whole years.
+
+    Day 3 at 12:00 exists on the atmosphere's 6-hourly axis in every month, so
+    these are safe without consulting the record; the ocean's 5-day axis is not
+    that forgiving, which is why its lists are literal and verified.
+    """
+    grid = _month_grid(first_year, last_year)
+    if n > len(grid):
+        raise ValueError(f"cannot place {n} ICs in {len(grid)} months")
+    step = len(grid) / n
+    picks = [grid[int(i * step)] for i in range(n)]
+    return [f"{y}-{m:02d}-03T12:00:00" for y, m in picks]
+
+
+# The atmosphere's two windows. Held-out ICs must leave room for a 5-year
+# rollout inside the 1990-2000 gap, so they stop in 1994; future ICs must leave
+# room for a 10-year rollout before the locked window opens in 2055, so they
+# stop in 2043.
+# 1990-1993 rather than through 1994: 48 months, so the n=16 case lands on
+# exact quarters and reproduces the list the first B16 runs were launched
+# with. Changing a running job's evaluation ICs on requeue would make its
+# own epochs incomparable on the metric that selects its checkpoint.
+ATM_HELDOUT_YEARS = (1990, 1993)
+ATM_FUTURE_YEARS = (2040, 2043)
+
 # The ocean axis is 5-daily on a noleap calendar: 1990-01-01 + 5n days, exactly
-# 73 stamps a year. These are picked off that grid and verified against the
-# real time index rather than written by hand -- `TimestampList.as_indices`
-# raises on a stamp that does not exist, minutes into an allocation.
+# 73 stamps a year. These were picked off that grid and checked against the real
+# time index -- TimestampList.as_indices raises on a stamp that does not exist,
+# minutes into an allocation. Every ocean arm has 4, 8 or 16 ranks, so 16 ICs
+# always divide; if one ever needs 32, these lists have to be regenerated
+# against the real axis rather than interpolated.
 OCN_HELDOUT_ICS = [
     "1990-01-01T00:00:00", "1990-05-01T00:00:00", "1990-08-29T00:00:00",
     "1990-12-27T00:00:00", "1991-05-01T00:00:00", "1991-08-29T00:00:00",
@@ -202,6 +240,7 @@ OCN_FUTURE_ICS = [
     "2043-03-07T00:00:00", "2043-06-15T00:00:00", "2043-09-18T00:00:00",
     "2043-12-27T00:00:00",
 ]
+
 STEPS_PER_YEAR = {"atm": 1460, "ocn": 73}
 
 # Sixteen initial conditions in every block, both realms. Not a cost choice: the
@@ -212,13 +251,13 @@ STEPS_PER_YEAR = {"atm": 1460, "ocn": 73}
 # identical wall clock; the ocean's 8 ranks take two waves.
 INFERENCE_PLAN = {
     "atm": [
-        # name, weight, rollout years, epoch schedule, initial conditions
-        ("heldout_1990s", 1.0, 5, {"start": 3, "step": 3}, ATM_HELDOUT_ICS),
-        ("future_2040", 0.0, 10, {"start": 10, "step": 10}, ATM_FUTURE_ICS),
+        # name, weight, rollout years, epoch schedule
+        ("heldout_1990s", 1.0, 5, {"start": 3, "step": 3}),
+        ("future_2040", 0.0, 10, {"start": 10, "step": 10}),
     ],
     "ocn": [
-        ("heldout_1990s", 1.0, 5, {"start": 5, "step": 5}, OCN_HELDOUT_ICS),
-        ("future_2040", 0.0, 10, {"start": 20, "step": 20}, OCN_FUTURE_ICS),
+        ("heldout_1990s", 1.0, 5, {"start": 5, "step": 5}),
+        ("future_2040", 0.0, 10, {"start": 20, "step": 20}),
     ],
 }
 
@@ -308,7 +347,7 @@ def candidates():
     return out
 
 
-def build_config(parent_dir, realm, ckpt, runid):
+def build_config(parent_dir, realm, ckpt, runid, ranks):
     cfg = copy.deepcopy(yaml.safe_load((parent_dir / "config.yaml").read_text()))
     cfg = remap_paths(cfg)
 
@@ -363,8 +402,24 @@ def build_config(parent_dir, realm, ckpt, runid):
     template = (cfg.get("inference") or [None])[0]
     if template is None:
         raise ValueError("parent config has no inference block to use as a template")
+    n_ics = ic_count(ranks)
+    if n_ics % ranks:
+        raise ValueError(f"{runid}: {n_ics} ICs do not divide {ranks} ranks")
     blocks = []
-    for name, weight, years, epochs, ics in INFERENCE_PLAN[realm]:
+    for name, weight, years, epochs in INFERENCE_PLAN[realm]:
+        if realm == "atm":
+            years_range = (
+                ATM_HELDOUT_YEARS if name == "heldout_1990s" else ATM_FUTURE_YEARS
+            )
+            ics = _atm_ics(n_ics, *years_range)
+        else:
+            ics = OCN_HELDOUT_ICS if name == "heldout_1990s" else OCN_FUTURE_ICS
+            if len(ics) % ranks:
+                raise ValueError(
+                    f"{runid}: the ocean {name} list has {len(ics)} ICs, which does "
+                    f"not divide {ranks} ranks -- regenerate it against the real "
+                    "5-day axis, do not interpolate"
+                )
         block = copy.deepcopy(template)
         block["name"] = name
         block["weight"] = weight
@@ -460,6 +515,15 @@ def build_env(parent_runid, runid, realm, ckpt):
     )
 
 
+def _ranks_from_env(parent_runid):
+    """The arm's rank count, from the parent's .env -- the same number
+    run-train.sh sizes the job with, so the ICs cannot disagree with the job."""
+    for line in (RUNS / f"{parent_runid}.env").read_text().splitlines():
+        if line.startswith("FME_RANKS="):
+            return int(line.split("=", 1)[1])
+    raise ValueError(f"{parent_runid}.env has no FME_RANKS")
+
+
 def emit(parent_runid, force=False):
     _exp, _campaign, realm, _word, _seed = parse_runid(parent_runid)
     runid = child_runid(parent_runid)
@@ -475,7 +539,8 @@ def emit(parent_runid, force=False):
     if ckpt is None:
         ckpt = parent_dir / "training_checkpoints" / "ckpt.tar"
 
-    cfg = build_config(parent_dir, realm, ckpt, runid)
+    ranks = _ranks_from_env(parent_runid)
+    cfg = build_config(parent_dir, realm, ckpt, runid, ranks)
     (RUNS / f"{runid}.yaml").write_text(
         yaml.safe_dump(cfg, sort_keys=False, default_flow_style=False, width=100)
     )
