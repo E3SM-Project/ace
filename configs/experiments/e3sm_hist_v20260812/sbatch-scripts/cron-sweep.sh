@@ -22,6 +22,19 @@ LOG=/pscratch/sd/m/mahf708/aug26-ft/sweep-cron.log
 export PSCRATCH=/pscratch/sd/m/mahf708
 export SCRATCH=$PSCRATCH
 
+# run-train.sh validates the staged config with `uv run` (run-train.sh:152),
+# and uv lives in ~/.local/bin, which only the login profile puts on PATH.
+# Same class of failure as PSCRATCH above: it does not appear until a tick
+# actually has something to submit, so it cannot be caught by a dry run.
+#
+# Appended, never prepended, and set before the venv is sourced. The system
+# python3 on these nodes predates datetime.date.fromisoformat, so any PATH
+# entry that shadows the venv's interpreter makes check_stage2_leakage.py die
+# with "type object 'datetime.date' has no attribute 'fromisoformat'" and the
+# gate then refuses the submission -- a leakage failure that is really a PATH
+# failure, which is a genuinely confusing thing to debug at 3am.
+export PATH=${PATH:-/usr/bin:/bin}:$HOME/.local/bin
+
 exec >>"$LOG" 2>&1
 echo "===== $(date -Is) ====="
 
