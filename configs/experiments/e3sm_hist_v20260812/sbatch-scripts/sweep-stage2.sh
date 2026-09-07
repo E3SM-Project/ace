@@ -50,7 +50,15 @@ echo "== regenerating stage-2 configs ==" >&2
 # a requeue would silently swap a live job's evaluation windows. Leave the
 # tree dirty and let run-train.sh refuse; that wants a human.
 REPO=$(git -C "$EXP_DIR" rev-parse --show-toplevel)
-RUNS_REL=$(git -C "$REPO" rev-parse --show-prefix 2>/dev/null)runs/
+# Repo-relative path to runs/, to match against `git status --porcelain` output.
+# Not `rev-parse --show-prefix`: that is relative to the working directory, and
+# `git -C "$REPO"` makes the working directory the repo root, so it returns the
+# empty string and the pattern silently becomes `runs/`. Nothing then matches,
+# every new config reads as an unexpected change, and the sweeper refuses to
+# commit configs it just wrote -- which is what happened on the 08:30 tick,
+# 2026-09-07. Two earlier tests passed only because the tree really did have
+# unexpected files both times, so the wrong pattern gave the right answer.
+RUNS_REL="${EXP_DIR#"$REPO"/}/runs/"
 if [ -n "$(git -C "$REPO" status --porcelain)" ]; then
     unexpected=$(git -C "$REPO" status --porcelain | grep -v "^?? ${RUNS_REL}" || true)
     if [ -n "$unexpected" ]; then
