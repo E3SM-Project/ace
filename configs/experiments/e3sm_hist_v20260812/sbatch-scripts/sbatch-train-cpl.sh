@@ -57,14 +57,25 @@ set -x
 
 # Resume by exporting RESUME_JOB_ID=<previous job id>; training then picks up
 # from that run's training_checkpoints/ckpt.tar automatically.
-if [ -z "${RESUME_JOB_ID}" ]; then
+#
+# A campaign run is addressed by its RUNID, not by a job id -- the same rule the
+# atm and ocn scripts already follow. Stage 3 never exercised it: the coupled
+# script was written for the single ad-hoc `run-train.sh cpl` case and hardcoded
+# both the output directory and the config name, so the first coupled *campaign*
+# run (E19-CFT, 58083514) staged runs/<runid>.yaml and then died in seconds on
+#     FileNotFoundError: .../fme-config/<uuid>/config-train-cpl.yaml
+# because that is the only name this script would look for. Without a RUNID the
+# old job-id behaviour is kept, so ad-hoc coupled runs are unaffected.
+if [ -n "${RUNID:-}" ]; then
+    export FME_OUTPUT_DIR=${CAMPAIGN_ROOT:-${PSCRATCH}/aug26}/${RUNID}
+elif [ -z "${RESUME_JOB_ID}" ]; then
     export FME_OUTPUT_DIR=${PSCRATCH}/fme-output/hist-cpl-${SLURM_JOB_ID}
 else
     export FME_OUTPUT_DIR=${PSCRATCH}/fme-output/hist-cpl-${RESUME_JOB_ID}
 fi
 mkdir -p "$FME_OUTPUT_DIR"
 
-export TRAIN_CONFIG=${CONFIG_DIR}/config-train-cpl.yaml
+export TRAIN_CONFIG=${CONFIG_DIR}/${CONFIG_NAME:-config-train-cpl.yaml}
 export FME_TORCHRUN=${FME_TORCHRUN:?set by run-train.sh}
 export TRAIN_MODULE=fme.coupled.train
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -1)
