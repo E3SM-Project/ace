@@ -184,7 +184,11 @@ VAL_A = {"start_time": "1990-01-06", "stop_time": "1995-01-01"}
 # check always passes. A violation therefore cannot be caught by validating the
 # config; it surfaces minutes into an allocation as a dacite UnionMatchError
 # that names none of this. Stage 2 lost two atmosphere runs that way.
-NODES = 4
+# 8 nodes x 4 GPUs = 32 ranks, a global batch of 32 at local batch 1. The
+# coupled stage continues B32 stage-2 parents, so it trains at their batch
+# rather than dropping to 16 and quietly changing the optimization regime
+# across the stage boundary.
+NODES = 8
 RANKS = NODES * 4
 
 # Length of the coupled finetune, and how often each inference block fires.
@@ -247,8 +251,15 @@ def _epoch_schedule(period):
 # Sixteen of each, which is also the rank count: initial conditions are sharded
 # across ranks and InlineInferenceConfig.__post_init__ requires the count to
 # divide evenly. Change the node count and these lists have to change with it.
-IC = list(stage2.OCN_HELDOUT_ICS)
-IC_TEST = list(stage2.OCN_FUTURE_ICS)
+try:
+    _heldout, _future = stage2.OCN_ICS[RANKS]
+except KeyError:
+    raise SystemExit(
+        f"no ocean initial-condition list for {RANKS} ranks; add one to "
+        "make_stage2_config.OCN_ICS, selected off the real 5-day axis"
+    )
+IC = list(_heldout)
+IC_TEST = list(_future)
 
 for _name, _ics in (("heldout_1990s", IC), ("future_2040", IC_TEST)):
     if len(_ics) % RANKS:

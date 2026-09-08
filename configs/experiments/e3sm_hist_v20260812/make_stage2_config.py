@@ -246,6 +246,54 @@ OCN_FUTURE_ICS = [
     "2043-12-27T00:00:00",
 ]
 
+# The 32-rank variants, for the coupled stage, which trains at a global batch of
+# 32 and therefore shards its inference across 32 ranks. Built the same way and
+# subject to the same rule: selected off the real 5-day axis, never interpolated.
+#
+# Each is a strict superset of the 16-IC list above -- the 16 originals plus the
+# midpoints between them, snapped to the real axis -- so a 32-IC score and a
+# 16-IC score share half their initial conditions instead of none. The span is
+# deliberately unchanged: extending past 1994-12-27 would push a 365-step
+# heldout rollout into the 2000+ training window, which the leakage gate
+# rejects. Filling to exactly 32 inside a fixed span puts two pairs closer
+# together than the rest; coverage matters here, even spacing does not.
+OCN_HELDOUT_ICS_32 = [
+    "1990-01-01T00:00:00", "1990-03-02T00:00:00", "1990-05-01T00:00:00",
+    "1990-06-30T00:00:00", "1990-08-29T00:00:00", "1990-10-28T00:00:00",
+    "1990-12-27T00:00:00", "1991-02-25T00:00:00", "1991-03-12T00:00:00",
+    "1991-05-01T00:00:00", "1991-06-30T00:00:00", "1991-08-29T00:00:00",
+    "1991-10-28T00:00:00", "1991-12-27T00:00:00", "1992-02-25T00:00:00",
+    "1992-04-26T00:00:00", "1992-06-25T00:00:00", "1992-08-29T00:00:00",
+    "1992-10-28T00:00:00", "1992-12-27T00:00:00", "1993-02-25T00:00:00",
+    "1993-04-26T00:00:00", "1993-06-25T00:00:00", "1993-08-24T00:00:00",
+    "1993-10-23T00:00:00", "1993-12-27T00:00:00", "1994-02-25T00:00:00",
+    "1994-04-26T00:00:00", "1994-06-25T00:00:00", "1994-08-24T00:00:00",
+    "1994-10-23T00:00:00", "1994-12-27T00:00:00",
+]
+
+OCN_FUTURE_ICS_32 = [
+    "2040-01-01T00:00:00", "2040-02-15T00:00:00", "2040-02-25T00:00:00",
+    "2040-04-06T00:00:00", "2040-05-21T00:00:00", "2040-07-10T00:00:00",
+    "2040-08-29T00:00:00", "2040-10-18T00:00:00", "2040-12-02T00:00:00",
+    "2041-01-21T00:00:00", "2041-03-12T00:00:00", "2041-05-01T00:00:00",
+    "2041-06-15T00:00:00", "2041-08-04T00:00:00", "2041-09-18T00:00:00",
+    "2041-11-07T00:00:00", "2041-12-27T00:00:00", "2042-02-15T00:00:00",
+    "2042-04-01T00:00:00", "2042-05-21T00:00:00", "2042-07-10T00:00:00",
+    "2042-08-29T00:00:00", "2042-10-13T00:00:00", "2042-12-02T00:00:00",
+    "2043-01-16T00:00:00", "2043-03-07T00:00:00", "2043-04-26T00:00:00",
+    "2043-06-15T00:00:00", "2043-07-30T00:00:00", "2043-09-18T00:00:00",
+    "2043-11-07T00:00:00", "2043-12-27T00:00:00",
+]
+
+# Which pair a run gets is set by its rank count, not by hand: the ICs are
+# sharded across ranks and InlineInferenceConfig requires the count to divide
+# evenly. The 16-rank lists are left exactly as they were so that every ocean
+# stage-2 run already scored against them stays comparable to itself.
+OCN_ICS = {
+    16: (OCN_HELDOUT_ICS, OCN_FUTURE_ICS),
+    32: (OCN_HELDOUT_ICS_32, OCN_FUTURE_ICS_32),
+}
+
 STEPS_PER_YEAR = {"atm": 1460, "ocn": 73}
 
 # Sixteen initial conditions in every block, both realms. Not a cost choice: the
