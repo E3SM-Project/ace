@@ -246,53 +246,64 @@ OCN_FUTURE_ICS = [
     "2043-12-27T00:00:00",
 ]
 
-# The 32-rank variants, for the coupled stage, which trains at a global batch of
-# 32 and therefore shards its inference across 32 ranks. Built the same way and
-# subject to the same rule: selected off the real 5-day axis, never interpolated.
-#
-# Each is a strict superset of the 16-IC list above -- the 16 originals plus the
-# midpoints between them, snapped to the real axis -- so a 32-IC score and a
-# 16-IC score share half their initial conditions instead of none. The span is
-# deliberately unchanged: extending past 1994-12-27 would push a 365-step
-# heldout rollout into the 2000+ training window, which the leakage gate
-# rejects. Filling to exactly 32 inside a fixed span puts two pairs closer
-# together than the rest; coverage matters here, even spacing does not.
-OCN_HELDOUT_ICS_32 = [
-    "1990-01-01T00:00:00", "1990-03-02T00:00:00", "1990-05-01T00:00:00",
-    "1990-06-30T00:00:00", "1990-08-29T00:00:00", "1990-10-28T00:00:00",
-    "1990-12-27T00:00:00", "1991-02-25T00:00:00", "1991-03-12T00:00:00",
-    "1991-05-01T00:00:00", "1991-06-30T00:00:00", "1991-08-29T00:00:00",
-    "1991-10-28T00:00:00", "1991-12-27T00:00:00", "1992-02-25T00:00:00",
-    "1992-04-26T00:00:00", "1992-06-25T00:00:00", "1992-08-29T00:00:00",
-    "1992-10-28T00:00:00", "1992-12-27T00:00:00", "1993-02-25T00:00:00",
-    "1993-04-26T00:00:00", "1993-06-25T00:00:00", "1993-08-24T00:00:00",
-    "1993-10-23T00:00:00", "1993-12-27T00:00:00", "1994-02-25T00:00:00",
-    "1994-04-26T00:00:00", "1994-06-25T00:00:00", "1994-08-24T00:00:00",
-    "1994-10-23T00:00:00", "1994-12-27T00:00:00",
-]
+# The window each ocean block draws from. Heldout stops in 1994 so a 365-step
+# (5-year) rollout stays inside the 1990-2000 gap; future stops in 2043 so a
+# 730-step (10-year) one lands before the 2055 lock.
+OCN_HELDOUT_YEARS = (1990, 1994)
+OCN_FUTURE_YEARS = (2040, 2043)
 
-OCN_FUTURE_ICS_32 = [
-    "2040-01-01T00:00:00", "2040-02-15T00:00:00", "2040-02-25T00:00:00",
-    "2040-04-06T00:00:00", "2040-05-21T00:00:00", "2040-07-10T00:00:00",
-    "2040-08-29T00:00:00", "2040-10-18T00:00:00", "2040-12-02T00:00:00",
-    "2041-01-21T00:00:00", "2041-03-12T00:00:00", "2041-05-01T00:00:00",
-    "2041-06-15T00:00:00", "2041-08-04T00:00:00", "2041-09-18T00:00:00",
-    "2041-11-07T00:00:00", "2041-12-27T00:00:00", "2042-02-15T00:00:00",
-    "2042-04-01T00:00:00", "2042-05-21T00:00:00", "2042-07-10T00:00:00",
-    "2042-08-29T00:00:00", "2042-10-13T00:00:00", "2042-12-02T00:00:00",
-    "2043-01-16T00:00:00", "2043-03-07T00:00:00", "2043-04-26T00:00:00",
-    "2043-06-15T00:00:00", "2043-07-30T00:00:00", "2043-09-18T00:00:00",
-    "2043-11-07T00:00:00", "2043-12-27T00:00:00",
-]
 
-# Which pair a run gets is set by its rank count, not by hand: the ICs are
-# sharded across ranks and InlineInferenceConfig requires the count to divide
-# evenly. The 16-rank lists are left exactly as they were so that every ocean
-# stage-2 run already scored against them stays comparable to itself.
-OCN_ICS = {
-    16: (OCN_HELDOUT_ICS, OCN_FUTURE_ICS),
-    32: (OCN_HELDOUT_ICS_32, OCN_FUTURE_ICS_32),
-}
+def _ocn_grid(first_year, last_year):
+    """The ocean's 5-day axis over whole years, as it really is on disk.
+
+    The axis is 1990-01-01 + 5n days on a noleap calendar -- 73 stamps a year,
+    every year, with no leap day to slip the phase. That makes it generable the
+    same way _atm_ics generates the atmosphere's, rather than transcribed. It
+    was checked rather than assumed: reading `time` out of the mpaso
+    fmeDepthCoarsening5D files reproduces this grid exactly, 365/365 stamps over
+    1990-1994 and 292/292 over 2040-2043.
+    """
+    month_days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+    def stamp(day):  # day 0 is 1990-01-01
+        year, rest = 1990 + day // 365, day % 365
+        month = 0
+        while rest >= month_days[month]:
+            rest -= month_days[month]
+            month += 1
+        return f"{year:04d}-{month + 1:02d}-{rest + 1:02d}T00:00:00"
+
+    lo = (first_year - 1990) * 365
+    hi = (last_year - 1990) * 365 + 364
+    return [stamp(d) for d in range(0, hi + 1, 5) if d >= lo]
+
+
+def _ocn_ics(n, first_year, last_year):
+    """`n` initial conditions spread evenly over the block's window."""
+    grid = _ocn_grid(first_year, last_year)
+    if n > len(grid):
+        raise ValueError(f"cannot place {n} ICs on {len(grid)} ocean stamps")
+    picks = [grid[round(i * (len(grid) - 1) / (n - 1))] for i in range(n)]
+    if len(set(picks)) != n:
+        raise ValueError("duplicate ocean initial conditions after snapping")
+    return picks
+
+
+def ocn_ics(n):
+    """The (heldout, future) initial-condition pair for `n` of each.
+
+    n is set by the rank count, not by hand: the ICs are sharded across ranks
+    and InlineInferenceConfig requires the count to divide evenly.
+
+    n == 16 returns the pinned lists above rather than generated ones. They
+    predate the generator and do not sit where it would put them, and every
+    ocean stage-2 run has already been scored against them -- regenerating would
+    silently change the metric that selects those runs' checkpoints.
+    """
+    if n == 16:
+        return list(OCN_HELDOUT_ICS), list(OCN_FUTURE_ICS)
+    return _ocn_ics(n, *OCN_HELDOUT_YEARS), _ocn_ics(n, *OCN_FUTURE_YEARS)
+
 
 STEPS_PER_YEAR = {"atm": 1460, "ocn": 73}
 
