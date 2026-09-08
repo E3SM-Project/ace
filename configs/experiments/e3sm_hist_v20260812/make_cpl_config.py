@@ -56,13 +56,48 @@ ap.add_argument(
     help="do not write; exit non-zero with a diff if the committed coupled "
     "config is out of sync with the atm and ocn configs",
 )
+# Which component config the coupled stepper is composed from.
+#
+# The default pair is the committed baseline, which is the A0_C0 arm: 43
+# atmosphere in_names, no aerosol and no CO2. That is only correct for coupling
+# an E01/E11 checkpoint. Every other arm changes the channel set -- a C1 arm
+# adds global_mean_co2, an A1/A3 arm adds aerosol inputs -- so composing the
+# coupled stepper from the baseline template and then loading that arm's
+# weights is a first-layer shape mismatch, and if the shapes ever did line up
+# it would silently be a different model from the one that was fine-tuned.
+#
+# Point these at the run's own config.yaml to couple any other arm. Nothing
+# else has to move: the atmosphere data streams are taken from the same config,
+# so a channel that arrives by rename (co2vmr -> global_mean_co2) comes with
+# it, and remap_paths below rewrites the CFS stats paths either way.
+ap.add_argument(
+    "--atm-config",
+    default=None,
+    help="atmosphere config to compose the coupled stepper and atmosphere "
+    "data streams from (default: the committed config-train-atm.yaml). Use a "
+    "run's config.yaml to couple a non-baseline arm.",
+)
+ap.add_argument(
+    "--ocn-config",
+    default=None,
+    help="ocean config to compose the coupled stepper and ocean data streams "
+    "from (default: the committed config-train-ocn.yaml).",
+)
 args = ap.parse_args()
 
 D = pathlib.Path(__file__).resolve().parent
-with open(D / "config-train-atm.yaml") as f:
+ATM_SRC = pathlib.Path(args.atm_config or D / "config-train-atm.yaml")
+OCN_SRC = pathlib.Path(args.ocn_config or D / "config-train-ocn.yaml")
+with open(ATM_SRC) as f:
     atm = yaml.safe_load(f)
-with open(D / "config-train-ocn.yaml") as f:
+with open(OCN_SRC) as f:
     ocn = yaml.safe_load(f)
+
+# --check compares against the committed coupled config, which is by definition
+# the one built from the committed components. Checking a config built from
+# somewhere else against it would report a spurious diff every time.
+if args.check and (args.atm_config or args.ocn_config):
+    raise SystemExit("--check compares the committed pair; drop --atm-config/--ocn-config")
 OUT = args.out or str(D / "config-train-cpl.yaml")
 
 atm_stepper = copy.deepcopy(atm["stepper"])
