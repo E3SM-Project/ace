@@ -298,6 +298,31 @@ DEP=()
 NAME=()
 [ -n "$RUNID" ] && NAME=(--job-name="$RUNID")
 
+# Drop the enclosing allocation's Slurm context before submitting.
+#
+# sbatch defaults to --export=ALL, and under scrontab this script runs *inside*
+# a Slurm job -- the sweeper is a `-q cron` job on a login node. Every SLURM_*
+# variable describing that one-node, zero-GPU cron allocation is then handed to
+# the 4-node training job, where srun reads them as though they were flags and
+# asks for a step that cannot be placed. srun does not fail; it retries
+#     srun: Requested nodes are busy
+# forever. On 2026-09-07 the only two jobs the sweeper ever submitted, E07-FT
+# (58033568) and E08-FT (58036509), each held 4 reserved nodes -- 7h41m and
+# 4h25m -- without starting python, while 85 interactive submissions were fine.
+#
+# --export=NONE is not the fix: the job needs the rest of this environment.
+# CONFIG_DIR, CONFIG_NAME, RUNID, CAMPAIGN_ROOT, FME_TORCHRUN and the WANDB_*
+# block all reach sbatch-train-<realm>.sh by inheritance. Scrub only SLURM_*.
+#
+# SLURM_CONF is the exception -- sbatch needs it to locate slurm.conf on hosts
+# that set it.
+for _v in $(compgen -v SLURM_ 2>/dev/null || true); do
+    if [ "$_v" != SLURM_CONF ]; then
+        unset "$_v"
+    fi
+done
+unset _v
+
 JOBID=$(sbatch --parsable --chdir="$EXP_DIR" \
     "${SIZE[@]}" "${DEP[@]}" "${MAIL[@]}" "${NAME[@]}" "${EXTRA[@]}" \
     "$HERE/sbatch-train-${REALM}.sh")
