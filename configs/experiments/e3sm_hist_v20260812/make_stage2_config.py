@@ -87,7 +87,7 @@ PARENT_ROOTS = [
 # stage-1 baseline measures the fine-tune rather than the ablation. E11 is
 # already here and plays the same role for the ocean.
 ELIGIBLE_EXPERIMENTS = {
-    "atm": {"E01", "E02", "E03", "E05", "E07", "E08"},
+    "atm": {"E01", "E02", "E03", "E05", "E06", "E07", "E08"},
     "ocn": {"E11", "E12", "E13"},
 }
 
