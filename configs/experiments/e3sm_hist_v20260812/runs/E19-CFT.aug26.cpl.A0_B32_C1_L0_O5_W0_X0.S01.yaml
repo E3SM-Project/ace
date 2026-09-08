@@ -410,7 +410,7 @@ stepper_training:
         crps_weight: 0.9
         energy_score_weight: 0.1
     parameter_init:
-      weights_path: /pscratch/sd/m/mahf708/aug26-ft/E11-FT.aug26.ocn.A0_B32_C0_L0_O5_W0_X0.S01/training_checkpoints/best_ckpt.tar
+      weights_path: /pscratch/sd/m/mahf708/aug26-ft/E11-FT.aug26.ocn.A0_B32_C0_L0_O5_W0_X0.S01/training_checkpoints/best_inference_ckpt.tar
   atmosphere:
     loss_weight: 1.0
     optimize_last_step_only: true
@@ -434,7 +434,7 @@ stepper_training:
         crps_weight: 0.9
         energy_score_weight: 0.1
     parameter_init:
-      weights_path: /pscratch/sd/m/mahf708/aug26-ft/E01-FT.aug26.atm.A0_B32_C0_L0_O5_W0_X0.S01/training_checkpoints/best_ckpt.tar
+      weights_path: /pscratch/sd/m/mahf708/aug26-ft/E02-FT.aug26.atm.A0_B32_C1_L0_O5_W0_X0.S01/training_checkpoints/best_inference_ckpt.tar
 stepper:
   sst_name: sst
   ocean_fraction_prediction:
@@ -789,6 +789,7 @@ stepper:
           - Uat10m
           - Vat10m
           - Tat2m
+          - global_mean_co2
           out_names:
           - PS
           - TS
