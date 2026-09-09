@@ -284,10 +284,12 @@ class OceanCorrectorConfig(CorrectorConfigABC):
             sif = state_copy["sea_ice_fraction_correction"]
             if isinstance(sif, dict) and "sea_ice_thickness_name" in sif:
                 thickness_name = sif.pop("sea_ice_thickness_name")
-                if thickness_name is not None:
-                    sif.setdefault("zero_where_ice_free_names", []).append(
-                        thickness_name
-                    )
+                names = sif.setdefault("zero_where_ice_free_names", [])
+                # The deprecated key and its replacement coexisted in configs
+                # written while the rename was in flight, so appending
+                # unconditionally duplicates the name on every such config.
+                if thickness_name is not None and thickness_name not in names:
+                    names.append(thickness_name)
         return state_copy
 
     def _get_corrector(

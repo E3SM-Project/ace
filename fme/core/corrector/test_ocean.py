@@ -254,6 +254,23 @@ def test_from_state_migrates_sea_ice_thickness_name():
     assert config.sea_ice_fraction_correction.zero_where_ice_free_names == ["HI"]
 
 
+def test_from_state_migrates_sea_ice_thickness_name_already_listed():
+    # The deprecated key and its replacement coexisted in the e3sm_hist ocean
+    # configs, so the migration must not append a name the list already has.
+    state = {
+        "sea_ice_fraction_correction": {
+            "sea_ice_fraction_name": "ocean_sea_ice_fraction",
+            "land_fraction_name": "land_fraction",
+            "sea_ice_thickness_name": "HI",
+            "zero_where_ice_free_names": ["HI"],
+            "remove_negative_ocean_fraction": False,
+        },
+    }
+    config = OceanCorrectorConfig.from_state(state)
+    assert config.sea_ice_fraction_correction is not None
+    assert config.sea_ice_fraction_correction.zero_where_ice_free_names == ["HI"]
+
+
 def test_from_state_migrates_sea_ice_thickness_name_none():
     state = {
         "sea_ice_fraction_correction": {
