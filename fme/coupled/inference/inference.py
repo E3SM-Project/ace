@@ -88,11 +88,10 @@ class CoupledInitialConditionConfig:
         n_ensemble_per_ic: int,
     ) -> CoupledPrognosticState:
         ocean = self.ocean.get_dataset(self.start_indices)
-        # time is a required variable but not necessarily a dimension
-        sample_dim_name = ocean.time.dims[0]
-        atmos = self.atmosphere.get_dataset().sel(
-            {sample_dim_name: ocean[sample_dim_name]}
-        )
+        # Apply the same start_indices selection to atmosphere to ensure
+        # matching samples even when time coordinates are not unique
+        # (e.g., when multiple ICs are aligned to the same forcing start date)
+        atmos = self.atmosphere.get_dataset(self.start_indices)
         return CoupledPrognosticState(
             ocean_data=get_initial_condition(
                 ds=ocean,
