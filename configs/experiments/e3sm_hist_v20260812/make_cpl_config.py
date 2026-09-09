@@ -227,7 +227,7 @@ def _epoch_schedule(period):
 
     Inference is not free at these rollout lengths. Measured 2026-09-07 from
     the coupled smoke run's window timings: ~2.45 s per coupled step at 16
-    initial conditions on 16 ranks. That is ~15 min for the 365-step
+    initial conditions on 16 ranks. That is ~15 min for the 364-step
     heldout_1990s block and ~30 min for the 730-step future_2040 one, before
     the diagnostics flush. Running the selection block every epoch would add
     ~22% to a 1.3 h epoch, or about 14 hours across 50 epochs; at a period of
@@ -312,7 +312,14 @@ cfg = {
             "name": "heldout_1990s",
             "weight": 1.0,
             "epochs": _epoch_schedule(SELECTION_PERIOD),
-            "n_coupled_steps": 365,  # 5 years on the ocean's 5-day axis
+            # 364, not 365: the inference loader sizes itself as
+            # ceil(n_coupled_steps / coupled_steps_in_memory) and every window
+            # it hands back is full width, so an odd count overshoots the
+            # rollout by one ocean step and the ENSO aggregator -- which only
+            # switches on above 1800 days -- raises KeyError on the last
+            # window. 364 * 5 d = 1820 d, still five years and still past the
+            # ENSO threshold.
+            "n_coupled_steps": 364,  # ~5 years on the ocean's 5-day axis
             "coupled_steps_in_memory": 2,
             "loader": {
                 "num_data_workers": 2,

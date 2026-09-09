@@ -12,7 +12,7 @@ inference:
   epochs:
     start: 4
     step: 5
-  n_coupled_steps: 365
+  n_coupled_steps: 364
   coupled_steps_in_memory: 2
   loader:
     num_data_workers: 2
