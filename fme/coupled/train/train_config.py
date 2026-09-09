@@ -185,6 +185,17 @@ class InlineInferenceConfig:
             raise ValueError(
                 f"InlineInferenceConfig weight must be non-negative, got {self.weight}"
             )
+        if self.n_coupled_steps % self.coupled_steps_in_memory:
+            # The inference loader sizes itself as ceil(n_coupled_steps /
+            # coupled_steps_in_memory) but every window it yields is full
+            # width, so an indivisible count runs the rollout past
+            # n_coupled_steps and off the end of the aggregators' time
+            # coordinate. fme.coupled.inference.evaluator makes the same
+            # check for the standalone entrypoint.
+            raise ValueError(
+                "n_coupled_steps must be divisible by coupled_steps_in_memory, "
+                f"got {self.n_coupled_steps} and {self.coupled_steps_in_memory}."
+            )
         dist = Distributed.get_instance()
         if self.loader.start_indices.n_initial_conditions % dist.world_size != 0:
             raise ValueError(

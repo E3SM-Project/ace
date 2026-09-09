@@ -66,7 +66,11 @@ def _make_validation_config(
 
 
 def _make_inference_config(
-    name: str | None = None, weight: float = 1.0, epochs: Slice | None = None
+    name: str | None = None,
+    weight: float = 1.0,
+    epochs: Slice | None = None,
+    n_coupled_steps: int = 1,
+    coupled_steps_in_memory: int = 1,
 ) -> InlineInferenceConfig:
     dataset = CoupledDatasetWithOptionalOceanConfig(
         atmosphere=XarrayDataConfig(data_path=""),
@@ -79,8 +83,8 @@ def _make_inference_config(
                 first=0, n_initial_conditions=1, interval=1
             ),
         ),
-        n_coupled_steps=1,
-        coupled_steps_in_memory=1,
+        n_coupled_steps=n_coupled_steps,
+        coupled_steps_in_memory=coupled_steps_in_memory,
         aggregator=InferenceEvaluatorAggregatorConfig(
             log_global_mean_time_series=False,
             log_global_mean_norm_time_series=False,
@@ -136,6 +140,20 @@ def test_negative_weight_raises():
 def test_zero_weight_accepted():
     config = _make_inference_config(weight=0.0)
     assert config.weight == 0.0
+
+
+def test_indivisible_coupled_steps_in_memory_raises():
+    # The inference loader sizes itself with ceil() but hands back full-width
+    # windows, so an indivisible count overshoots the rollout by up to
+    # coupled_steps_in_memory - 1 steps, past the end of the aggregators'
+    # time coordinate.
+    with pytest.raises(ValueError, match="divisible"):
+        _make_inference_config(n_coupled_steps=365, coupled_steps_in_memory=2)
+
+
+def test_divisible_coupled_steps_in_memory_accepted():
+    config = _make_inference_config(n_coupled_steps=364, coupled_steps_in_memory=2)
+    assert config.n_coupled_steps == 364
 
 
 def test_default_weight_is_one():
