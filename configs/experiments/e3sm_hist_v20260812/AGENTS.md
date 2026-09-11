@@ -27,6 +27,50 @@ history, kept so decisions do not have to be rediscovered.
 * **Never `git checkout` a tracked file here.** Several files carry uncommitted
   work at any given time; a checkout silently discards it.
 
+## 2026-09-11 — resumption: stage 2 resubmitted, pilot CFT queued
+
+The three interface fixes and the campaign plumbing are committed
+(9ba06e105, 8f61e6988, 5b951f243). Queue facts at submission time: the GPU
+regular QOS allows 48 h; 5477 jobs / 40k nodes pending in `gpu_regular`,
+1304 pending and 2 nodes *running* in `gpu_preempt` (preempt would
+starve); a 4-node 2 h job of ours waited 26 h. Stage-2 atmosphere epochs
+take 3.4-4.0 h at 4 nodes, so each run gets one segment sized to what it
+still needs, short ones kept short to backfill, and `run-train.sh` gained
+`FME_TIME_MIN` (8 h, one epoch plus setup) so Slurm can start a long run
+in a backfill hole and let the walltime requeue carry it.
+
+Submitted (regular, 4 nodes each, `FME_TIME_MIN=08:00:00`):
+
+| job | run | epochs | FME_TIME |
+|---|---|---|---|
+| 58197500 | E01-FT B16 S02 | 18/20 | 12 h |
+| 58197506 | E01-FT B16 S03 | 18/20 | 12 h |
+| 58197513 | E02-FT B16 S01 | 18/20 | 12 h |
+| 58197515 | E05-FT B16 S01 | 18/20 | 12 h |
+| 58197517 | E02-FT B16 S03 | 14/20 | 30 h |
+| 58197527 | E01-FT B16 S01 | 14/20 | 30 h |
+| 58197518 | E02-FT B16 S02 | 7/20 | 48 h |
+| 58197521 | E07-FT B16 | 9/20 | 48 h |
+| 58197529 | **E23-CFT** pilot: E01-FT B16 S01 x E12-FT B16 W1, 4 nodes (B16), all three fixes + EMA warm-up | 0/50 | 48 h |
+
+Not resubmitted: E01-FT B32 L1 and E08-FT (worst arms), E05-FT S02/S03,
+E03-FT, E06-FT (5-14 epochs in, second priority once these land).
+E01-FT B16 S01's wandb state "crashed" was the reservation-end SIGTERM
+after its epoch-14 checkpoint; it resumes cleanly.
+
+### 80 GB cards are not needed for stage 2
+
+`sbatch-train-atm.sh` pinned `-C gpu&hbm80g` ("all three configs require
+80 GB cards"): 256 nodes against 1408 with 40 GB. Measured on a 40 GB
+allocation: the E01-FT config at local batch 1 trains at a steady
+23.3-24.0 GB/GPU over 100 steps (2.1 s/step on one node). The eight
+queued FT jobs were switched in place (`scontrol update Features=gpu&a100`)
+and the batch script now requests `gpu&a100`. The coupled pilot config at local batch 1 (E23-CFT, 12 ranks on three 40 GB
+nodes) holds a flat 32.7 GB/GPU over 30 steps with no OOM; the atmosphere
+optimizes only its last step, so the 41-step outcome adds no activation
+memory. E23-CFT and `sbatch-train-cpl.sh` moved to `gpu&a100` too. The
+ocean script keeps `hbm80g`: not measured, and no ocean job is queued.
+
 ## 2026-09-10 — Antarctic coastline, the pole row, and an audit of the CFT setup
 
 Follow-up on the remaining artifacts in the fixed CFT maps

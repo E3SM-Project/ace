@@ -11,7 +11,10 @@
 
 #SBATCH -A e3sm_g
 #SBATCH -q regular
-#SBATCH -C gpu&hbm80g          # all three configs require 80 GB cards
+#SBATCH -C gpu&a100            # 40 GB cards are enough: the coupled fine-tune at
+                               # local batch 1 holds 32.7 GB/GPU for 30 steps
+                               # (measured 2026-09-11, E23-CFT config). The
+                               # hbm80g pool is 256 nodes against 1408.
 #SBATCH -J fme-hist-cpl
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=1

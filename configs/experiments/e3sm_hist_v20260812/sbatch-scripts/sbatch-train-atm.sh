@@ -16,7 +16,11 @@
 
 #SBATCH -A e3sm_g
 #SBATCH -q regular
-#SBATCH -C gpu&hbm80g          # all three configs require 80 GB cards
+#SBATCH -C gpu&a100            # 40 GB cards are enough: the stage-2 atmosphere
+                               # at local batch 1 peaks at 24 GB/GPU (measured
+                               # 2026-09-11, 100 steps, E01-FT config), and the
+                               # hbm80g pool is 256 nodes against 1408 -- most
+                               # of the regular-queue wait was that constraint.
 #SBATCH -J fme-hist-atm
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=1
