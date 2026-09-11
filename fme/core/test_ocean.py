@@ -1,5 +1,8 @@
+import dataclasses
 import datetime
 
+import dacite
+import pytest
 import torch
 
 from fme.core.ocean import (
@@ -72,3 +75,26 @@ def test_mixed_layer_temperature_tendency():
     )
     expected_result = (f_net + q_flux) / (5 * 3 * depth)
     torch.testing.assert_close(result, expected_result)
+
+
+def test_ocean_config_interpolate_weight_power_requires_interpolate():
+    with pytest.raises(ValueError, match="only used when interpolate"):
+        OceanConfig(
+            surface_temperature_name="sst",
+            ocean_fraction_name="ocean_fraction",
+            interpolate=False,
+            interpolate_weight_power=4.0,
+        )
+
+
+def test_ocean_config_interpolate_weight_power_round_trips():
+    config = OceanConfig(
+        surface_temperature_name="sst",
+        ocean_fraction_name="ocean_fraction",
+        interpolate=True,
+        interpolate_weight_power=4.0,
+    )
+    state = dataclasses.asdict(config)
+    assert dacite.from_dict(OceanConfig, state).interpolate_weight_power == 4.0
+    del state["interpolate_weight_power"]  # a checkpoint saved before the field
+    assert dacite.from_dict(OceanConfig, state).interpolate_weight_power == 1.0

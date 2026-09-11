@@ -98,13 +98,36 @@ class OceanConfig:
         interpolate: If True, interpolate between ML-predicted surface temperature and
             ocean-predicted surface temperature according to ocean_fraction. If False,
             only use ocean-predicted surface temperature where ocean_fraction>=0.5.
+        interpolate_weight_power: Exponent applied to ocean_fraction when
+            interpolating, so the prescribed temperature gets weight
+            ocean_fraction**power; 1 (the default) is plain linear interpolation.
+            An atmosphere trained by interpolating the data's grid-cell-mean
+            surface temperature learns to generate the cell mean itself in
+            partially ocean-covered cells. When it is later coupled to an ocean
+            that supplies a sea-surface temperature instead, linear
+            interpolation over-weights the SST in those cells by
+            w * (1 - w) * (SST - T_non_ocean); a power above 1 keeps the SST
+            fully prescribed over open water while trusting the generated cell
+            mean at the coast and ice edge.
         slab: If provided, use a slab ocean model to predict surface temperature.
     """
 
     surface_temperature_name: str
     ocean_fraction_name: str
     interpolate: bool = False
+    interpolate_weight_power: float = 1.0
     slab: SlabOceanConfig | None = None
+
+    def __post_init__(self):
+        if self.interpolate_weight_power <= 0:
+            raise ValueError(
+                "interpolate_weight_power must be positive, but it is "
+                f"{self.interpolate_weight_power}."
+            )
+        if self.interpolate_weight_power != 1.0 and not self.interpolate:
+            raise ValueError(
+                "interpolate_weight_power is only used when interpolate is True."
+            )
 
     def build(
         self,
@@ -128,6 +151,7 @@ class OceanConfig:
             mask_name=self.ocean_fraction_name,
             mask_value=1,
             interpolate=self.interpolate,
+            interpolate_weight_power=self.interpolate_weight_power,
         )
         surface_temperature: SurfaceTemperature
         if self.slab is None:

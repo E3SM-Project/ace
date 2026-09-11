@@ -57,3 +57,42 @@ def test_prescriber_interpolate():
     torch.testing.assert_close(prescribed_gen["a"], torch.ones(2, 4, 4))
     # check that the other variable is not changed
     torch.testing.assert_close(prescribed_gen["b"], torch.ones(2, 4, 4) * 4.0)
+
+
+def test_prescriber_interpolate_weight_power():
+    torch.manual_seed(0)
+    mask = torch.tensor([[0.0, 0.5, 1.0, -0.01]])
+    gen = {"sst": torch.rand(1, 4)}
+    target = {"sst": torch.rand(1, 4)}
+    prescriber = Prescriber(
+        prescribed_name="sst",
+        mask_name="mask",
+        mask_value=1,
+        interpolate=True,
+        interpolate_weight_power=2.0,
+    )
+    output = prescriber({"mask": mask}, gen, target)["sst"]
+    weight = torch.tensor([[0.0, 0.25, 1.0, 0.0]])
+    torch.testing.assert_close(
+        output, weight * target["sst"] + (1 - weight) * gen["sst"]
+    )
+    assert not torch.isnan(output).any()
+
+
+def test_prescriber_config_weight_power_requires_interpolate():
+    with pytest.raises(ValueError, match="only used when interpolate"):
+        PrescriberConfig(
+            prescribed_name="sst",
+            mask_name="mask",
+            mask_value=1,
+            interpolate=False,
+            interpolate_weight_power=2.0,
+        )
+    with pytest.raises(ValueError, match="positive"):
+        PrescriberConfig(
+            prescribed_name="sst",
+            mask_name="mask",
+            mask_value=1,
+            interpolate=True,
+            interpolate_weight_power=0.0,
+        )
