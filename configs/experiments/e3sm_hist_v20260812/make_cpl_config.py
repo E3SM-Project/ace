@@ -84,6 +84,41 @@ ap.add_argument(
     help="nodes for the coupled run; 4 GPUs each, local batch 1, so this sets "
     "the global batch and the inference IC count (default 8 -> batch 32)",
 )
+# Coupling-interface corrections, both diagnosed 2026-09-09 (AGENTS.md).
+# The ocean is trained on MPAS ocean-side fluxes, which vanish under sea ice;
+# the coupled stepper otherwise hands it the atmosphere's cell means (+150-250
+# W/m2 of longwave under ice). The atmosphere is trained interpolating EAM's
+# cell-mean TS by OCNFRAC and generates the cell mean at partial cells; the
+# coupled blend with SST then over-weights the SST there by w(1-w)(SST-T_land).
+ap.add_argument(
+    "--no-open-water-scaling",
+    action="store_true",
+    help="do not scale the atmosphere's heat and freshwater fluxes by the "
+    "ocean's open-water fraction before they force the ocean",
+)
+ap.add_argument(
+    "--ice-free-sst-threshold",
+    type=float,
+    default=275.15,
+    help="K; ocean cells warmer than this count as ice-free for the flux "
+    "scaling, which stops predicted ice over warm water from zeroing the "
+    "fluxes (99.8%% of E3SM ice area lies below 275.15 K)",
+)
+ap.add_argument(
+    "--no-flux-fraction",
+    action="store_true",
+    help="do not multiply the scaled fluxes by the static "
+    "atmosphere_flux_fraction field (ocean under Antarctic ice shelves "
+    "receives no atmosphere-ocean flux); the field lives in the landfrac5d "
+    "files and is data-only, never an ocean network input",
+)
+ap.add_argument(
+    "--ts-blend-power",
+    type=float,
+    default=8.0,
+    help="exponent on OCNFRAC in the atmosphere's TS prescription "
+    "(interpolate_weight_power); 1 is the uncorrected linear blend",
+)
 ap.add_argument(
     "--ocn-config",
     default=None,
@@ -104,11 +139,26 @@ with open(OCN_SRC) as f:
 # the one built from the committed components. Checking a config built from
 # somewhere else against it would report a spurious diff every time.
 if args.check and (args.atm_config or args.ocn_config):
-    raise SystemExit("--check compares the committed pair; drop --atm-config/--ocn-config")
+    raise SystemExit(
+        "--check compares the committed pair; drop --atm-config/--ocn-config"
+    )
 OUT = args.out or str(D / "config-train-cpl.yaml")
 
 atm_stepper = copy.deepcopy(atm["stepper"])
 ocn_stepper = copy.deepcopy(ocn["stepper"])
+
+atm_ocean = atm_stepper["step"]["config"]["ocean"]
+if not atm_ocean.get("interpolate", False) and args.ts_blend_power != 1.0:
+    raise SystemExit("--ts-blend-power needs the atmosphere's ocean.interpolate")
+atm_ocean["interpolate_weight_power"] = args.ts_blend_power
+
+# Wind stress is left unscaled: MPAS's stress under ice matches the
+# atmosphere's (ice-ocean stress ~ air-sea stress in the data); everything
+# else the atmosphere hands the ocean is a heat or freshwater flux.
+_ocn_step = ocn_stepper["step"]["config"]
+scaled_flux_names = [
+    n for n in _ocn_step["next_step_forcing_names"] if n not in ("TAUX", "TAUY")
+]
 
 # The atmosphere's normalization is taken from config-train-atm.yaml verbatim.
 # The piControl stats this used to point at came in coupled_atmosphere and
@@ -241,6 +291,7 @@ def _epoch_schedule(period):
         )
     return {"start": period - 1, "step": period}
 
+
 # Initial conditions, taken verbatim from the stage-2 generator so stage 3 makes
 # the same claim stage 2 makes.
 #
@@ -299,11 +350,36 @@ cfg = {
     "experiment_dir": "/pscratch/sd/m/mahf708/fme-output/hist-cpl",
     "save_checkpoint": True,
     "validate_using_ema": True,
-    "ema": {"decay": 0.9995, "faster_decay_at_start": False},
+    # faster_decay_at_start: with 205 steps per epoch, a fixed 0.9995 decay
+    # leaves the EMA holding 0.9995**N of the *initial* weights -- 0.65 at
+    # epoch 4, 0.14 at epoch 19 -- so every validation and inference metric
+    # of the aug26 CFTs was mostly the untrained pair (2026-09-10, AGENTS.md).
+    # The ramp (1+n)/(10+n) tracks training from the first steps.
+    "ema": {"decay": 0.9995, "faster_decay_at_start": True},
     "max_epochs": STAGE3_EPOCHS,
     # The maps go to disk as netCDF rather than to W&B; see AGGREGATOR.
     "save_per_epoch_diagnostics": True,
     "inference": [
+        {
+            # Early warning, not selection: one year from the same 1990s ICs,
+            # every epoch, weight 0. It is where the ice-loss mode and any
+            # interface error show first, and it costs a fifth of the
+            # selection block (2026-09-10, AGENTS.md).
+            "name": "first_year",
+            "weight": 0.0,
+            "epochs": {"start": 1, "step": 1},
+            "n_coupled_steps": 73,
+            "coupled_steps_in_memory": 1,
+            "loader": {
+                "num_data_workers": 2,
+                "dataset": {
+                    "ocean": strip_subset(ocn_inf),
+                    "atmosphere": atmos(keep_subset=False),
+                },
+                "start_indices": {"times": IC},
+            },
+            "aggregator": AGGREGATOR,
+        },
         {
             # Selection. Every rollout starts and ends inside the 1990-2000 gap
             # the training windows leave open: the latest IC is 1994-12-27 and
@@ -448,6 +524,25 @@ cfg = {
             "land_fraction_name": "LANDFRAC",
             "sea_ice_fraction_name_in_atmosphere": "ICEFRAC",
         },
+        **(
+            {}
+            if args.no_open_water_scaling
+            else {
+                "open_water_flux_scaling": {
+                    "names": scaled_flux_names,
+                    "ice_free_sst_threshold": args.ice_free_sst_threshold,
+                    **(
+                        {}
+                        if args.no_flux_fraction
+                        else {
+                            "atmosphere_flux_fraction_name": (
+                                "atmosphere_flux_fraction"
+                            )
+                        }
+                    ),
+                }
+            }
+        ),
         "ocean": {"timedelta": "5D", "stepper": ocn_stepper},
         "atmosphere": {"timedelta": "6h", "stepper": atm_stepper},
     },

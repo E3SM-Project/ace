@@ -38,6 +38,7 @@
 # one-off -- a short test run, say -- without editing anything:
 #
 #     FME_QOS=debug FME_TIME=00:30:00 ./run-train.sh atm
+#     FME_TIME=48:00:00 FME_TIME_MIN=08:00:00 ./run-train.sh atm <runid>   # backfill-friendly
 #
 # Prefer these to Slurm's own SBATCH_QOS / SBATCH_TIMELIMIT: those are input
 # environment variables, so `VAR=x` on a line of its own sets a shell variable
@@ -273,6 +274,13 @@ fi
 EXTRA=()
 [ -n "${FME_QOS:-}" ]  && { EXTRA+=(--qos="$FME_QOS");   echo "qos: $FME_QOS" >&2; }
 [ -n "${FME_TIME:-}" ] && { EXTRA+=(--time="$FME_TIME"); echo "walltime: $FME_TIME" >&2; }
+# FME_TIME_MIN lets Slurm start the job in a backfill hole shorter than
+# FME_TIME, with the limit reduced to fit; the walltime requeue in the batch
+# script then carries the run on. With a 5000-job regular backlog (2026-09-11)
+# a 4-node job waited 26 h for its full slot, so a long fine-tune should offer
+# a minimum it can make progress in (at least one epoch plus the ~25 min
+# dataset setup: 8 h for the atmosphere).
+[ -n "${FME_TIME_MIN:-}" ] && { EXTRA+=(--time-min="$FME_TIME_MIN"); echo "walltime-min: $FME_TIME_MIN" >&2; }
 
 echo "staged config: $CONFIG_DIR/$CONFIG_NAME" >&2
 [ -n "$RUNID" ] && echo "runid: $RUNID -> ${CAMPAIGN_ROOT}/${RUNID}" >&2

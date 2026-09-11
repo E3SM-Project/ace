@@ -3,16 +3,114 @@ save_checkpoint: true
 validate_using_ema: true
 ema:
   decay: 0.9995
-  faster_decay_at_start: false
+  faster_decay_at_start: true
 max_epochs: 50
 save_per_epoch_diagnostics: true
 inference:
+- name: first_year
+  weight: 0.0
+  epochs:
+    start: 1
+    step: 1
+  n_coupled_steps: 73
+  coupled_steps_in_memory: 1
+  loader:
+    num_data_workers: 2
+    dataset:
+      ocean:
+        merge:
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
+          file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDepthCoarsening5D.*.remapped.nc
+          mask_and_scale: true
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
+          file_pattern: v3.LR.historical_0101.aigo.mpaso.hist.am.fmeDerivedFields5D.*.remapped.nc
+          mask_and_scale: true
+          rename:
+            windStressZonal: TAUX
+            windStressMeridional: TAUY
+            shortWaveHeatFlux: FSNS
+            longWaveHeatFluxDown: FLDS
+            longWaveHeatFluxUp: FLUS
+            latentHeatFlux: LHFLX
+            sensibleHeatFlux: SHFLX
+            snowFlux: frozen_precipitation_rate
+          overwrite:
+            multiply_scalar:
+              TAUX: -1.0
+              TAUY: -1.0
+              FLUS: -1.0
+              LHFLX: -1.0
+              SHFLX: -1.0
+            add_scalar:
+              sst: 273.15
+          combine:
+            surface_precipitation_rate:
+              rainFlux: 1.0
+              frozen_precipitation_rate: 1.0
+        - data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
+          file_pattern: v3.LR.historical_0101.aigo.mpassi.hist.am.fmeSeaiceDerivedFields5D.*.remapped.nc
+          mask_and_scale: true
+          rename:
+            iceAreaTotal: ocean_sea_ice_fraction
+        - data_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/landfrac5d
+          file_pattern: landfrac5d.*.nc
+      atmosphere:
+        data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
+        file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
+        rename:
+          PRECT: surface_precipitation_rate
+          PRECST: frozen_precipitation_rate
+          co2vmr: global_mean_co2
+        reference_pressure_name: P0
+        overwrite:
+          multiply_scalar:
+            surface_precipitation_rate: 1000.0
+            frozen_precipitation_rate: 1000.0
+    start_indices:
+      times:
+      - '1990-01-01T00:00:00'
+      - '1990-03-02T00:00:00'
+      - '1990-04-26T00:00:00'
+      - '1990-06-25T00:00:00'
+      - '1990-08-24T00:00:00'
+      - '1990-10-23T00:00:00'
+      - '1990-12-17T00:00:00'
+      - '1991-02-15T00:00:00'
+      - '1991-04-16T00:00:00'
+      - '1991-06-15T00:00:00'
+      - '1991-08-09T00:00:00'
+      - '1991-10-08T00:00:00'
+      - '1991-12-07T00:00:00'
+      - '1992-02-05T00:00:00'
+      - '1992-04-01T00:00:00'
+      - '1992-05-31T00:00:00'
+      - '1992-07-30T00:00:00'
+      - '1992-09-28T00:00:00'
+      - '1992-11-22T00:00:00'
+      - '1993-01-21T00:00:00'
+      - '1993-03-22T00:00:00'
+      - '1993-05-21T00:00:00'
+      - '1993-07-15T00:00:00'
+      - '1993-09-13T00:00:00'
+      - '1993-11-12T00:00:00'
+      - '1994-01-11T00:00:00'
+      - '1994-03-07T00:00:00'
+      - '1994-05-06T00:00:00'
+      - '1994-07-05T00:00:00'
+      - '1994-09-03T00:00:00'
+      - '1994-10-28T00:00:00'
+      - '1994-12-27T00:00:00'
+  aggregator:
+    log_zonal_mean_images: false
+    log_video: false
+    log_seasonal_means: false
+    log_histograms: false
 - name: heldout_1990s
   weight: 1.0
   epochs:
     start: 4
     step: 5
-  n_coupled_steps: 365
+  n_coupled_steps: 364
   coupled_steps_in_memory: 2
   loader:
     num_data_workers: 2
@@ -469,6 +567,17 @@ stepper:
     sea_ice_fraction_name: ocean_sea_ice_fraction
     land_fraction_name: LANDFRAC
     sea_ice_fraction_name_in_atmosphere: ICEFRAC
+  open_water_flux_scaling:
+    names:
+    - surface_precipitation_rate
+    - frozen_precipitation_rate
+    - FLUS
+    - FLDS
+    - FSNS
+    - LHFLX
+    - SHFLX
+    ice_free_sst_threshold: 275.15
+    atmosphere_flux_fraction_name: atmosphere_flux_fraction
   ocean:
     timedelta: 5D
     stepper:
@@ -752,6 +861,7 @@ stepper:
             surface_temperature_name: TS
             ocean_fraction_name: OCNFRAC
             interpolate: true
+            interpolate_weight_power: 8.0
           corrector:
             conserve_dry_air: true
             moisture_budget_correction: advection_and_precipitation

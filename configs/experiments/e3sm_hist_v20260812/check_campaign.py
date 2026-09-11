@@ -27,6 +27,7 @@ import os
 import pathlib
 import sys
 
+import xarray as xr
 import yaml
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -53,7 +54,11 @@ WANDB = {"project": "SamudrACE-E3SMv3", "entity": "e3sm-aig"}
 # enabled and only their plotting is turned off, via the `report_plot` check
 # further down.
 IMAGE_METRICS_OFF = (
-    "zonal_mean", "video", "trend", "seasonal", "near_zero_fraction",
+    "zonal_mean",
+    "video",
+    "trend",
+    "seasonal",
+    "near_zero_fraction",
     "enso_coefficient",
 )
 ONE_STEP_IMAGE_METRICS_OFF = ("snapshot", "mean_map")
@@ -64,9 +69,16 @@ UPLOAD_METRICS_OFF = ("ipo_index",)
 # members. dacite picks a union member by shape, so a config using these parses
 # fine, warns once, and silently turns the 2D metrics back on.
 LEGACY_AGGREGATOR_FIELDS = (
-    "log_zonal_mean_images", "log_video", "log_extended_video",
-    "log_seasonal_means", "log_histograms", "log_snapshots", "log_mean_maps",
-    "log_nino34_index", "log_ipo_index", "log_global_mean_time_series",
+    "log_zonal_mean_images",
+    "log_video",
+    "log_extended_video",
+    "log_seasonal_means",
+    "log_histograms",
+    "log_snapshots",
+    "log_mean_maps",
+    "log_nino34_index",
+    "log_ipo_index",
+    "log_global_mean_time_series",
 )
 
 
@@ -146,10 +158,81 @@ def check_selection_in_sample(d: dict, realm: str, ocean: str) -> list[str]:
     return bad
 
 
+def check_coupled(path: pathlib.Path, d: dict) -> list[str]:
+    """Stage-3 (-CFT) configs: the two coupling-interface corrections of
+    2026-09-09 must be present (see AGENTS.md), and both parents must be
+    stepper checkpoints selected on rollout skill.
+    """
+    bad: list[str] = []
+    st = d["stepper"]
+    ocn_step = st["ocean"]["stepper"]["step"]["config"]
+    atm_step = st["atmosphere"]["stepper"]["step"]["config"]
+    scaling = st.get("open_water_flux_scaling")
+    if scaling is None:
+        bad.append(
+            "no stepper.open_water_flux_scaling: the ocean would receive "
+            "cell-mean fluxes it was never trained on under sea ice"
+        )
+    else:
+        want = [
+            n for n in ocn_step["next_step_forcing_names"] if n not in ("TAUX", "TAUY")
+        ]
+        if sorted(scaling.get("names", [])) != sorted(want):
+            bad.append(
+                f"open_water_flux_scaling.names {scaling.get('names')} != "
+                f"heat/freshwater next-step forcings {want}"
+            )
+        if not (270 < float(scaling.get("ice_free_sst_threshold", 0)) < 280):
+            bad.append(
+                "open_water_flux_scaling.ice_free_sst_threshold should be a "
+                "kelvin SST near freezing (275.15)"
+            )
+        afx = scaling.get("atmosphere_flux_fraction_name")
+        if afx is None:
+            bad.append(
+                "no atmosphere_flux_fraction_name: the ocean under Antarctic ice "
+                "shelves would receive the atmosphere's fluxes"
+            )
+        else:
+            members = d["train_loader"]["dataset"]["concat"][0]["ocean"]["merge"]
+            for m in members:
+                if "landfrac" not in m.get("file_pattern", ""):
+                    continue
+                sample = sorted(
+                    glob.glob(os.path.join(m["data_path"], m["file_pattern"]))
+                )
+                if sample and afx not in xr.open_dataset(sample[0]).data_vars:
+                    bad.append(f"{afx} missing from {sample[0]}")
+    ocean = atm_step.get("ocean") or {}
+    if not ocean.get("interpolate"):
+        bad.append("atmosphere ocean.interpolate must be true")
+    if float(ocean.get("interpolate_weight_power", 1.0)) <= 1.0:
+        bad.append(
+            "atmosphere ocean.interpolate_weight_power must exceed 1: the "
+            "linear blend over-weights SST at partial-ocean cells"
+        )
+    for realm in ("ocean", "atmosphere"):
+        wp = (
+            d["stepper_training"][realm]
+            .get("parameter_init", {})
+            .get("weights_path", "")
+        )
+        if not wp.endswith("best_inference_ckpt.tar"):
+            bad.append(
+                f"{realm} parameter_init should be a parent "
+                f"best_inference_ckpt.tar, got {wp!r}"
+            )
+        elif not os.path.exists(wp):
+            bad.append(f"{realm} parent checkpoint missing: {wp}")
+    return bad
+
+
 def check(path: pathlib.Path) -> list[str]:
     """Return a list of complaints about one run config, empty if it is sound."""
     bad: list[str] = []
     d = yaml.safe_load(path.read_text())
+    if "step" not in d["stepper"]:
+        return check_coupled(path, d)
     step = d["stepper"]["step"]["config"]
 
     try:
@@ -229,16 +312,36 @@ def check(path: pathlib.Path) -> list[str]:
         # on a subset and silently trains on a fraction of the record.
         want(ocean in ("O1", "O5"), f"unknown ocean cadence {ocean}")
         blob = path.read_text()
-        five = [s for s in ("fmeDepthCoarsening5D.", "fmeDerivedFields5D.",
-                            "fmeSeaiceDerivedFields5D.", "landfrac5d") if s in blob]
-        one = [s for s in ("fmeDepthCoarsening.", "fmeDerivedFields.",
-                           "fmeSeaiceDerivedFields.", "landfrac1d") if s in blob]
+        five = [
+            s
+            for s in (
+                "fmeDepthCoarsening5D.",
+                "fmeDerivedFields5D.",
+                "fmeSeaiceDerivedFields5D.",
+                "landfrac5d",
+            )
+            if s in blob
+        ]
+        one = [
+            s
+            for s in (
+                "fmeDepthCoarsening.",
+                "fmeDerivedFields.",
+                "fmeSeaiceDerivedFields.",
+                "landfrac1d",
+            )
+            if s in blob
+        ]
         if ocean == "O5":
-            want(len(five) == 4 and not one,
-                 f"O5 but streams are mixed: 5-day={five} 1-day={one}")
+            want(
+                len(five) == 4 and not one,
+                f"O5 but streams are mixed: 5-day={five} 1-day={one}",
+            )
         else:
-            want(len(one) == 4 and not five,
-                 f"O1 but streams are mixed: 1-day={one} 5-day={five}")
+            want(
+                len(one) == 4 and not five,
+                f"O1 but streams are mixed: 1-day={one} 5-day={five}",
+            )
     # Rollout length, in years rather than steps, so the atmosphere and both
     # ocean cadences are held to the same physical span. Inline inference is the
     # single most expensive optional thing these runs do -- it was 45% of an
@@ -488,9 +591,14 @@ def check_baselines() -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--dir", default=str(HERE / "runs"))
-    p.add_argument("--local-batch", action="append", default=[], metavar="REALM=N",
-                   help="samples per rank, matching whatever make_ablation_config.py "
-                        "was given (e.g. --local-batch atm=2)")
+    p.add_argument(
+        "--local-batch",
+        action="append",
+        default=[],
+        metavar="REALM=N",
+        help="samples per rank, matching whatever make_ablation_config.py "
+        "was given (e.g. --local-batch atm=2)",
+    )
     args = p.parse_args(argv)
 
     for spec in args.local_batch:

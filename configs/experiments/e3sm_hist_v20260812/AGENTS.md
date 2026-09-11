@@ -27,6 +27,245 @@ history, kept so decisions do not have to be rediscovered.
 * **Never `git checkout` a tracked file here.** Several files carry uncommitted
   work at any given time; a checkout silently discards it.
 
+## 2026-09-10 — Antarctic coastline, the pole row, and an audit of the CFT setup
+
+Follow-up on the remaining artifacts in the fixed CFT maps
+(`NOTES-cft-coupling-fixes.md` sections 3d and 2, fix 3).
+
+### Antarctic coastline: ocean under ice shelves, not land contamination
+
+Every Antarctic ocean cell adjacent to the coast has EAM land in it: 364
+partial cells and 129 cells where EAM is all land while MPAS is ocean. The
+uncoupled E11-FT ocean, fed EAM fluxes x (1 - ice), already carries +1.45 K
+and +3.75 K there; with MPAS's own fluxes -0.01 / -0.16. Two wrong fixes
+first: filling coastal fluxes from open-ocean neighbours made it worse
+(coastal sst rmse 0.68 -> 1.03), and scaling by the cell open-water fraction
+(1 - LANDFRAC)(1 - ice) fixed Antarctica but broke every other coast
+(-5.4 K). The flux-by-flux comparison settles it: MPAS FLDS at Antarctic
+coastal cells is 64 W/m2 against 209 for EAM x (1 - ice), and exactly zero
+in the 129 all-land cells, while every coast outside Antarctica agrees to a
+few W/m2. That is ocean under floating ice shelves (MPAS-Ocean cavities):
+the atmosphere sees land, the ocean-side atmosphere flux is zero, and neither
+LANDFRAC nor the wet mask can see it. The remapped `iceAreaTotal` is per
+ocean area (EAM ICEFRAC 0.472 vs `osif*(1-LANDFRAC)` 0.459 at partial
+cells), so the fraction plumbing stands; the remapped fluxes are per ocean
+area including cavity ocean.
+
+Fix 3: a static `atmosphere_flux_fraction` field, the 1990-91 ratio of MPAS
+ocean-side FLDS to EAM FLDS x (1 - ice): 1.000 at all 44 540 ocean cells
+outside Antarctica, below 0.9 in 1090 cells, all Antarctic. `make_landfrac_ocn.py`
+derives and writes it (`--flux-fraction-years`), the 126 `landfrac5d` files
+on scratch were augmented in place (the CFS copy still needs
+`stage-shared-data.sh`), and
+`OpenWaterFluxScalingConfig.atmosphere_flux_fraction_name` multiplies it into
+the flux scaling as a data-only field the ocean network never sees.
+`make_cpl_config.py` emits it (`--no-flux-fraction` to opt out) and
+`check_campaign.py` asserts the field exists in the data. Uncoupled ocean
+with EAM x (1 - ice) x fraction, Antarctic cells: coastal partial -0.18 K,
+ice-shelf cells -0.14, interior partial -0.04; global sst rmse 0.41 -> 0.28,
+polar ice rmse 0.041 -> 0.016. In the raw coupled rollout (all three
+fixes, no training) the Antarctic coastal cells go +1.57 -> -0.38 K, the
+polar TS rmse 3.32 -> 1.69 and the global TS rmse 1.87 -> 0.97: the
+coastal warm ring was feeding the polar atmosphere.
+
+### The -90 row is the atmosphere's, not the coupling's
+
+The uncoupled E01-FT atmosphere with TS prescribed from EAM
+(`$PSCRATCH/cft-diag/atm-ctrl`, 1 year, 2 ICs) has TS bias +9.6 / +6.7 /
++2.7 K in the three southernmost rows and -2.6 K at 89.5 N; coupled it is
++4.2 K. It is seasonal: near zero in austral summer/autumn, +23/+31/+31 K
+at 89.5 S in June-August, for both ICs, and absent in the first two months
+of either the stage-1 E01 or E01-FT -- the model loses the polar-night
+cooling over the plateau after months of rollout, in every variable (PS
++884 Pa annual mean). Parent-specific: the wandb heldout TS map of E01-FT B32 (the CFT parent)
+has the red pole rows, E01-FT B16 S01 does not. A stage-1/2 item for the
+atmosphere model, not stage 3; the pole rows stay unmasked in all
+diagnostics. The uncoupled atmosphere has no coastal TS strip
+(-0.3 K at Antarctic coastal cells).
+
+### Audit of the CFT config against early results
+
+* **EMA lag.** `ema: {decay: 0.9995, faster_decay_at_start: false}` with 205
+  steps/epoch: validation and inline inference use EMA weights that still
+  hold 0.9995^N of the initial weights -- 0.90 at epoch 1, 0.65 at epoch 4
+  (E18's first inference), 0.40 at epoch 9, 0.14 at epoch 19. Early-epoch
+  metrics are mostly the untrained model and `best_inference_ckpt` is chosen
+  on lagged weights. Use `faster_decay_at_start: true` (stage-2 parents used
+  decay 0.999). A second full-config test with it (`cft-full-fixed-ema`) is
+  in section 3c of the note. Its epoch 1 (all three fixes, EMA tracking
+  training): sst rmse 0.49, polar ice rmse 0.091, polar TS rmse 1.06,
+  Antarctic coastal sst -0.02 K, val sst 0.38 / ice 0.022 -- vs E18 at epoch
+  19: 0.98 / 0.329 / 4.16 / +0.74, val at epoch 1: 2.38 / 0.181. The -90 TS
+  rows read +0.2 K in this run.
+* `n_ensemble: 2` on the ocean is 2x ocean cost for nothing (Samudra is
+  deterministic; EXPERIMENTS.md already says so).
+* `use_gradient_accumulation: true` severs the cross-realm gradient
+  (2026-08-25 note), so the CFT cannot learn to compensate an interface
+  error; the interface has to be right by construction.
+* First inference at epoch 4 then every 5: with the EMA lag, nothing
+  informative before ~1 GPU-day. Add the cheap 1-year 16-IC block every
+  epoch.
+
+## 2026-09-09 — the CFT polar/coastal biases are a flux-side mismatch, not fraction bookkeeping
+
+The `-CFT` runs (E18–E22) show large time-mean biases at coastlines and over
+both polar oceans that E01-FT / E11-FT do not. E18-CFT at epoch 19 vs the
+uncoupled FT runs (heldout_1990s time-mean RMSE): TS 1.37 vs 0.37 K, sst 0.70
+vs 0.11 K, `ocean_sea_ice_fraction` 0.082 vs 0.0025. The ice bias map is a
+wholesale loss of the ice pack in both hemispheres, with a matching warm TS
+and FLDS bias over the ice zones.
+
+### What is right
+
+The `fme/coupled` fraction plumbing was checked against the data and is
+consistent: coupled-derived ICEFRAC = `iceAreaTotal * (1 - LANDFRAC)` agrees
+with EAM's ICEFRAC to a mean |diff| of 0.007; OCNFRAC to 0.007. The EAM and
+MPAS wet masks disagree in 4692 coastal cells (0.56% of ocean area, 17 with
+LANDFRAC < 0.5), so ~950 cells per step lose their SST prescription — real
+but small. Open-ocean `sst + 273.15` matches EAM TS to 0.08 K. Wind stress
+and precipitation from the atmosphere match the MPAS-side values.
+
+### What is wrong: the ocean's flux forcings change *side* at coupling time
+
+`config-train-ocn.yaml` takes FLDS/FLUS/FSNS/LHFLX/SHFLX from
+`fmeDerivedFields5D` — the MPAS-O side. Those are fluxes through the ice-free
+sea surface per ocean cell, so under full ice cover they are ~0 (noted in
+NOTES-historical-stats.md as the source of the bimodal LW statistics). The
+coupled stepper averages the ACE atmosphere's cell-mean outputs over the
+ocean window and hands them over unchanged. Measured on 1990-01 (5-day EAM
+means vs MPAS, atmosphere sign convention):
+
+| cells | FLDS atm−ocn | FLUS atm−ocn | FSNS | LHFLX rms |
+|---|---|---|---|---|
+| open ocean | −0.1 | +0.1 | +5.7 | 20 |
+| coast (0.05<OCNFRAC<0.95) | +3.4 | −1.0 | −12.6 | 43 |
+| ice edge | **+150** | **+177** | +20 | 9 |
+| full ice | **+169** | **+207** | +0.8 | 1.3 |
+
+170–250 W/m² is 1–1.5 std of the ocean's normalizer for those channels. The
+upstream CM4 baselines avoid this by training the ocean on the atmosphere's
+own 5-daily surface fluxes (`cm4-piControl-atmosphere-5daily-sfc-only`).
+
+### The second mismatch, on the atmosphere side: TS at partial cells (fixed 2026-09-09 evening)
+
+The atmosphere's `ocean: {interpolate: true}` prescribes
+`TS = w * target + (1 - w) * gen` with `w = OCNFRAC`. In E01/E01-FT the
+target is EAM's **cell-mean** TS, so at every cell with `w < 1` the network
+learned `gen ≈ TS_cell` (the output has to equal TS_cell whatever `w` is). In
+the coupled run the target becomes MPAS **SST**, and the same blend gives
+`w * SST + (1 - w) * TS_cell`, i.e. an error of
+
+    w (1 - w) (SST - T_nonocean)
+
+which is zero over open water and land and peaks at half-ocean cells: with
+SST at -1.8 degC over -20 degC ice or land that is ~4.5 K, warm. Measured
+mean TS bias at polar, MPAS-wet, partial-land cells: **+4.4 K** in the raw
+pair with the flux fix, **+4.2 K** in E18-CFT at epoch 19 -- the CFT never
+learned it away. Open polar water sits at +0.1 / +0.5 K. The warm strip along
+the Antarctic and Arctic coasts in every coupled TS bias map is this term.
+
+Fix, in `fme/core/ocean.py` + `fme/core/prescriber.py`:
+`OceanConfig.interpolate_weight_power` (default 1.0, old behaviour). The
+prescription weight becomes `OCNFRAC**p` while the network input stays
+`OCNFRAC`; error becomes `w**p (1 - w)(SST - T_nonocean)`, open water stays
+fully prescribed. Set through the CFT config (the generator's
+`--ts-blend-power`, default 8) or `atmosphere_stepper_override` for
+standalone inference; E01-FT is not retrained. Checkpoints without the field
+load with 1.0.
+
+Sweep on the raw pair with the flux fix (1-year rollouts, 2 ICs, first ~5
+months): TS bias at polar partial cells +4.4 / +3.9 / +2.9 / +2.3 / +1.9 K
+for p = 1 / 2 / 4 / 8 / 16, global TS rmse 1.65 -> 1.48, open-ocean sst rmse
+unchanged (0.79-0.91). Monotone as derived; the residual is the network's own
+error where `w` is near 1 and its training loss weight `1 - w` was small.
+
+### Isolation (uncoupled E11-FT ocean, 4 ICs × 365 steps, `$PSCRATCH/cft-diag`)
+
+| forcing | sst bias / rmse (K) | polar ice rmse | ice area pred/target, month 60 |
+|---|---|---|---|
+| MPAS ocean-side (control) | −0.02 / 0.12 | 0.007 | 1.00 |
+| EAM 5-day cell means | **+1.15 / 1.47** | **0.455** | **0.41** (0.23 at month 1) |
+| EAM × (1 − iceAreaTotal) | +0.05 / 0.41 | 0.041 | 1.00 |
+| same, ice lagged one step | +0.05 / 0.41 | 0.041 | 1.01 |
+
+No coupling code involved. The residual coastal RMSE (0.68 vs 0.18 K) is
+the land-contaminated cell mean, which no scaling can remove.
+
+### Fix, confined to `fme/coupled`
+
+`CoupledStepperConfig.open_water_flux_scaling: OpenWaterFluxScalingConfig`
+(`names`, `ice_free_sst_threshold`) multiplies the listed atmosphere-to-ocean forcings by the
+ice-free fraction of the sea surface, computed from the ocean's own sea ice
+fraction at the start of the coupled step (`ocean_fraction /
+sea_surface_fraction`, so it works for either registered ice-fraction
+convention). Requires `ocean_fraction_prediction`. Old checkpoints load with
+it off. Also threaded through `StandaloneComponentCheckpointsConfig`.
+
+Coupled validation from the untouched E01-FT + E11-FT B32 checkpoints
+(`evaluate_before_training`, 2 coupled steps, 1990 val subset):
+
+| | sst rmse | ice frac rmse | ice volume | TS |
+|---|---|---|---|---|
+| unscaled (= E18-CFT epoch 0: 2.88 / 0.199) | 2.93 | 0.201 | 0.290 | 1.002 |
+| scaled | **0.50** | **0.028** | **0.050** | 1.004 |
+
+E18-CFT needed ~3000 steps to bring sst below 1.1.
+
+### The feedback the pure scaling opens, and the guard that closes it
+
+In a raw 1-year coupled rollout (no fine-tuning, 2 ICs) the never-coupled
+pair is unstable in mid-latitudes with or without scaling. With pure scaling
+the cold SST blobs nucleate *spurious ice*, and predicted ice zeroes the
+fluxes, which cools the water and grows the ice (ice area 4x target by month
+12, ice in the subtropics). `ice_free_sst_threshold` (required) treats the
+surface as ice-free for scaling wherever the ocean's own SST is above 2 degC
+(99.8% of E3SM ice area is below it). 1-year rollouts, 24 IC-months:
+
+| run | sst bias / rmse | polar ice rmse | open-ocean ice rmse | ice area m12 | polar TS rmse |
+|---|---|---|---|---|---|
+| raw pair | +1.58 / 3.86 | 0.569 | 0.017 | 0.02 | 8.96 |
+| raw + scaling | −1.28 / 4.82 | 0.202 | 0.191 | 4.11 | 4.23 |
+| raw + scaling + guard | **+0.04 / 0.87** | 0.199 | 0.019 | **1.01** | 3.89 |
+| 69 CFT steps, no scaling | −0.35 / 0.80 | 0.116 | 0.008 | 0.84 (losing ice) | 2.07 |
+| 69 CFT steps, unguarded scaling | +0.03 / 1.49 | 0.133 | 0.038 | 1.35 (two ice blobs) | 1.87 |
+| 46 CFT steps, guarded scaling | +0.08 / 1.06 | 0.188 | 0.011 | 0.87 | 2.74 |
+| **E18-CFT epoch 19** (20 campaign epochs, no fixes) | +0.56 / 0.98 | 0.329 | 0.014 | **0.25 at month 7** | 4.16 |
+
+The guarded raw pair, with zero fine-tuning, matches 69 steps of CFT on SST
+and keeps the ice pack, which the unscaled CFT is already losing. The
+unguarded option must not be used in a CFT. The guarded short CFT has the
+same 2-step validation as the unguarded one (sst 0.49, ice 0.028 at epoch
+1; the guard only acts where spurious ice would form) and no spurious ice in
+its rollout, but after 46 steps its ice area also drifts to 0.87 by month 12
+and its SST RMSE is not better than the unscaled 69-step arm. Two short,
+unequal-length CFTs on a 1-year rollout are not a converged comparison; the
+first epochs of a CFT perturb the ocean at lr 1e-4 regardless of forcing.
+The decisive evidence stays the uncoupled isolation, the 6-7x epoch-0
+validation gain, and the raw guarded rollout keeping ice at 1.01. Whether
+the CFT then converges to a better polar state than E18 is the open
+question a full-length guarded CFT answers.
+
+### Applied to the campaign configs (2026-09-09 evening)
+
+`make_cpl_config.py` now emits both corrections (`--ts-blend-power` 8,
+`--ice-free-sst-threshold` 275.15, `--no-open-water-scaling` to opt out);
+`config-train-cpl.yaml` is regenerated and `--check` is clean (it had also
+drifted on `n_coupled_steps` 365 vs 364). `regen_cft_configs.sh` rebuilds
+`runs/E18-E22-CFT` from their parents' `config.yaml` and
+`best_inference_ckpt.tar` through the generator; done. `check_campaign.py`
+gained a stage-3 branch (it used to die with `KeyError: 'step'` on any
+coupled config) that asserts both fixes and that the parents exist.
+TAUX/TAUY stay unscaled (ice-ocean stress ~ air-sea stress in the data).
+Rerun the CFTs from the FT checkpoints; nothing upstream changes. The
+full-config test (`$PSCRATCH/cft-diag/cft-full-fixed`: E18's config plus
+both fixes, 16 ranks at local batch 2) after **one epoch**, 16-IC 1-year
+inline inference: sst bias/rmse -0.07/0.76, polar ice bias/rmse
++0.055/0.147, open-ocean ice rmse 0.005, polar TS rmse 1.12, TS at polar
+partial cells +0.27 K -- against E18 at epoch 19: +0.56/0.98, -0.27/0.33,
+0.014, 4.16, +4.2. Its pre-training validation is sst 0.60 / ice 0.028 vs
+E18's 2.88 / 0.199. Details, the candidate ranking and the resumption plan
+are in `NOTES-cft-coupling-fixes.md`.
+
 ## 2026-08-29 (later) — E## rename, W3, the O1 cadence, and wandb
 
 ### Experiment ids renamed A##/O## -> E##
