@@ -187,6 +187,84 @@ class CoupledOceanFractionConfig:
         )
 
 
+@dataclasses.dataclass
+class OpenWaterFluxScalingConfig:
+    """
+    Configuration for scaling atmosphere-generated fluxes by the ocean's
+    open-water fraction before they are passed to the ocean as forcings.
+
+    Atmosphere surface fluxes are grid-cell means over open water, sea ice and
+    land alike, whereas an ocean model receives the atmosphere-ocean fluxes only
+    through the ice-free part of the sea surface. An ocean trained on such
+    ocean-side fluxes (e.g. MPAS-Ocean's, which vanish under full ice cover)
+    receives out-of-distribution forcing under sea ice when coupled to an
+    atmosphere that supplies cell means. Multiplying the named fluxes by the
+    ice-free fraction of the sea surface, taken from the ocean's own state at
+    the start of the coupled step, approximates the ocean-side flux.
+
+    Requires ``ocean_fraction_prediction`` to be configured, which identifies
+    the ocean's sea ice fraction and the land fraction.
+
+    Parameters:
+        names: Atmosphere-to-ocean forcing names to scale, typically the heat
+            and freshwater fluxes. Wind stress is usually left unscaled, as the
+            ice-ocean stress is comparable to the air-sea stress.
+        ice_free_sst_threshold: The sea surface is treated as ice-free (no
+            scaling) wherever the ocean's sea surface temperature at the start
+            of the coupled step exceeds this value, in the units of the ocean's
+            SST field. Required: without it a spurious sliver of predicted ice
+            over warm water suppresses the fluxes, cools the water and grows
+            more ice, and sea ice appears in the subtropics within months. In
+            E3SMv3 data 99.8% of sea ice area sits over SST below 2 degC, so
+            275.15 K is a safe value for an SST field in kelvin.
+        atmosphere_flux_fraction_name: Optional name of a static field in the
+            ocean forcing data giving the fraction of each ocean cell's
+            atmosphere-ocean flux that the ocean receives, multiplied into the
+            scaling. It is not an input of the ocean network. Use it where the
+            ocean has area that the atmosphere cannot see, e.g. ocean under
+            Antarctic ice shelves (in E3SMv3 the MPAS-Ocean-side fluxes are
+            zero there while the atmosphere's cell mean is not); the field is 1
+            everywhere else.
+    """
+
+    names: list[str]
+    ice_free_sst_threshold: float
+    atmosphere_flux_fraction_name: str | None = None
+
+    def __post_init__(self):
+        if len(self.names) == 0:
+            raise ValueError("OpenWaterFluxScalingConfig requires at least one name.")
+
+    def validate_forcing_names(self, atmosphere_to_ocean_forcing_names: Iterable[str]):
+        missing = set(self.names).difference(atmosphere_to_ocean_forcing_names)
+        if missing:
+            raise ValueError(
+                "OpenWaterFluxScalingConfig names must be ocean forcings that are "
+                f"atmosphere outputs, but {sorted(missing)} are not."
+            )
+
+    def validate_flux_fraction_name(self, ocean_stepper_names: Iterable[str]):
+        name = self.atmosphere_flux_fraction_name
+        if name is not None and name in ocean_stepper_names:
+            raise ValueError(
+                f"atmosphere_flux_fraction_name {name!r} is an input or output of "
+                "the ocean stepper; it must be a data-only static field."
+            )
+
+    def scale(
+        self,
+        forcings_from_atmosphere: TensorMapping,
+        open_water_fraction: torch.Tensor,
+    ) -> TensorDict:
+        """Return a copy of forcings_from_atmosphere with the configured names
+        multiplied by open_water_fraction.
+        """
+        scaled = dict(forcings_from_atmosphere)
+        for name in self.names:
+            scaled[name] = forcings_from_atmosphere[name] * open_water_fraction
+        return scaled
+
+
 def _load_stepper_weights_and_history_factory(
     stepper: Stepper,
 ) -> WeightsAndHistoryLoader:
@@ -270,6 +348,9 @@ class CoupledStepperConfig:
             ocean fraction to replace the ocean fraction variable specified in the
             atmosphere's OceanConfig. If the atmosphere uses the ocean fraction as
             an ML forcing, the generated ocean fraction is also passed as an input.
+        open_water_flux_scaling: (Optional) Configuration for scaling
+            atmosphere-generated fluxes by the ocean's open-water fraction before
+            they force the ocean. Requires ocean_fraction_prediction.
 
     """
 
@@ -277,6 +358,7 @@ class CoupledStepperConfig:
     atmosphere: ComponentConfig
     sst_name: str = "sst"
     ocean_fraction_prediction: CoupledOceanFractionConfig | None = None
+    open_water_flux_scaling: OpenWaterFluxScalingConfig | None = None
 
     def __post_init__(self):
         self._validate_component_configs()
@@ -301,6 +383,11 @@ class CoupledStepperConfig:
                 self.atmosphere.stepper.output_names
             )
         )
+        flux_fraction_name = self._atmosphere_flux_fraction_name
+        if flux_fraction_name is not None:
+            # data-only static field, loaded with the ocean forcings and consumed
+            # by the coupled stepper, never handed to the ocean network
+            self._ocean_forcing_exogenous_names.append(flux_fraction_name)
         unfiltered_atmosphere_forcing_names = list(
             self.atmosphere.stepper.input_only_names.difference(
                 self.ocean.stepper.output_names
@@ -367,6 +454,8 @@ class CoupledStepperConfig:
             self._all_ocean_names.append(
                 self.ocean_fraction_prediction.land_fraction_name
             )
+        if flux_fraction_name is not None:
+            self._all_ocean_names.append(flux_fraction_name)
 
         self._validate_atmosphere_to_ocean_coupling()
         self.validate_prescribed_prognostic_names()
@@ -494,6 +583,18 @@ class CoupledStepperConfig:
     def ocean_fraction_name(self) -> str:
         """Name of the ocean fraction field in the atmosphere data."""
         return self.atmosphere_ocean_config.ocean_fraction_name
+
+    @property
+    def _atmosphere_flux_fraction_name(self) -> str | None:
+        if self.open_water_flux_scaling is None:
+            return None
+        return self.open_water_flux_scaling.atmosphere_flux_fraction_name
+
+    @property
+    def open_water_flux_scaling_sst_threshold(self) -> float:
+        if self.open_water_flux_scaling is None:
+            raise RuntimeError("open_water_flux_scaling is not configured")
+        return self.open_water_flux_scaling.ice_free_sst_threshold
 
     @property
     def surface_temperature_name(self) -> str:
@@ -663,6 +764,20 @@ class CoupledStepperConfig:
             )
             self.ocean_fraction_prediction.validate_atmosphere_forcing_names(
                 self.atmosphere.stepper.input_only_names
+            )
+
+        # validate open_water_flux_scaling
+        if self.open_water_flux_scaling is not None:
+            if self.ocean_fraction_prediction is None:
+                raise ValueError(
+                    "open_water_flux_scaling requires ocean_fraction_prediction to "
+                    "be configured, to identify the ocean's sea ice fraction."
+                )
+            self.open_water_flux_scaling.validate_forcing_names(
+                atmosphere_to_ocean_forcing_names
+            )
+            self.open_water_flux_scaling.validate_flux_fraction_name(
+                self.ocean.stepper.all_names
             )
 
     def _get_ocean_data_requirements(self, n_forward_steps: int) -> DataRequirements:
@@ -1164,11 +1279,54 @@ class CoupledStepper:
         forcing_data.update(forcings_from_ocean)
         return forcing_data
 
+    def _get_open_water_fraction(
+        self,
+        ocean_ic: TensorMapping,
+        atmos_forcings: TensorMapping,
+    ) -> torch.Tensor:
+        """Ice-free fraction of the sea surface at the start of the coupled step,
+        from the ocean's own sea ice fraction and the land fraction.
+        """
+        ofrac_config = self._config.ocean_fraction_prediction
+        if ofrac_config is None:
+            raise RuntimeError(
+                "open water fraction requires ocean_fraction_prediction; "
+                "this should have been caught by config validation"
+            )
+        time_dim = self.ocean.TIME_DIM
+        sizes = [-1] * len(ocean_ic[ofrac_config.sea_ice_fraction_name].shape)
+        sizes[time_dim] = 1
+        land_frac = atmos_forcings[ofrac_config.land_fraction_name].mean(
+            time_dim, keepdim=True
+        )
+        ocean_data = ofrac_config.build_ocean_data(
+            forcings_from_ocean={
+                ofrac_config.sea_ice_fraction_name: ocean_ic[
+                    ofrac_config.sea_ice_fraction_name
+                ].expand(*sizes)
+            },
+            atmos_forcing_data={ofrac_config.land_fraction_name: land_frac},
+        )
+        sea_surface_fraction = ocean_data.sea_surface_fraction
+        open_water_fraction = torch.where(
+            sea_surface_fraction > 0,
+            ocean_data.ocean_fraction / sea_surface_fraction,
+            torch.zeros_like(sea_surface_fraction),
+        )
+        open_water_fraction = torch.clip(open_water_fraction, min=0, max=1)
+        sst = ocean_ic[self._config.sst_name].expand(*sizes)
+        return torch.where(
+            sst > self._config.open_water_flux_scaling_sst_threshold,
+            torch.ones_like(open_water_fraction),
+            open_water_fraction,
+        )
+
     def _get_ocean_forcings(
         self,
         ocean_data: TensorMapping,
         atmos_gen: TensorMapping,
         atmos_forcings: TensorMapping,
+        ocean_ic: TensorMapping,
     ) -> TensorDict:
         """
         Get the forcings for the ocean component.
@@ -1178,6 +1336,8 @@ class CoupledStepper:
                 steps.
             atmos_gen: Generated atmosphere data covering the ocean forward steps.
             atmos_forcings: Atmosphere forcing data covering the ocean forward steps.
+            ocean_ic: Ocean prognostic state at the start of the coupled step,
+                used for open-water flux scaling when configured.
         """
         time_dim = self.ocean.TIME_DIM
         # NOTE: only n_ic_timesteps = 1 is currently supported
@@ -1187,6 +1347,13 @@ class CoupledStepper:
         # Ocean-only exogenous forcings plus prescribed prognostic time series
         # (e.g. thetao_18) from the forcing window batch.
         forcing_data = {k: ocean_data[k] for k in self._ocean_forcing_window_names}
+        flux_fraction_name = self._config._atmosphere_flux_fraction_name
+        flux_fraction: torch.Tensor | None = None
+        if flux_fraction_name is not None:
+            # static, data-only: the ocean network never sees it
+            flux_fraction = torch.nan_to_num(
+                forcing_data.pop(flux_fraction_name).narrow(time_dim, 0, 1), nan=1.0
+            )
         # get time-averaged forcings from atmosphere
         forcings_from_atmosphere = {
             **{
@@ -1198,6 +1365,13 @@ class CoupledStepper:
                 for k in self._shared_forcing_exogenous_names
             },
         }
+        if self._config.open_water_flux_scaling is not None:
+            scaling = self._get_open_water_fraction(ocean_ic, atmos_forcings)
+            if flux_fraction is not None:
+                scaling = scaling * flux_fraction
+            forcings_from_atmosphere = self._config.open_water_flux_scaling.scale(
+                forcings_from_atmosphere, scaling
+            )
         # append or prepend nans depending on whether or not the forcing is a
         # "next step" forcing
         forcings_from_atmosphere = {
@@ -1305,6 +1479,7 @@ class CoupledStepper:
                     ocean_window.data,
                     atmos_gen,
                     atmos_data_forcings.data,
+                    ocean_ic_state.as_batch_data().data,
                 ),
                 time=ocean_window.time,
                 labels=ocean_window.labels,

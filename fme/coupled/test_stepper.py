@@ -53,6 +53,7 @@ from .stepper import (
     CoupledStepperConfig,
     CoupledTrainStepper,
     CoupledTrainStepperConfig,
+    OpenWaterFluxScalingConfig,
 )
 
 NZ = 3  # number of vertical interface levels in mock data from get_data
@@ -1641,7 +1642,7 @@ def test__get_ocean_forcings():
         "a_diag": atmos_gen["a_diag"].mean(dim=1),
     }
     new_ocean_forcings = coupler._get_ocean_forcings(
-        ocean_data, atmos_gen, atmos_forcings
+        ocean_data, atmos_gen, atmos_forcings, ocean_ic={}
     )
     assert new_ocean_forcings.keys() == expected_ocean_forcings.keys()
     # next step forcing
@@ -1658,6 +1659,212 @@ def test__get_ocean_forcings():
     torch.testing.assert_close(
         new_ocean_forcings["o_exog"], expected_ocean_forcings["o_exog"]
     )
+
+
+def _get_open_water_scaling_config(
+    open_water_flux_scaling: OpenWaterFluxScalingConfig | None,
+):
+    """Ocean receives two atmosphere fluxes (flux, stress) and predicts sea ice."""
+    config = get_stepper_config(
+        ocean_in_names=[
+            "land_fraction",
+            "flux",
+            "stress",
+            "sst",
+            "ocean_sea_ice_fraction",
+        ],
+        ocean_out_names=["sst", "ocean_sea_ice_fraction"],
+        atmosphere_in_names=["land_fraction", "ocean_frac", "sfc_temp"],
+        atmosphere_out_names=["flux", "stress", "sfc_temp"],
+        sst_name_in_ocean_data="sst",
+        sfc_temp_name_in_atmosphere_data="sfc_temp",
+        ocean_fraction_name="ocean_frac",
+        ocean_fraction_prediction=CoupledOceanFractionConfig(
+            sea_ice_fraction_name="ocean_sea_ice_fraction",
+            land_fraction_name="land_fraction",
+        ),
+    )
+    config.open_water_flux_scaling = open_water_flux_scaling
+    config.__post_init__()
+    return config
+
+
+def _get_coupler(config: CoupledStepperConfig) -> CoupledStepper:
+    vertical_coord = Mock(spec=CoupledVerticalCoordinate)
+    vertical_coord.atmosphere = NullVerticalCoordinate()
+    vertical_coord.ocean = NullVerticalCoordinate()
+    dataset_info = CoupledDatasetInfoBuilder(vcoord=vertical_coord).dataset_info
+    return config.get_stepper(dataset_info)
+
+
+def test__get_ocean_forcings_open_water_flux_scaling():
+    torch.manual_seed(0)
+    config = _get_open_water_scaling_config(
+        OpenWaterFluxScalingConfig(names=["flux"], ice_free_sst_threshold=275.0)
+    )
+    coupler = _get_coupler(config)
+    device = fme.get_device()
+    window_shape = (1, 2, N_LAT, N_LON)
+    land_fraction = torch.rand(1, 1, N_LAT, N_LON, device=device)
+    atmos_forcings = {"land_fraction": land_fraction.expand(*window_shape)}
+    atmos_gen = {
+        "flux": torch.rand(*window_shape, device=device),
+        "stress": torch.rand(*window_shape, device=device),
+    }
+    ocean_data = {"land_fraction": land_fraction.expand(*window_shape)}
+    ice = torch.rand(1, 1, N_LAT, N_LON, device=device)
+    ice[0, 0, 0, 0] = float("nan")  # masked ocean point, treated as ice-free
+    ocean_ic = {"ocean_sea_ice_fraction": ice, "sst": torch.full_like(ice, 271.0)}
+    new_ocean_forcings = coupler._get_ocean_forcings(
+        ocean_data, atmos_gen, atmos_forcings, ocean_ic
+    )
+    open_water = 1 - torch.nan_to_num(ice)
+    torch.testing.assert_close(
+        new_ocean_forcings["flux"][:, 1:],
+        atmos_gen["flux"].mean(dim=1, keepdim=True) * open_water,
+    )
+    # unlisted forcings are passed through unscaled
+    torch.testing.assert_close(
+        new_ocean_forcings["stress"][:, 1:],
+        atmos_gen["stress"].mean(dim=1, keepdim=True),
+    )
+    assert torch.all(new_ocean_forcings["flux"][:, 0].isnan())
+
+
+def test__get_ocean_forcings_open_water_scaling_ice_free_above_sst_threshold():
+    torch.manual_seed(0)
+    config = _get_open_water_scaling_config(
+        OpenWaterFluxScalingConfig(names=["flux"], ice_free_sst_threshold=275.0)
+    )
+    coupler = _get_coupler(config)
+    device = fme.get_device()
+    window_shape = (1, 2, N_LAT, N_LON)
+    land_fraction = torch.rand(1, 1, N_LAT, N_LON, device=device).expand(*window_shape)
+    atmos_gen = {
+        "flux": torch.rand(*window_shape, device=device),
+        "stress": torch.rand(*window_shape, device=device),
+    }
+    ice = torch.rand(1, 1, N_LAT, N_LON, device=device)
+    sst = torch.full_like(ice, 271.0)
+    sst[0, 0, :2] = 290.0  # warm water: ice there must not suppress the flux
+    ocean_ic = {"ocean_sea_ice_fraction": ice, "sst": sst}
+    new_ocean_forcings = coupler._get_ocean_forcings(
+        {"land_fraction": land_fraction},
+        atmos_gen,
+        {"land_fraction": land_fraction},
+        ocean_ic,
+    )
+    open_water = torch.where(sst > 275.0, torch.ones_like(ice), 1 - ice)
+    torch.testing.assert_close(
+        new_ocean_forcings["flux"][:, 1:],
+        atmos_gen["flux"].mean(dim=1, keepdim=True) * open_water,
+    )
+
+
+def test__get_ocean_forcings_open_water_scaling_with_flux_fraction():
+    torch.manual_seed(0)
+    config = _get_open_water_scaling_config(
+        OpenWaterFluxScalingConfig(
+            names=["flux"],
+            ice_free_sst_threshold=275.0,
+            atmosphere_flux_fraction_name="afx",
+        )
+    )
+    assert "afx" in config.ocean_forcing_window_names
+    assert (
+        "afx"
+        in config.get_evaluation_window_data_requirements(1).ocean_requirements.names
+    )
+    coupler = _get_coupler(config)
+    device = fme.get_device()
+    window_shape = (1, 2, N_LAT, N_LON)
+    land_fraction = torch.rand(1, 1, N_LAT, N_LON, device=device).expand(*window_shape)
+    afx = torch.rand(1, 1, N_LAT, N_LON, device=device)
+    afx[0, 0, 0, 0] = float("nan")  # masked point: no reduction
+    atmos_gen = {
+        "flux": torch.rand(*window_shape, device=device),
+        "stress": torch.rand(*window_shape, device=device),
+    }
+    ice = torch.rand(1, 1, N_LAT, N_LON, device=device)
+    ocean_ic = {"ocean_sea_ice_fraction": ice, "sst": torch.full_like(ice, 271.0)}
+    new_ocean_forcings = coupler._get_ocean_forcings(
+        {"land_fraction": land_fraction, "afx": afx.expand(*window_shape)},
+        atmos_gen,
+        {"land_fraction": land_fraction},
+        ocean_ic,
+    )
+    assert "afx" not in new_ocean_forcings  # never handed to the ocean network
+    scaling = (1 - ice) * torch.nan_to_num(afx, nan=1.0)
+    torch.testing.assert_close(
+        new_ocean_forcings["flux"][:, 1:],
+        atmos_gen["flux"].mean(dim=1, keepdim=True) * scaling,
+    )
+
+
+def test_open_water_flux_scaling_rejects_flux_fraction_that_is_an_ocean_input():
+    with pytest.raises(ValueError, match="data-only static field"):
+        _get_open_water_scaling_config(
+            OpenWaterFluxScalingConfig(
+                names=["flux"],
+                ice_free_sst_threshold=275.0,
+                atmosphere_flux_fraction_name="land_fraction",
+            )
+        )
+
+
+def test__get_ocean_forcings_without_open_water_scaling_is_unscaled():
+    torch.manual_seed(0)
+    coupler = _get_coupler(_get_open_water_scaling_config(None))
+    device = fme.get_device()
+    window_shape = (1, 2, N_LAT, N_LON)
+    land_fraction = torch.rand(1, 1, N_LAT, N_LON, device=device).expand(*window_shape)
+    atmos_gen = {
+        "flux": torch.rand(*window_shape, device=device),
+        "stress": torch.rand(*window_shape, device=device),
+    }
+    ocean_ic = {"ocean_sea_ice_fraction": torch.rand(1, 1, N_LAT, N_LON, device=device)}
+    new_ocean_forcings = coupler._get_ocean_forcings(
+        {"land_fraction": land_fraction},
+        atmos_gen,
+        {"land_fraction": land_fraction},
+        ocean_ic,
+    )
+    torch.testing.assert_close(
+        new_ocean_forcings["flux"][:, 1:], atmos_gen["flux"].mean(dim=1, keepdim=True)
+    )
+
+
+def test_open_water_flux_scaling_requires_ocean_fraction_prediction():
+    config = _get_open_water_scaling_config(None)
+    config.ocean_fraction_prediction = None
+    config.open_water_flux_scaling = OpenWaterFluxScalingConfig(
+        names=["flux"], ice_free_sst_threshold=275.0
+    )
+    with pytest.raises(ValueError, match="requires ocean_fraction_prediction"):
+        config.__post_init__()
+
+
+def test_open_water_flux_scaling_rejects_non_atmosphere_forcing_names():
+    with pytest.raises(ValueError, match="atmosphere outputs"):
+        _get_open_water_scaling_config(
+            OpenWaterFluxScalingConfig(
+                names=["flux", "land_fraction"], ice_free_sst_threshold=275.0
+            )
+        )
+
+
+def test_open_water_flux_scaling_config_round_trips_through_state():
+    config = _get_open_water_scaling_config(
+        OpenWaterFluxScalingConfig(names=["flux"], ice_free_sst_threshold=275.0)
+    )
+    restored = CoupledStepperConfig.from_state(config.get_state())
+    assert restored.open_water_flux_scaling == OpenWaterFluxScalingConfig(
+        names=["flux"], ice_free_sst_threshold=275.0
+    )
+    # checkpoints saved before the option existed load with it disabled
+    state = config.get_state()
+    del state["open_water_flux_scaling"]
+    assert CoupledStepperConfig.from_state(state).open_water_flux_scaling is None
 
 
 def test_ocean_forcing_window_names_include_prescribed_prognostics():
@@ -1798,7 +2005,7 @@ def test__get_ocean_forcings_includes_prescribed_prognostic_tensors():
     }
     atmos_forcings = {"exog": torch.rand(*atmos_shape, device=fme.get_device())}
     new_ocean_forcings = coupler._get_ocean_forcings(
-        ocean_data, atmos_gen, atmos_forcings
+        ocean_data, atmos_gen, atmos_forcings, ocean_ic={}
     )
     torch.testing.assert_close(new_ocean_forcings["thetao_18"], ocean_data["thetao_18"])
 

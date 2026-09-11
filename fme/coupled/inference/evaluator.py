@@ -37,6 +37,7 @@ from fme.coupled.stepper import (
     CoupledOceanFractionConfig,
     CoupledStepper,
     CoupledStepperConfig,
+    OpenWaterFluxScalingConfig,
     load_coupled_stepper,
 )
 
@@ -119,6 +120,11 @@ class StandaloneComponentCheckpointsConfig:
         atmosphere: The atmosphere component configuration. The stepper
             configuration must include 'ocean'.
         sst_name: Name of the sea surface temperature field in the ocean data.
+        ocean_fraction_prediction: Optional configuration for ocean-generated
+            ocean fraction, see CoupledStepperConfig.
+        open_water_flux_scaling: Optional configuration for scaling
+            atmosphere-generated fluxes by the ocean's open-water fraction, see
+            CoupledStepperConfig.
         ocean_stepper_override: Optional overrides when loading the ocean Stepper.
         atmosphere_stepper_override: Optional overrides when loading the atmosphere
             Stepper (e.g. prescribed_prognostic_names for inference).
@@ -129,6 +135,7 @@ class StandaloneComponentCheckpointsConfig:
     atmosphere: StandaloneComponentConfig
     sst_name: str = "sst"
     ocean_fraction_prediction: CoupledOceanFractionConfig | None = None
+    open_water_flux_scaling: OpenWaterFluxScalingConfig | None = None
     ocean_stepper_override: StepperOverrideConfig | None = None
     atmosphere_stepper_override: StepperOverrideConfig | None = None
 
@@ -148,6 +155,7 @@ class StandaloneComponentCheckpointsConfig:
             ),
             sst_name=self.sst_name,
             ocean_fraction_prediction=self.ocean_fraction_prediction,
+            open_water_flux_scaling=self.open_water_flux_scaling,
         )
 
     def load_stepper(self) -> CoupledStepper:
