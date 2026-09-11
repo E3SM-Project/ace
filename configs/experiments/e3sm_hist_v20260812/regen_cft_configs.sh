@@ -12,6 +12,10 @@ for f in "$D"/runs/E*-CFT*.yaml; do
   [ -n "$ocn" ] && [ -n "$atm" ] || { echo "cannot find parents in $f"; exit 1; }
   ocn_cfg=$(dirname "$(dirname "$ocn")")/config.yaml
   atm_cfg=$(dirname "$(dirname "$atm")")/config.yaml
+  # The node count sets the global batch and the inference IC count; take it
+  # from the run's own .env (FME_NODES) so a B16 run at 4 nodes stays B16.
+  nodes=$(sed -n 's/^FME_NODES=//p' "${f%.yaml}.env")
+  [ -n "$nodes" ] || { echo "no FME_NODES in ${f%.yaml}.env"; exit 1; }
   "$PY" "$D/make_cpl_config.py" --atm-config "$atm_cfg" --ocn-config "$ocn_cfg" \
-      --atm-ckpt "$atm" --ocn-ckpt "$ocn" --nodes 8 --out "$f" "$@"
+      --atm-ckpt "$atm" --ocn-ckpt "$ocn" --nodes "$nodes" --out "$f" "$@"
 done
