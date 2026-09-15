@@ -1,0 +1,12 @@
+# Every parked or never-started stage-2 atmosphere run, 2026-09-15.
+# 4-node B16 runs parked when the reservation ended:
+E03-FT.aug26.atm.A1_B16_C1_L0_O5_W0_X0.S01  /pscratch/sd/m/mahf708/aug26-ft
+E05-FT.aug26.atm.A3_B16_C1_L0_O5_W0_X0.S02  /pscratch/sd/m/mahf708/aug26-ft
+E05-FT.aug26.atm.A3_B16_C1_L0_O5_W0_X0.S03  /pscratch/sd/m/mahf708/aug26-ft
+E06-FT.aug26.atm.A3_B16_C0_L0_O5_W0_X0.S01  /pscratch/sd/m/mahf708/aug26-ft
+E08-FT.aug26.atm.A3_B16_C1_L0_O5_W2_X0.S01  /pscratch/sd/m/mahf708/aug26-ft
+# 2-node B08 arms, never fine-tuned (parents finished on rebassoo's scratch):
+E01-FT.aug26.atm.A0_B08_C0_L0_O5_W0_X0.S01  /pscratch/sd/m/mahf708/aug26-ft
+E01-FT.aug26.atm.A0_B08_C0_L1_O5_W0_X0.S01  /pscratch/sd/m/mahf708/aug26-ft
+E02-FT.aug26.atm.A0_B08_C1_L0_O5_W0_X0.S01  /pscratch/sd/m/mahf708/aug26-ft
+E05-FT.aug26.atm.A3_B08_C1_L0_O5_W0_X0.S01  /pscratch/sd/m/mahf708/aug26-ft

@@ -1,0 +1,4 @@
+# Mechanism test of the bundle path in the debug QOS: two 2-node B08 runs,
+# written to a throwaway campaign root so no real run is touched.
+E01-FT.aug26.atm.A0_B08_C0_L0_O5_W0_X0.S01  /pscratch/sd/m/mahf708/bundle-test
+E05-FT.aug26.atm.A3_B08_C1_L0_O5_W0_X0.S01  /pscratch/sd/m/mahf708/bundle-test
