@@ -27,6 +27,36 @@ history, kept so decisions do not have to be rediscovered.
 * **Never `git checkout` a tracked file here.** Several files carry uncommitted
   work at any given time; a checkout silently discards it.
 
+## 2026-09-15 — bundled submission of the parked stage-2 atmosphere runs
+
+`sbatch-scripts/bundle.sh <bundle-file> [--go]` + `sbatch-bundle.sh` run
+several campaign runs in one Slurm job: each run is staged through
+`run-train.sh --no-submit`, gets a disjoint node set and its own srun step
+and rendezvous port; finished runs are skipped and their nodes idle; the
+walltime USR1 (B:, 10 min lead) SIGTERMs every step and requeues while any
+run is incomplete, up to `BUNDLE_MAX_RESTARTS`. A step that dies before the
+signal is not requeued.
+
+Tested in the debug QOS with two 2-node B08 runs into a throwaway root
+(`$PSCRATCH/bundle-test`, 14 GB, safe to delete): both rendezvoused and
+trained concurrently; at the signal both wrote 7.3 GB restart checkpoints
+within 11 s; a resubmission resumed both exactly (skip first 545 / 481
+batches); the second signal requeued the job ("restart 1/1"), which was
+then cancelled. With `WANDB_MODE=disabled` a post-shutdown callback raises
+`You must call wandb.init() before wandb.mark_preempting()` after the
+checkpoint is written; harmless, and absent with wandb on.
+
+Submitted 58358027 `atm-parked` (`bundles/atm-parked-2026-09-15.txt`),
+28 nodes, 48 h, `--time-min 12:00:00`: E03-FT, E05-FT S02/S03, E06-FT,
+E08-FT (4 nodes, resuming at 5-14 epochs) and the four B08 arms E01-FT L0/L1,
+E02-FT, E05-FT (2 nodes, from scratch; configs generated with
+make_stage2_config.py). Stage-1 B08 epochs took 5.0 h against 3.2 h at B16,
+so the B08 fine-tunes need ~100 h: expect three segments, with the B16 runs
+done after the second and their 20 nodes idle for the third.
+
+Not included: stage-1 E05 B32 (20/30 epochs) lives in rebassoo's scratch;
+finishing it there is that owner's call.
+
 ## 2026-09-11 — resumption: stage 2 resubmitted, pilot CFT queued
 
 The three interface fixes and the campaign plumbing are committed
