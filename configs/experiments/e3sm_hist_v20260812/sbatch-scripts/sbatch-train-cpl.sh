@@ -11,10 +11,14 @@
 
 #SBATCH -A e3sm_g
 #SBATCH -q regular
-#SBATCH -C gpu&a100            # 40 GB cards are enough: the coupled fine-tune at
-                               # local batch 1 holds 32.7 GB/GPU for 30 steps
-                               # (measured 2026-09-11, E23-CFT config). The
-                               # hbm80g pool is 256 nodes against 1408.
+#SBATCH -C gpu&hbm80g          # 80 GB cards. Training fits 40 GB (32.7 GB/GPU
+                               # at local batch 1), but the per-epoch validation
+                               # does not: E23-CFT OOMed on 40 GB cards in its
+                               # epoch-1 validation (2026-09-15), computing
+                               # derived variables over the full 81-step
+                               # atmosphere window that training never holds.
+                               # The atmosphere FT does fit 40 GB, validation
+                               # and inference included.
 #SBATCH -J fme-hist-cpl
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=1
