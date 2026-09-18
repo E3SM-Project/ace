@@ -27,6 +27,39 @@ history, kept so decisions do not have to be rediscovered.
 * **Never `git checkout` a tracked file here.** Several files carry uncommitted
   work at any given time; a checkout silently discards it.
 
+## 2026-09-18 — coupled runs verified at coasts and poles; two residuals pinned
+
+Checked E23/E24/E25-CFT (1-year block at epochs 3-6, 5-year heldout at
+epoch 4) cell category by category (`$PSCRATCH/cft-diag/coast_pole_check.py`,
+figure `coast_pole_check.png`). The three interface artifacts are gone:
+ice-shelf cells sst -0.15..+0.02 K (was +3.75), polar partial-land TS
+-0.5..+0.5 K (was +4.2), pole rows -0.30..+0.19 K (was +6.9), coastal land
+TS rmse 0.30-0.40 K against 0.24-0.30 K over open ocean.
+
+**Pinned for a future session** (not acted on, 2026-09-18):
+
+1. *One-cell sea-ice stripe along the Antarctic coast.* The first ocean row
+   carries alternating +/-0.1-0.3 ice-fraction errors; aggregate +0.01-0.02
+   bias, rmse 0.05-0.06 (about the interior value). Same stripe in
+   rebassoo's E20-CFTv2 at epoch 39, so it does not train away. Likely the
+   ocean model's own coastal ice error rather than the interface; confirm
+   against the uncoupled E11-FT/E12-FT inference maps first.
+2. *Cold, icy Arctic shelves.* Along the Siberian and Canadian coasts sst
+   -1 to -1.5 K with ice +0.2. Arctic coastal ocean in E24's 5-year block:
+   sst -0.44 K, ice +0.037 (interior -0.27 / +0.025, open ocean -0.02 /
+   0.000); the 1-year block gives -0.25 K, so it grows with lead time.
+   Hypothesis: land-contaminated turbulent fluxes at partial-land coastal
+   cells (cold continental air in the cell mean) -- the open item left after
+   the ice-shelf fix. Cheap test: the uncoupled-ocean check
+   (`cft-diag/ocn-eamflux-owf.yaml`) with Arctic coastal fluxes filled from
+   neighbouring open-ocean cells (`make_coastfix.py`, restricted to lat > 50;
+   the fill failed in Antarctica only because of the cavities).
+
+Also: rebassoo's E20-CFTv2 has TS +5-8 K over the Antarctic plateau/ice
+shelves and north of 80N (pole rows +6.1 K) with sst and ice fine -- its
+E01-FT B32 atmosphere parent's polar drift, not the coupling. rebassoo's
+queued `E24-CFT...W1` reuses our E24 number; renumber one before it starts.
+
 ## 2026-09-15 — bundled submission of the parked stage-2 atmosphere runs
 
 `sbatch-scripts/bundle.sh <bundle-file> [--go]` + `sbatch-bundle.sh` run
