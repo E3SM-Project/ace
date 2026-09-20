@@ -54,6 +54,7 @@ from .stepper import (
     CoupledTrainStepper,
     CoupledTrainStepperConfig,
     OpenWaterFluxScalingConfig,
+    StaticFluxScalingConfig,
 )
 
 NZ = 3  # number of vertical interface levels in mock data from get_data
@@ -1799,6 +1800,118 @@ def test__get_ocean_forcings_open_water_scaling_with_flux_fraction():
         new_ocean_forcings["flux"][:, 1:],
         atmos_gen["flux"].mean(dim=1, keepdim=True) * scaling,
     )
+
+
+def _get_static_scaling_config(
+    static_flux_scaling: StaticFluxScalingConfig | None,
+    open_water_flux_scaling: OpenWaterFluxScalingConfig | None = None,
+):
+    config = _get_open_water_scaling_config(open_water_flux_scaling)
+    config.static_flux_scaling = static_flux_scaling
+    config.__post_init__()
+    return config
+
+
+def test__get_ocean_forcings_static_flux_scaling_applies_to_stress_only():
+    """Wind stress carries a fixed per-cell geometric factor, not the
+    open-water fraction: MPAS-Ocean's remapped stress is per unit total cell
+    area and is exactly zero under ice shelves, while the heat fluxes are
+    already handled by open_water_flux_scaling."""
+    torch.manual_seed(0)
+    config = _get_static_scaling_config(
+        StaticFluxScalingConfig(names=["stress"], fraction_name="mfx"),
+        OpenWaterFluxScalingConfig(names=["flux"], ice_free_sst_threshold=275.0),
+    )
+    assert "mfx" in config.ocean_forcing_window_names
+    assert (
+        "mfx"
+        in config.get_evaluation_window_data_requirements(1).ocean_requirements.names
+    )
+    coupler = _get_coupler(config)
+    device = fme.get_device()
+    window_shape = (1, 2, N_LAT, N_LON)
+    land_fraction = torch.rand(1, 1, N_LAT, N_LON, device=device).expand(*window_shape)
+    mfx = torch.rand(1, 1, N_LAT, N_LON, device=device)
+    mfx[0, 0, 0, 0] = float("nan")  # masked point: no reduction
+    mfx[0, 0, 1, 1] = 0.0  # ice-shelf cavity: the ocean-side stress is zero
+    atmos_gen = {
+        "flux": torch.rand(*window_shape, device=device),
+        "stress": torch.rand(*window_shape, device=device),
+    }
+    ice = torch.rand(1, 1, N_LAT, N_LON, device=device)
+    ocean_ic = {"ocean_sea_ice_fraction": ice, "sst": torch.full_like(ice, 271.0)}
+    new_ocean_forcings = coupler._get_ocean_forcings(
+        {"land_fraction": land_fraction, "mfx": mfx.expand(*window_shape)},
+        atmos_gen,
+        {"land_fraction": land_fraction},
+        ocean_ic,
+    )
+    assert "mfx" not in new_ocean_forcings  # never handed to the ocean network
+    torch.testing.assert_close(
+        new_ocean_forcings["stress"][:, 1:],
+        atmos_gen["stress"].mean(dim=1, keepdim=True) * torch.nan_to_num(mfx, nan=1.0),
+    )
+    # stress does NOT pick up the open-water factor
+    torch.testing.assert_close(
+        new_ocean_forcings["flux"][:, 1:],
+        atmos_gen["flux"].mean(dim=1, keepdim=True) * (1 - ice),
+    )
+
+
+def test_static_flux_scaling_works_without_open_water_flux_scaling():
+    torch.manual_seed(0)
+    config = _get_static_scaling_config(
+        StaticFluxScalingConfig(names=["stress"], fraction_name="mfx")
+    )
+    coupler = _get_coupler(config)
+    device = fme.get_device()
+    window_shape = (1, 2, N_LAT, N_LON)
+    land_fraction = torch.rand(1, 1, N_LAT, N_LON, device=device).expand(*window_shape)
+    mfx = torch.rand(1, 1, N_LAT, N_LON, device=device)
+    atmos_gen = {
+        "flux": torch.rand(*window_shape, device=device),
+        "stress": torch.rand(*window_shape, device=device),
+    }
+    new_ocean_forcings = coupler._get_ocean_forcings(
+        {"land_fraction": land_fraction, "mfx": mfx.expand(*window_shape)},
+        atmos_gen,
+        {"land_fraction": land_fraction},
+        ocean_ic={},
+    )
+    torch.testing.assert_close(
+        new_ocean_forcings["stress"][:, 1:],
+        atmos_gen["stress"].mean(dim=1, keepdim=True) * mfx,
+    )
+    torch.testing.assert_close(
+        new_ocean_forcings["flux"][:, 1:], atmos_gen["flux"].mean(dim=1, keepdim=True)
+    )
+
+
+def test_static_flux_scaling_rejects_fraction_that_is_an_ocean_input():
+    with pytest.raises(ValueError, match="data-only static field"):
+        _get_static_scaling_config(
+            StaticFluxScalingConfig(names=["stress"], fraction_name="land_fraction")
+        )
+
+
+def test_static_flux_scaling_rejects_non_atmosphere_forcing_names():
+    with pytest.raises(ValueError, match="must be ocean forcings"):
+        _get_static_scaling_config(
+            StaticFluxScalingConfig(names=["not_a_flux"], fraction_name="mfx")
+        )
+
+
+def test_static_flux_scaling_rejects_a_name_also_scaled_by_open_water():
+    with pytest.raises(ValueError, match="cannot be scaled by both"):
+        _get_static_scaling_config(
+            StaticFluxScalingConfig(names=["flux"], fraction_name="mfx"),
+            OpenWaterFluxScalingConfig(names=["flux"], ice_free_sst_threshold=275.0),
+        )
+
+
+def test_static_flux_scaling_requires_at_least_one_name():
+    with pytest.raises(ValueError, match="at least one name"):
+        StaticFluxScalingConfig(names=[], fraction_name="mfx")
 
 
 def test_open_water_flux_scaling_rejects_flux_fraction_that_is_an_ocean_input():

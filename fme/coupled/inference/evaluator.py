@@ -38,6 +38,7 @@ from fme.coupled.stepper import (
     CoupledStepper,
     CoupledStepperConfig,
     OpenWaterFluxScalingConfig,
+    StaticFluxScalingConfig,
     load_coupled_stepper,
 )
 
@@ -125,6 +126,9 @@ class StandaloneComponentCheckpointsConfig:
         open_water_flux_scaling: Optional configuration for scaling
             atmosphere-generated fluxes by the ocean's open-water fraction, see
             CoupledStepperConfig.
+        static_flux_scaling: Optional configuration for scaling
+            atmosphere-generated fluxes by a static per-cell field, see
+            CoupledStepperConfig.
         ocean_stepper_override: Optional overrides when loading the ocean Stepper.
         atmosphere_stepper_override: Optional overrides when loading the atmosphere
             Stepper (e.g. prescribed_prognostic_names for inference).
@@ -136,6 +140,7 @@ class StandaloneComponentCheckpointsConfig:
     sst_name: str = "sst"
     ocean_fraction_prediction: CoupledOceanFractionConfig | None = None
     open_water_flux_scaling: OpenWaterFluxScalingConfig | None = None
+    static_flux_scaling: StaticFluxScalingConfig | None = None
     ocean_stepper_override: StepperOverrideConfig | None = None
     atmosphere_stepper_override: StepperOverrideConfig | None = None
 
@@ -156,6 +161,7 @@ class StandaloneComponentCheckpointsConfig:
             sst_name=self.sst_name,
             ocean_fraction_prediction=self.ocean_fraction_prediction,
             open_water_flux_scaling=self.open_water_flux_scaling,
+            static_flux_scaling=self.static_flux_scaling,
         )
 
     def load_stepper(self) -> CoupledStepper:

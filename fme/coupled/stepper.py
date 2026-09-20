@@ -265,6 +265,71 @@ class OpenWaterFluxScalingConfig:
         return scaled
 
 
+@dataclasses.dataclass
+class StaticFluxScalingConfig:
+    """
+    Configuration for scaling atmosphere-to-ocean forcings by a static field.
+
+    Unlike ``OpenWaterFluxScalingConfig`` this carries no dependence on the
+    ocean's predicted state: it is a fixed per-cell geometric factor. It exists
+    for momentum. MPAS-Ocean's remapped wind stress is per unit total grid-cell
+    area, so it already carries the cell's ocean-area weighting, while the
+    atmosphere hands the coupler an unweighted cell mean; and it is exactly
+    zero under Antarctic ice shelves, which the atmosphere cannot see. Fitting
+    ``truth = g * cell_mean`` per cell on E3SMv3 1990-92 recovers
+    ``g ~ (1 - land_fraction)`` in every region (1.007 over the open ocean,
+    0.884 in the Antarctic interior, 0.355 on the Arctic shelves), so the field
+    to supply is the ice-shelf mask times one minus the land fraction.
+
+    The open-water factor must NOT be applied to stress: the ice-ocean stress
+    is comparable to the air-sea stress, so momentum keeps flowing under ice.
+    Conversely this static factor must not be applied to the heat and
+    freshwater fluxes, whose per-cell gains are ~1 and which
+    ``open_water_flux_scaling`` already handles.
+
+    Parameters:
+        names: Atmosphere-to-ocean forcing names to scale, i.e. the wind
+            stress components.
+        fraction_name: Name of a static field in the ocean forcing data giving
+            the per-cell factor. It is not an input of the ocean network.
+    """
+
+    names: list[str]
+    fraction_name: str
+
+    def __post_init__(self):
+        if len(self.names) == 0:
+            raise ValueError("StaticFluxScalingConfig requires at least one name.")
+
+    def validate_forcing_names(self, atmosphere_to_ocean_forcing_names: Iterable[str]):
+        missing = set(self.names).difference(atmosphere_to_ocean_forcing_names)
+        if missing:
+            raise ValueError(
+                "StaticFluxScalingConfig names must be ocean forcings that are "
+                f"atmosphere outputs, but {sorted(missing)} are not."
+            )
+
+    def validate_fraction_name(self, ocean_stepper_names: Iterable[str]):
+        if self.fraction_name in ocean_stepper_names:
+            raise ValueError(
+                f"fraction_name {self.fraction_name!r} is an input or output of "
+                "the ocean stepper; it must be a data-only static field."
+            )
+
+    def scale(
+        self,
+        forcings_from_atmosphere: TensorMapping,
+        fraction: torch.Tensor,
+    ) -> TensorDict:
+        """Return a copy of forcings_from_atmosphere with the configured names
+        multiplied by fraction.
+        """
+        scaled = dict(forcings_from_atmosphere)
+        for name in self.names:
+            scaled[name] = forcings_from_atmosphere[name] * fraction
+        return scaled
+
+
 def _load_stepper_weights_and_history_factory(
     stepper: Stepper,
 ) -> WeightsAndHistoryLoader:
@@ -351,6 +416,11 @@ class CoupledStepperConfig:
         open_water_flux_scaling: (Optional) Configuration for scaling
             atmosphere-generated fluxes by the ocean's open-water fraction before
             they force the ocean. Requires ocean_fraction_prediction.
+        static_flux_scaling: (Optional) Configuration for scaling
+            atmosphere-generated fluxes by a static per-cell field before they
+            force the ocean, for fluxes whose ocean-side value differs from the
+            atmosphere's cell mean by a fixed geometric factor rather than by
+            the open-water fraction. Used for wind stress.
 
     """
 
@@ -359,6 +429,7 @@ class CoupledStepperConfig:
     sst_name: str = "sst"
     ocean_fraction_prediction: CoupledOceanFractionConfig | None = None
     open_water_flux_scaling: OpenWaterFluxScalingConfig | None = None
+    static_flux_scaling: StaticFluxScalingConfig | None = None
 
     def __post_init__(self):
         self._validate_component_configs()
@@ -384,10 +455,13 @@ class CoupledStepperConfig:
             )
         )
         flux_fraction_name = self._atmosphere_flux_fraction_name
-        if flux_fraction_name is not None:
-            # data-only static field, loaded with the ocean forcings and consumed
-            # by the coupled stepper, never handed to the ocean network
-            self._ocean_forcing_exogenous_names.append(flux_fraction_name)
+        static_fraction_name = self._static_flux_fraction_name
+        for data_only_name in (flux_fraction_name, static_fraction_name):
+            if data_only_name is not None:
+                # data-only static field, loaded with the ocean forcings and
+                # consumed by the coupled stepper, never handed to the ocean
+                # network
+                self._ocean_forcing_exogenous_names.append(data_only_name)
         unfiltered_atmosphere_forcing_names = list(
             self.atmosphere.stepper.input_only_names.difference(
                 self.ocean.stepper.output_names
@@ -454,8 +528,9 @@ class CoupledStepperConfig:
             self._all_ocean_names.append(
                 self.ocean_fraction_prediction.land_fraction_name
             )
-        if flux_fraction_name is not None:
-            self._all_ocean_names.append(flux_fraction_name)
+        for data_only_name in (flux_fraction_name, static_fraction_name):
+            if data_only_name is not None:
+                self._all_ocean_names.append(data_only_name)
 
         self._validate_atmosphere_to_ocean_coupling()
         self.validate_prescribed_prognostic_names()
@@ -589,6 +664,12 @@ class CoupledStepperConfig:
         if self.open_water_flux_scaling is None:
             return None
         return self.open_water_flux_scaling.atmosphere_flux_fraction_name
+
+    @property
+    def _static_flux_fraction_name(self) -> str | None:
+        if self.static_flux_scaling is None:
+            return None
+        return self.static_flux_scaling.fraction_name
 
     @property
     def open_water_flux_scaling_sst_threshold(self) -> float:
@@ -779,6 +860,24 @@ class CoupledStepperConfig:
             self.open_water_flux_scaling.validate_flux_fraction_name(
                 self.ocean.stepper.all_names
             )
+
+        # validate static_flux_scaling
+        if self.static_flux_scaling is not None:
+            self.static_flux_scaling.validate_forcing_names(
+                atmosphere_to_ocean_forcing_names
+            )
+            self.static_flux_scaling.validate_fraction_name(
+                self.ocean.stepper.all_names
+            )
+            if self.open_water_flux_scaling is not None:
+                overlap = set(self.static_flux_scaling.names).intersection(
+                    self.open_water_flux_scaling.names
+                )
+                if overlap:
+                    raise ValueError(
+                        "a forcing cannot be scaled by both open_water_flux_scaling "
+                        f"and static_flux_scaling, but {sorted(overlap)} are in both."
+                    )
 
     def _get_ocean_data_requirements(self, n_forward_steps: int) -> DataRequirements:
         return DataRequirements(
@@ -1347,13 +1446,19 @@ class CoupledStepper:
         # Ocean-only exogenous forcings plus prescribed prognostic time series
         # (e.g. thetao_18) from the forcing window batch.
         forcing_data = {k: ocean_data[k] for k in self._ocean_forcing_window_names}
-        flux_fraction_name = self._config._atmosphere_flux_fraction_name
-        flux_fraction: torch.Tensor | None = None
-        if flux_fraction_name is not None:
-            # static, data-only: the ocean network never sees it
-            flux_fraction = torch.nan_to_num(
-                forcing_data.pop(flux_fraction_name).narrow(time_dim, 0, 1), nan=1.0
+
+        # static, data-only fields: the ocean network never sees them
+        def _pop_static_fraction(name: str | None) -> torch.Tensor | None:
+            if name is None:
+                return None
+            return torch.nan_to_num(
+                forcing_data.pop(name).narrow(time_dim, 0, 1), nan=1.0
             )
+
+        flux_fraction = _pop_static_fraction(
+            self._config._atmosphere_flux_fraction_name
+        )
+        static_fraction = _pop_static_fraction(self._config._static_flux_fraction_name)
         # get time-averaged forcings from atmosphere
         forcings_from_atmosphere = {
             **{
@@ -1371,6 +1476,11 @@ class CoupledStepper:
                 scaling = scaling * flux_fraction
             forcings_from_atmosphere = self._config.open_water_flux_scaling.scale(
                 forcings_from_atmosphere, scaling
+            )
+        if self._config.static_flux_scaling is not None:
+            assert static_fraction is not None
+            forcings_from_atmosphere = self._config.static_flux_scaling.scale(
+                forcings_from_atmosphere, static_fraction
             )
         # append or prepend nans depending on whether or not the forcing is a
         # "next step" forcing
