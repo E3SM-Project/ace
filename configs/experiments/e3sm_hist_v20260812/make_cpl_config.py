@@ -113,6 +113,17 @@ ap.add_argument(
     "files and is data-only, never an ocean network input",
 )
 ap.add_argument(
+    "--no-momentum-scaling",
+    action="store_true",
+    help="do not scale the atmosphere's wind stress by the static "
+    "momentum_flux_fraction field. MPAS-Ocean's remapped stress is per unit "
+    "TOTAL cell area and is exactly zero under the ice shelves, while the "
+    "atmosphere hands over an unweighted cell mean; unscaled, that is 4x the "
+    "signal at the Antarctic coast and drives the coastal ice stripe "
+    "(diagnosed 2026-09-19). The field lives in momfrac5d and is data-only, "
+    "never an ocean network input",
+)
+ap.add_argument(
     "--ts-blend-power",
     type=float,
     default=8.0,
@@ -159,6 +170,11 @@ _ocn_step = ocn_stepper["step"]["config"]
 scaled_flux_names = [
     n for n in _ocn_step["next_step_forcing_names"] if n not in ("TAUX", "TAUY")
 ]
+# ... and the two the open-water factor must NOT touch, which instead carry the
+# static ocean-area factor (see --no-momentum-scaling).
+stress_flux_names = [
+    n for n in _ocn_step["next_step_forcing_names"] if n in ("TAUX", "TAUY")
+]
 
 # The atmosphere's normalization is taken from config-train-atm.yaml verbatim.
 # The piControl stats this used to point at came in coupled_atmosphere and
@@ -187,6 +203,34 @@ def ocean_window(subset):
 
 
 ocn_inf = ocn["inference"][0]["loader"]["dataset"]
+
+# The static momentum_flux_fraction rides alongside landfrac5d rather than
+# inside it: landfrac5d is read by queued jobs and by another user's runs, so
+# it is not edited in place. Appended here rather than in config-train-ocn.yaml
+# because that file *is* run E11 and the uncoupled ocean has no use for it.
+MOMFRAC_MEMBER = {
+    "data_path": "/pscratch/sd/m/mahf708/e3sm-hist-inputs/momfrac5d",
+    "file_pattern": "momfrac5d.*.nc",
+}
+
+
+def with_momfrac(node):
+    """Return the ocean dataset node with the momentum-scaling field merged in."""
+    node = copy.deepcopy(node)
+    if args.no_momentum_scaling:
+        return node
+    member = copy.deepcopy(MOMFRAC_MEMBER)
+    # Match the siblings' time window, or the merge spans 1940-2065 on this
+    # member and 5 years on the rest.
+    sibling = next((m for m in node["merge"] if "subset" in m), None)
+    if sibling is not None:
+        member["subset"] = copy.deepcopy(sibling["subset"])
+    node["merge"] = list(node["merge"]) + [member]
+    return node
+
+
+ocn_val = with_momfrac(ocn_val)
+ocn_inf = with_momfrac(ocn_inf)
 atm_ds = atm["train_loader"]["dataset"]["concat"][0]
 
 
@@ -540,6 +584,16 @@ cfg = {
                             )
                         }
                     ),
+                }
+            }
+        ),
+        **(
+            {}
+            if args.no_momentum_scaling
+            else {
+                "static_flux_scaling": {
+                    "names": stress_flux_names,
+                    "fraction_name": "momentum_flux_fraction",
                 }
             }
         ),

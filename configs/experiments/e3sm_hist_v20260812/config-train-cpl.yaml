@@ -54,6 +54,8 @@ inference:
             iceAreaTotal: ocean_sea_ice_fraction
         - data_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/landfrac5d
           file_pattern: landfrac5d.*.nc
+        - data_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/momfrac5d
+          file_pattern: momfrac5d.*.nc
       atmosphere:
         data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
         file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
@@ -152,6 +154,8 @@ inference:
             iceAreaTotal: ocean_sea_ice_fraction
         - data_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/landfrac5d
           file_pattern: landfrac5d.*.nc
+        - data_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/momfrac5d
+          file_pattern: momfrac5d.*.nc
       atmosphere:
         data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
         file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
@@ -250,6 +254,8 @@ inference:
             iceAreaTotal: ocean_sea_ice_fraction
         - data_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/landfrac5d
           file_pattern: landfrac5d.*.nc
+        - data_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/momfrac5d
+          file_pattern: momfrac5d.*.nc
       atmosphere:
         data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
         file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
@@ -362,6 +368,11 @@ train_loader:
           subset:
             start_time: '1940-01-06'
             stop_time: '1990-01-01'
+        - data_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/momfrac5d
+          file_pattern: momfrac5d.*.nc
+          subset:
+            start_time: '1940-01-06'
+            stop_time: '1990-01-01'
       atmosphere:
         data_path: /pscratch/sd/m/mahf708/v3.LR.historical_0101.aigo/run
         file_pattern: v3.LR.historical_0101.aigo.eam.h0.*.nc
@@ -423,6 +434,11 @@ train_loader:
             stop_time: '2040-01-01'
         - data_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/landfrac5d
           file_pattern: landfrac5d.*.nc
+          subset:
+            start_time: '2000-01-06'
+            stop_time: '2040-01-01'
+        - data_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/momfrac5d
+          file_pattern: momfrac5d.*.nc
           subset:
             start_time: '2000-01-06'
             stop_time: '2040-01-01'
@@ -493,6 +509,11 @@ validation:
             stop_time: '1995-01-01'
         - data_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/landfrac5d
           file_pattern: landfrac5d.*.nc
+          subset:
+            start_time: '1990-01-06'
+            stop_time: '1995-01-01'
+        - data_path: /pscratch/sd/m/mahf708/e3sm-hist-inputs/momfrac5d
+          file_pattern: momfrac5d.*.nc
           subset:
             start_time: '1990-01-06'
             stop_time: '1995-01-01'
@@ -578,6 +599,11 @@ stepper:
     - SHFLX
     ice_free_sst_threshold: 275.15
     atmosphere_flux_fraction_name: atmosphere_flux_fraction
+  static_flux_scaling:
+    names:
+    - TAUX
+    - TAUY
+    fraction_name: momentum_flux_fraction
   ocean:
     timedelta: 5D
     stepper:

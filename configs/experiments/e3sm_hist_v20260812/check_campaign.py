@@ -203,6 +203,44 @@ def check_coupled(path: pathlib.Path, d: dict) -> list[str]:
                 )
                 if sample and afx not in xr.open_dataset(sample[0]).data_vars:
                     bad.append(f"{afx} missing from {sample[0]}")
+    # Momentum: MPAS's remapped wind stress is per unit total cell area and is
+    # exactly zero under the ice shelves, while the atmosphere hands over an
+    # unweighted cell mean. Diagnosed 2026-09-19; unscaled stress is 4x the
+    # signal at the Antarctic coast and drives the coastal ice stripe.
+    momentum = st.get("static_flux_scaling")
+    if momentum is None:
+        bad.append(
+            "no stepper.static_flux_scaling: the ocean would receive the "
+            "atmosphere's unscaled cell-mean wind stress"
+        )
+    else:
+        want_stress = [
+            n for n in ocn_step["next_step_forcing_names"] if n in ("TAUX", "TAUY")
+        ]
+        if sorted(momentum.get("names", [])) != sorted(want_stress):
+            bad.append(
+                f"static_flux_scaling.names {momentum.get('names')} != "
+                f"wind stress forcings {want_stress}"
+            )
+        mfx = momentum.get("fraction_name")
+        if not mfx:
+            bad.append("static_flux_scaling needs a fraction_name")
+        else:
+            members = d["train_loader"]["dataset"]["concat"][0]["ocean"]["merge"]
+            paths = [
+                m for m in members if "momfrac" in m.get("file_pattern", "")
+            ]
+            if not paths:
+                bad.append(
+                    f"no momfrac member in the ocean merge, so {mfx} cannot load"
+                )
+            for m in paths:
+                sample = sorted(
+                    glob.glob(os.path.join(m["data_path"], m["file_pattern"]))
+                )
+                if sample and mfx not in xr.open_dataset(sample[0]).data_vars:
+                    bad.append(f"{mfx} missing from {sample[0]}")
+
     ocean = atm_step.get("ocean") or {}
     if not ocean.get("interpolate"):
         bad.append("atmosphere ocean.interpolate must be true")
