@@ -27,6 +27,168 @@ history, kept so decisions do not have to be rediscovered.
 * **Never `git checkout` a tracked file here.** Several files carry uncommitted
   work at any given time; a checkout silently discards it.
 
+## 2026-09-19 — the Antarctic residual was a fourth coupling bug: wind stress is never scaled
+
+Tested the two residuals the 2026-09-18 entry pinned, then went looking for
+what else the interface gets wrong. Both hypotheses in the 09-18 entry are
+wrong; one residual turned out to be a real, fixable bug; the other is an
+information floor with a number on it now.
+
+**Method that settled it: audit the flux reconstruction offline, with no model
+in the loop.** Both flux sets live on the same grid and time axis — the
+MPAS-Ocean-side fields the ocean was *trained* on (what `ocn-ctrl` feeds) and
+the EAM-derived set the coupler *produces* (`eamflux5d_owf` = cell mean x
+open-water x `atmosphere_flux_fraction`, exactly what `open_water_flux_scaling`
+computes). Differencing them isolates the interface error in seconds instead
+of a GPU-hour per candidate. `$PSCRATCH/cft-diag/flux_audit.py`,
+`flux_audit2.py`, `flux_audit3.py`; 1990-94, 365 five-day windows.
+
+**Bug: the ocean is fed unscaled wind stress.** `open_water_flux_scaling.names`
+covers heat and freshwater and deliberately excludes TAUX/TAUY (the docstring's
+reasoning — ice-ocean stress is comparable to air-sea stress — is right about
+*ice* and silent about *land* and about the ice-shelf cavities). Nothing else
+scales stress, so the ocean receives the raw EAM cell mean. Regressing
+`truth = g * cell_mean` per cell recovers `g ~ (1 - LANDFRAC)` in every region,
+which is the ocean-area weighting the MPAS -> 1 deg remap carries and the
+atmosphere's cell mean does not:
+
+| cells | g(TAUX) | g(TAUY) | 1-LANDFRAC |
+|---|---|---|---|
+| open ocean \|lat\|<60 | 1.007 | 1.010 | 1.000 |
+| Antarctic interior ocean | 0.884 | 0.861 | 0.922 |
+| coastal ocean \|lat\|<60 | 0.308 | 0.323 | 0.384 |
+| Arctic coastal ocean | 0.355 | 0.348 | 0.404 |
+| Antarctic coastal ocean | 0.215 | 0.157 | 0.250 |
+
+Area-weighted TAUX rmse against the MPAS truth, Antarctic coastal: 0.0905
+unscaled (bias +0.0592) against a truth std of only 0.0210 — the stress error
+is four times the signal — and 0.0162 after `x atmosphere_flux_fraction x
+(1-LANDFRAC)`. Under the ice shelves the MPAS stress is exactly zero and we
+were feeding 0.0406. The open ocean is untouched (0.0021 either way), so the
+correction is a no-op where it should be. Precip and heat are controls: their
+gains are ~1.0 everywhere and applying `(1-LANDFRAC)` to them makes the error
+worse, so this is momentum-specific, not a blanket convention error.
+
+**It fixes the Antarctic stripe.** `eamflux5d_owfm` (= `owf` with stress x
+`atmosphere_flux_fraction` x `(1-LANDFRAC)`), same ocean checkpoint, same 5-year
+uncoupled rollout:
+
+| Antarctic coastal ocean | ocn-ctrl | owf (shipped) | owfm (fix) |
+|---|---|---|---|
+| sst bias / rmse | -0.01 / 0.33 | -0.18 / 0.38 | -0.06 / 0.34 |
+| ice bias / rmse | -0.001 / 0.020 | +0.025 / 0.062 | +0.003 / 0.028 |
+| ice \|d/dlon\| (the stripe) | 0.013 | 0.027 | 0.015 |
+
+The stripe metric returns essentially to the control. The Arctic is unchanged
+(-0.19 / 0.45 either way), which is the expected signature: stress was never
+the Arctic story.
+
+**Fix as shipped.** `StaticFluxScalingConfig` in `fme/coupled/stepper.py` —
+names plus a static, data-only `fraction_name`, applied in `_get_ocean_forcings`
+alongside but independent of the open-water scaling, and refused if a name is
+also in `open_water_flux_scaling.names`. Wired through
+`StandaloneComponentCheckpointsConfig` for standalone inference. The field is
+`momentum_flux_fraction` in a **new** input directory
+`$PSCRATCH/e3sm-hist-inputs/momfrac5d` (`make_momfrac.py`): `landfrac5d` was
+not edited in place because queued jobs and another user's runs read it.
+`config-train-cpl.yaml` gains the merge entry at all six ocean sites and the
+`static_flux_scaling` block. Still inside the `fme/coupled`-only constraint —
+no component retrain.
+
+**Residual 2 (cold Arctic shelves) is an information floor, and now quantified.**
+Net heat flux Qnet, Arctic coastal ocean: reconstruction rmse 50.3 W/m2 against
+a truth std of 85.5. Removing the *per-cell time-mean* error — the best any
+static additive field can do — leaves 48.9, i.e. 3%. Even an oracle per-cell
+linear fit `t ~ a*r + b`, fitted on the truth we would not have, leaves 16.5.
+The error is dominantly time-varying, because at a partial-land cell the
+land/ocean flux contrast swings with the weather and the cell mean destroyed
+the split. EAM's history files carry only cell means (`FLDS FLUS FSNS LHFLX
+SHFLX TAUX TAUY`), no per-surface-type variants, and the ACE atmosphere
+predicts cell means anyway, so closing this needs a data-generation change
+*and* an atmosphere retrain. Limitations section, not a fix cycle.
+
+**The neighbour fill is still refuted.** `make_coastfix_arctic.py` (the 09-18
+recipe: `make_coastfix.py` restricted to `lat > 50`, rebased on `owf`) flips
+Arctic coastal sst bias -0.19 -> +0.22, rmse 0.45 -> 1.12, coastal ice rmse
+0.011 -> 0.154, and leaks into the interior (0.25 -> 0.69 K). Antarctica comes
+out bit-for-bit unchanged, which does confirm the earlier global fill damaged
+Antarctica only through the cavities. **Do not retry the spatial fill.**
+
+**The residuals do not amplify, and coupled training absorbs them.** The 09-18
+worry that the Arctic bias roughly doubles from 1 to 5 years was an
+epoch-to-epoch comparison, not a drift. Same checkpoint, same epoch, 1-year
+block against the 10-year heldout block: E23 epoch 4 goes -0.16 -> -0.19 K,
+E23 epoch 9 goes -0.00 -> +0.05 K. Across epochs at fixed length it *shrinks*
+(-0.16 -> -0.00 at 1 year). E24's -0.35 -> -0.44 is E24 at epoch 4 only. Global
+annual-mean sst bias over the 10-year rollout wanders in [-0.29, +0.02] K
+without trend, sea ice within +/-0.003, ssh flat at -0.004 m.
+
+**The E3x bundle (E30-E37, 12 runs, 48 nodes).** The first stage-3 block with
+all four corrections, generated by `make_e3x_cft.py` and submitted as one
+`bundle.sh` job. E30-E39 is reserved for it; E38/E39 are left free for a
+follow-up.
+
+| exp | seeds | atm parent | ocn parent | probes |
+|---|---|---|---|---|
+| E30 | S01·S02·S03 | E01-FT B16 | E11-FT B16 | baseline, with an error bar |
+| E31 | S01·S02·S03 | E05-FT A3 C1 | E11-FT B16 | aerosol+CO2, with an error bar |
+| E32 | S01 | E01-FT | E12-FT W1 | ocean interface-upweighted loss |
+| E33 | S01 | E01-FT | E13-FT W2 | ocean away-from-surface dilution |
+| E34 | S01 | E07-FT A3 C1 W1 | E11-FT | atmosphere flux-upweighted loss |
+| E35 | S01 | E02-FT A0 C1 | E11-FT | CO2 only |
+| E36 | S01 | E06-FT A3 C0 | E11-FT | aerosol only |
+| E37 | S01 | E08-FT A3 C1 W2 | E11-FT | atmosphere away-from-surface dilution |
+
+Three structures share the twelve runs: a complete aerosol x CO2 2x2 (E30 A0C0,
+E35 A0C1, E36 A3C0, E31 A3C1), an ocean loss ladder (E30 W0, E32 W1, E33 W2)
+and an atmosphere loss ladder (E31 V0, E34 V1, E37 V2), with three seeds on
+both ends of the headline A3C1-vs-baseline contrast so it is testable rather
+than n=1 against n=1.
+
+**A `V` slot for the atmosphere's loss weighting.** The existing CFT words take
+A, B and C from the *atmosphere* parent and W from the *ocean* parent, which is
+unambiguous only while every atmosphere parent is W0. E34 and E37 break that:
+under the old rule E34 would render `A3_B16_C1_L0_O5_W0_X0`, identical to E31.
+The cpl word therefore gains one slot before `W`:
+
+    A?_B??_C?_L?_O?_V?_W?_X?
+
+E18-E25 keep their ids and are implicitly V0. Pairing E07-FT with E12-FT would
+have dodged the collision without a grammar change, but it would have moved two
+factors at once and cost the single-factor reading.
+
+**25 epochs, not 50.** E23's validation loss went 0.2884 -> 0.2726 over nine
+epochs with the last three at 0.2732 / 0.2732 / 0.2726, and its
+`best_inference_error` has not moved off 0.0565 since epoch 4. At 2.0-2.8
+h/epoch, 50 epochs is 100-140 h -- three walltime segments; 25 is 50-70 h, two.
+
+**Two bundle fixes this needed.** `sbatch-bundle.sh` hardcoded `-C gpu&a100`
+with the comment "40 GB suffices for atm/cpl"; coupled inline-inference
+validation OOMs on a 40 GB card, and one such run would have taken the whole
+bundle with it. `bundle.sh` now picks `gpu&hbm80g` as soon as any manifest row
+is `cpl` and `gpu&a100` otherwise, with `FME_CONSTRAINT` to override. Note the
+cost: hbm80g is 256 nodes against a100's 1408, so 48 nodes is 19% of the pool
+and is re-requested on every requeue. Making coupled validation fit 40 GB is
+the single highest-value queue optimisation left.
+
+**`check_campaign.py` now requires `static_flux_scaling`** on any coupled
+config, with the same data-presence check `atmosphere_flux_fraction` gets.
+E18-E25 fail it by design: they predate the momentum fix and are kept as the
+without-fix controls for E30/E31/E32. The checker already reported 27 unrelated
+problems, so it is a report, not a gate.
+
+**The fix is in the generator, not just the emitted yaml.** `config-train-cpl.yaml`
+is generated by `make_cpl_config.py`, so a hand-edit would have been silently
+reverted on the next regeneration. The momentum scaling and the momfrac5d merge
+member are emitted by the generator (`--no-momentum-scaling` opts out) and
+`make_cpl_config.py --check` is clean.
+
+**Numbering:** rebassoo's `E24-CFT...W1` (job 58392492, PENDING) differs from
+our `E24-CFT...W0` in the W factor, and runs from their own checkout at
+`~rebassoo/work/fme/Hackathon-8-31-26/`, so run ids, output directories and
+wandb names do not collide — only the registry meaning of "E24". Renumber one
+before the wave goes out, and start new arms at E26.
+
 ## 2026-09-18 — coupled runs verified at coasts and poles; two residuals pinned
 
 Checked E23/E24/E25-CFT (1-year block at epochs 3-6, 5-year heldout at
