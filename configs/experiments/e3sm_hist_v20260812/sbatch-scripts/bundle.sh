@@ -17,6 +17,10 @@
 # the allocation into disjoint node sets and starts one srun step per run.
 #
 # Environment knobs (same names as run-train.sh where they overlap):
+#   FME_CONSTRAINT  -C value. Default gpu&a100, but gpu&hbm80g as soon as any
+#                   run in the bundle is coupled: cpl OOMs on a 40 GB card in
+#                   inline-inference validation, and one such run would take
+#                   the whole bundle down with it.
 #   FME_TIME        walltime (default 48:00:00, the regular-QOS maximum)
 #   FME_TIME_MIN    --time-min for backfill (default unset)
 #   FME_QOS         QOS (default regular)
@@ -94,6 +98,18 @@ MAIL=()
 [ "$MAIL_TYPE" != NONE ] && MAIL=(--mail-user="${FME_MAIL_USER:-${USER}@nersc.gov}" --mail-type="$MAIL_TYPE")
 EXTRA=(--qos="${FME_QOS:-regular}" --time="${FME_TIME:-48:00:00}")
 [ -n "${FME_TIME_MIN:-}" ] && EXTRA+=(--time-min="$FME_TIME_MIN")
+
+# Card size is a property of the bundle, not of the batch script: one coupled
+# run in the manifest forces the whole allocation onto 80 GB cards.
+if [ -n "${FME_CONSTRAINT:-}" ]; then
+    CONSTRAINT=$FME_CONSTRAINT
+elif cut -f2 "$MANIFEST" | grep -qx cpl; then
+    CONSTRAINT='gpu&hbm80g'
+else
+    CONSTRAINT='gpu&a100'
+fi
+EXTRA+=(--constraint="$CONSTRAINT")
+echo "constraint: $CONSTRAINT" >&2
 
 if [ "$GO" != 1 ]; then
     echo "(dry run: staged and validated; pass --go to submit)" >&2

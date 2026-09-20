@@ -3,7 +3,11 @@
 # disjoint node sets, all inside one allocation; nodes of finished runs idle.
 #SBATCH -A e3sm_g
 #SBATCH -q regular
-#SBATCH -C gpu&a100              # 40 GB suffices for atm/cpl at local batch 1
+#SBATCH -C gpu&a100              # atm/ocn only. bundle.sh overrides this on the
+                                 # sbatch command line: a coupled run OOMs on a
+                                 # 40 GB card during inline-inference validation,
+                                 # so any bundle containing a cpl run goes to
+                                 # gpu&hbm80g. Set FME_CONSTRAINT to force it.
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=4
 #SBATCH --cpus-per-task=128
