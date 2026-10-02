@@ -2997,3 +2997,48 @@ def test_combined_flux_can_replace_an_atmosphere_output_for_the_ocean():
         atmos_gen["fa"].mean(dim=1, keepdim=True)
         + atmos_gen["stress"].mean(dim=1, keepdim=True),
     )
+
+
+def test_combined_flux_emission_from_the_ocean_start_of_step_sst():
+    torch.manual_seed(0)
+    sigma = 5.67e-8
+    config = _get_combined_flux_config(
+        [
+            CombinedFluxConfig(
+                name="net", terms={"fa": 0.0}, sst_emission_coefficient=sigma
+            ),
+        ],
+        open_water_names=["net"],
+    )
+    coupler = _get_coupler(config)
+    device = fme.get_device()
+    window_shape = (1, 2, N_LAT, N_LON)
+    land_fraction = torch.zeros(1, 1, N_LAT, N_LON, device=device).expand(*window_shape)
+    atmos_gen = {
+        "fa": 400.0 + torch.rand(*window_shape, device=device),
+        "fb": torch.rand(*window_shape, device=device),
+        "stress": torch.rand(*window_shape, device=device),
+    }
+    ice = torch.rand(1, 1, N_LAT, N_LON, device=device)
+    sst = 271.0 + 10.0 * torch.rand(1, 1, N_LAT, N_LON, device=device)
+    sst[..., 0, 0] = float("nan")  # land
+    new_ocean_forcings = coupler._get_ocean_forcings(
+        {"land_fraction": land_fraction},
+        atmos_gen,
+        {"land_fraction": land_fraction},
+        {"ocean_sea_ice_fraction": ice, "sst": sst},
+    )
+    # the ocean's own emission, scaled by the open-water fraction above the
+    # 275 K threshold; the atmosphere's value plays no part
+    open_water = torch.where(sst > 275.0, torch.ones_like(ice), 1 - ice)
+    expected = torch.nan_to_num(sigma * sst**4, nan=0.0) * open_water
+    torch.testing.assert_close(new_ocean_forcings["net"][:, 1:], expected)
+    assert torch.all(new_ocean_forcings["net"][:, 1:, 0, 0] == 0)
+
+
+def test_combined_flux_emission_requires_sst():
+    combined = CombinedFluxConfig(
+        name="net", terms={"fa": 0.0}, sst_emission_coefficient=5.67e-8
+    )
+    with pytest.raises(ValueError, match="sea surface temperature"):
+        combined.combine({"fa": torch.zeros(1)})

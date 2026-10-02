@@ -350,26 +350,52 @@ class CombinedFluxConfig:
     zero coefficient supplies a zero field, e.g. for an ocean trained with a
     flux channel zeroed.
 
+    An emission term can be added from the ocean's own state: the ocean's sea
+    surface temperature at the start of the coupled step, to the fourth power,
+    times ``sst_emission_coefficient``. With ``name="FLUS"``,
+    ``terms={"FLUS": 0.0}`` and a coefficient of 5.67e-8 the ocean's upward
+    longwave becomes its own emission rather than the atmosphere's FLUS, which
+    in E3SMv3 data is the coupler's emission from the target window's SST.
+    Where the SST is NaN (land) the emission term is zero.
+
     Parameters:
         name: Ocean input-only name to supply, e.g. "hfds".
         terms: Mapping from atmosphere output names to coefficients, e.g.
             {"FSNS": 1, "FLDS": 1, "FLUS": -1, "LHFLX": -1, "SHFLX": -1} for
             the net heat flux into the ocean from EAM-signed fluxes.
+        sst_emission_coefficient: Coefficient of the ocean's start-of-step
+            SST to the fourth power, in flux units per SST unit**4 (e.g.
+            -5.67e-8 W m-2 K-4 for a net flux into the ocean with SST in
+            kelvin). Zero (the default) adds no emission term.
     """
 
     name: str
     terms: dict[str, float]
+    sst_emission_coefficient: float = 0.0
 
     def __post_init__(self):
         if len(self.terms) == 0:
             raise ValueError("CombinedFluxConfig requires at least one term.")
 
-    def combine(self, forcings_from_atmosphere: TensorMapping) -> torch.Tensor:
+    def combine(
+        self,
+        forcings_from_atmosphere: TensorMapping,
+        sst: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         items = iter(self.terms.items())
         term, coefficient = next(items)
         total = coefficient * forcings_from_atmosphere[term]
         for term, coefficient in items:
             total = total + coefficient * forcings_from_atmosphere[term]
+        if self.sst_emission_coefficient != 0.0:
+            if sst is None:
+                raise ValueError(
+                    f"combined flux {self.name!r} has an emission term but no "
+                    "sea surface temperature was given."
+                )
+            total = total + torch.nan_to_num(
+                self.sst_emission_coefficient * sst**4, nan=0.0
+            )
         return total
 
 
@@ -1550,7 +1576,10 @@ class CoupledStepper:
         }
         for c in combined:
             terms_mean = {t: atmos_gen[t].mean(time_dim, keepdim=True) for t in c.terms}
-            forcings_from_atmosphere[c.name] = c.combine(terms_mean)
+            sst = None
+            if c.sst_emission_coefficient != 0.0:
+                sst = ocean_ic[self._config.sst_name]
+            forcings_from_atmosphere[c.name] = c.combine(terms_mean, sst)
         if self._config.open_water_flux_scaling is not None:
             scaling = self._get_open_water_fraction(ocean_ic, atmos_forcings)
             if flux_fraction is not None:
