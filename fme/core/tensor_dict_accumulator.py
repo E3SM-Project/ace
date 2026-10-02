@@ -57,7 +57,8 @@ class TensorDictAccumulator:
         if self._sum is None:
             raise ValueError("No values have been added to the accumulator")
         dist = Distributed.get_instance()
-        return {k: dist.reduce_sum(self._sum[k]) for k in sorted(self._sum)}
+        # clone so the in-place reduction does not modify the running sums
+        return {k: dist.reduce_sum(self._sum[k].clone()) for k in sorted(self._sum)}
 
     def get_distributed_mean(self) -> TensorDict:
         if self._sum is None or self._count == 0:
