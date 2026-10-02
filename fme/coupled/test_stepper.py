@@ -45,6 +45,7 @@ from .data_loading.data_typing import (
     CoupledVerticalCoordinate,
 )
 from .stepper import (
+    CombinedFluxConfig,
     ComponentConfig,
     ComponentTrainingConfig,
     CoupledOceanFractionConfig,
@@ -2874,3 +2875,125 @@ def test_train_on_batch_evaluate_all_steps_with_stochastic_n_steps(
         assert {len(keys) for keys in atmos_key_sets} == {1, 4}
         for keys in atmos_key_sets:
             assert keys == {f"loss/atmosphere_step_{step}" for step in range(len(keys))}
+
+
+def _get_combined_flux_config(
+    combined_fluxes: list[CombinedFluxConfig],
+    open_water_names: list[str] | None = None,
+) -> CoupledStepperConfig:
+    """Ocean takes one net flux built from two atmosphere fluxes, plus stress."""
+    config = get_stepper_config(
+        ocean_in_names=[
+            "land_fraction",
+            "net",
+            "stress",
+            "sst",
+            "ocean_sea_ice_fraction",
+        ],
+        ocean_out_names=["sst", "ocean_sea_ice_fraction"],
+        atmosphere_in_names=["land_fraction", "ocean_frac", "sfc_temp"],
+        atmosphere_out_names=["fa", "fb", "stress", "sfc_temp"],
+        sst_name_in_ocean_data="sst",
+        sfc_temp_name_in_atmosphere_data="sfc_temp",
+        ocean_fraction_name="ocean_frac",
+        ocean_fraction_prediction=CoupledOceanFractionConfig(
+            sea_ice_fraction_name="ocean_sea_ice_fraction",
+            land_fraction_name="land_fraction",
+        ),
+        ocean_next_step_forcing_names=["net", "stress"],
+    )
+    config.combined_fluxes = combined_fluxes
+    if open_water_names is not None:
+        config.open_water_flux_scaling = OpenWaterFluxScalingConfig(
+            names=open_water_names, ice_free_sst_threshold=275.0
+        )
+    config.__post_init__()
+    return config
+
+
+def test_combined_flux_is_supplied_by_the_atmosphere_not_read_from_data():
+    config = _get_combined_flux_config(
+        [CombinedFluxConfig(name="net", terms={"fa": 1.0, "fb": -2.0})]
+    )
+    assert "net" in config.atmosphere_to_ocean_forcing_names
+    assert "net" not in config.ocean_forcing_exogenous_names
+    assert "net" not in config.ocean_forcing_window_names
+    requirements = config.get_evaluation_window_data_requirements(1)
+    assert "net" not in requirements.ocean_requirements.names
+
+
+def test__get_ocean_forcings_combined_flux_with_open_water_scaling():
+    torch.manual_seed(0)
+    config = _get_combined_flux_config(
+        [CombinedFluxConfig(name="net", terms={"fa": 1.0, "fb": -2.0})],
+        open_water_names=["net"],
+    )
+    coupler = _get_coupler(config)
+    device = fme.get_device()
+    window_shape = (1, 2, N_LAT, N_LON)
+    land_fraction = torch.rand(1, 1, N_LAT, N_LON, device=device).expand(*window_shape)
+    atmos_gen = {
+        "fa": torch.rand(*window_shape, device=device),
+        "fb": torch.rand(*window_shape, device=device),
+        "stress": torch.rand(*window_shape, device=device),
+    }
+    ice = torch.rand(1, 1, N_LAT, N_LON, device=device)
+    ocean_ic = {"ocean_sea_ice_fraction": ice, "sst": torch.full_like(ice, 271.0)}
+    new_ocean_forcings = coupler._get_ocean_forcings(
+        {"land_fraction": land_fraction},
+        atmos_gen,
+        {"land_fraction": land_fraction},
+        ocean_ic,
+    )
+    expected = (
+        atmos_gen["fa"].mean(dim=1, keepdim=True)
+        - 2.0 * atmos_gen["fb"].mean(dim=1, keepdim=True)
+    ) * (1 - ice)
+    torch.testing.assert_close(new_ocean_forcings["net"][:, 1:], expected)
+    assert torch.all(new_ocean_forcings["net"][:, 0].isnan())
+    assert "fa" not in new_ocean_forcings and "fb" not in new_ocean_forcings
+
+
+@pytest.mark.parametrize(
+    "combined, match",
+    [
+        (CombinedFluxConfig(name="net", terms={"fa": 1.0, "missing": 1.0}), "terms"),
+        (CombinedFluxConfig(name="not_an_input", terms={"fa": 1.0}), "input-only"),
+    ],
+)
+def test_combined_flux_config_validation(combined, match):
+    with pytest.raises(ValueError, match=match):
+        _get_combined_flux_config([combined])
+
+
+def test_combined_flux_can_replace_an_atmosphere_output_for_the_ocean():
+    torch.manual_seed(0)
+    config = _get_combined_flux_config(
+        [
+            CombinedFluxConfig(name="net", terms={"fa": 1.0, "stress": 1.0}),
+            CombinedFluxConfig(name="stress", terms={"stress": 0.0}),
+        ]
+    )
+    coupler = _get_coupler(config)
+    device = fme.get_device()
+    window_shape = (1, 2, N_LAT, N_LON)
+    land_fraction = torch.rand(1, 1, N_LAT, N_LON, device=device).expand(*window_shape)
+    atmos_gen = {
+        "fa": torch.rand(*window_shape, device=device),
+        "fb": torch.rand(*window_shape, device=device),
+        "stress": torch.rand(*window_shape, device=device),
+    }
+    ice = torch.rand(1, 1, N_LAT, N_LON, device=device)
+    new_ocean_forcings = coupler._get_ocean_forcings(
+        {"land_fraction": land_fraction},
+        atmos_gen,
+        {"land_fraction": land_fraction},
+        {"ocean_sea_ice_fraction": ice, "sst": torch.full_like(ice, 271.0)},
+    )
+    # the ocean's stress channel is zeroed, but "net" still uses the real stress
+    assert torch.all(new_ocean_forcings["stress"][:, 1:] == 0)
+    torch.testing.assert_close(
+        new_ocean_forcings["net"][:, 1:],
+        atmos_gen["fa"].mean(dim=1, keepdim=True)
+        + atmos_gen["stress"].mean(dim=1, keepdim=True),
+    )

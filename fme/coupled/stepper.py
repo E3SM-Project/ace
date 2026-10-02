@@ -330,6 +330,49 @@ class StaticFluxScalingConfig:
         return scaled
 
 
+@dataclasses.dataclass
+class CombinedFluxConfig:
+    """
+    Configuration for an ocean forcing computed as a weighted sum of
+    atmosphere outputs, e.g. a net surface heat flux for an ocean trained on
+    one net flux instead of its separate terms.
+
+    Without this, an ocean input that is not an atmosphere output falls through
+    to the ocean's exogenous forcings and is read from the forcing dataset, so
+    a coupled run would be driven by the reference flux rather than by the
+    atmosphere. The combined forcing is built from the atmosphere outputs
+    averaged over the ocean step, before any flux scaling; list ``name`` in
+    ``open_water_flux_scaling.names`` to scale it like the other heat fluxes.
+
+    ``name`` may also be an atmosphere output that the ocean takes as input;
+    the combined value then replaces that output for the ocean only (the
+    atmosphere and the other combined forcings still see the original). A
+    zero coefficient supplies a zero field, e.g. for an ocean trained with a
+    flux channel zeroed.
+
+    Parameters:
+        name: Ocean input-only name to supply, e.g. "hfds".
+        terms: Mapping from atmosphere output names to coefficients, e.g.
+            {"FSNS": 1, "FLDS": 1, "FLUS": -1, "LHFLX": -1, "SHFLX": -1} for
+            the net heat flux into the ocean from EAM-signed fluxes.
+    """
+
+    name: str
+    terms: dict[str, float]
+
+    def __post_init__(self):
+        if len(self.terms) == 0:
+            raise ValueError("CombinedFluxConfig requires at least one term.")
+
+    def combine(self, forcings_from_atmosphere: TensorMapping) -> torch.Tensor:
+        items = iter(self.terms.items())
+        term, coefficient = next(items)
+        total = coefficient * forcings_from_atmosphere[term]
+        for term, coefficient in items:
+            total = total + coefficient * forcings_from_atmosphere[term]
+        return total
+
+
 def _load_stepper_weights_and_history_factory(
     stepper: Stepper,
 ) -> WeightsAndHistoryLoader:
@@ -421,6 +464,8 @@ class CoupledStepperConfig:
             force the ocean, for fluxes whose ocean-side value differs from the
             atmosphere's cell mean by a fixed geometric factor rather than by
             the open-water fraction. Used for wind stress.
+        combined_fluxes: (Optional) Ocean forcings computed as weighted sums of
+            atmosphere outputs, e.g. a net heat flux, see CombinedFluxConfig.
 
     """
 
@@ -430,8 +475,12 @@ class CoupledStepperConfig:
     ocean_fraction_prediction: CoupledOceanFractionConfig | None = None
     open_water_flux_scaling: OpenWaterFluxScalingConfig | None = None
     static_flux_scaling: StaticFluxScalingConfig | None = None
+    combined_fluxes: list[CombinedFluxConfig] = dataclasses.field(default_factory=list)
 
     def __post_init__(self):
+        # combined fluxes first: component validation already counts them as
+        # atmosphere -> ocean forcings
+        self._validate_combined_fluxes()
         self._validate_component_configs()
 
         atmosphere_ocean_config = self.atmosphere.stepper.get_ocean()
@@ -449,10 +498,11 @@ class CoupledStepperConfig:
         ).to_pytimedelta()
 
         # calculate forcing sets
+        combined_names = {c.name for c in self.combined_fluxes}
         self._ocean_forcing_exogenous_names = list(
             self.ocean.stepper.input_only_names.difference(
                 self.atmosphere.stepper.output_names
-            )
+            ).difference(combined_names)
         )
         flux_fraction_name = self._atmosphere_flux_fraction_name
         static_fraction_name = self._static_flux_fraction_name
@@ -487,7 +537,7 @@ class CoupledStepperConfig:
         self._atmosphere_to_ocean_forcing_names = list(
             self.ocean.stepper.input_only_names.intersection(
                 self.atmosphere.stepper.output_names
-            )
+            ).union(combined_names)
         )
         extra_forcings_names = [self.sst_name]
         if self.ocean_fraction_prediction is not None:
@@ -518,9 +568,12 @@ class CoupledStepperConfig:
             )
         else:
             self._all_atmosphere_names = unfiltered_all_atmosphere_names
-        # NOTE: this removes "shared" forcings from the ocean data requirements
+        # NOTE: this removes "shared" forcings from the ocean data requirements;
+        # combined fluxes are built from atmosphere outputs, never read from data
         self._all_ocean_names = list(
-            self.ocean.stepper.all_names.difference(self._all_atmosphere_names)
+            self.ocean.stepper.all_names.difference(
+                self._all_atmosphere_names
+            ).difference(combined_names)
         )
         if self.ocean_fraction_prediction is not None:
             # NOTE: land_fraciton is necessary to derive sea_ice_fraction from
@@ -558,7 +611,11 @@ class CoupledStepperConfig:
             f"ocean -> atmosphere {sorted(self._ocean_to_atmosphere_forcing_names)}"
         )
         next_step = set(self.ocean.stepper.next_step_forcing_names)
-        unmatched = sorted(next_step - set(self.atmosphere.stepper.output_names))
+        unmatched = sorted(
+            next_step
+            - set(self.atmosphere.stepper.output_names)
+            - {c.name for c in self.combined_fluxes}
+        )
         if self._atmosphere_to_ocean_forcing_names:
             if unmatched:
                 # Only a warning: a next-step forcing may legitimately come
@@ -595,6 +652,24 @@ class CoupledStepperConfig:
             "'shortWaveHeatFlux' against EAM 'TAUX' and 'FSNS'). Atmosphere "
             f"output names: {sorted(self.atmosphere.stepper.output_names)}."
         )
+
+    def _validate_combined_fluxes(self) -> None:
+        atmosphere_outputs = set(self.atmosphere.stepper.output_names)
+        ocean_inputs = self.ocean.stepper.input_only_names
+        names = [c.name for c in self.combined_fluxes]
+        if len(names) != len(set(names)):
+            raise ValueError(f"combined_fluxes names must be unique, got {names}.")
+        for c in self.combined_fluxes:
+            if c.name not in ocean_inputs:
+                raise ValueError(
+                    f"combined flux {c.name!r} must be an input-only name of the ocean."
+                )
+            missing = sorted(set(c.terms).difference(atmosphere_outputs))
+            if missing:
+                raise ValueError(
+                    f"combined flux {c.name!r} terms {missing} are not atmosphere "
+                    "outputs."
+                )
 
     def _ocean_supplied_atmosphere_names(self) -> set[str]:
         """Names written onto the atmosphere forcings from the ocean component
@@ -817,7 +892,7 @@ class CoupledStepperConfig:
         atmosphere_to_ocean_forcing_names = list(
             self.ocean.stepper.input_only_names.intersection(
                 self.atmosphere.stepper.output_names
-            )
+            ).union(c.name for c in self.combined_fluxes)
         )
         missing_next_step_forcings = list(
             set(atmosphere_to_ocean_forcing_names).difference(
@@ -1460,16 +1535,22 @@ class CoupledStepper:
         )
         static_fraction = _pop_static_fraction(self._config._static_flux_fraction_name)
         # get time-averaged forcings from atmosphere
+        combined = self._config.combined_fluxes
+        combined_names = {c.name for c in combined}
         forcings_from_atmosphere = {
             **{
                 k: atmos_gen[k].mean(time_dim, keepdim=True)
                 for k in self._atmosphere_to_ocean_forcing_names
+                if k not in combined_names
             },
             **{
                 k: atmos_forcings[k].mean(time_dim, keepdim=True)
                 for k in self._shared_forcing_exogenous_names
             },
         }
+        for c in combined:
+            terms_mean = {t: atmos_gen[t].mean(time_dim, keepdim=True) for t in c.terms}
+            forcings_from_atmosphere[c.name] = c.combine(terms_mean)
         if self._config.open_water_flux_scaling is not None:
             scaling = self._get_open_water_fraction(ocean_ic, atmos_forcings)
             if flux_fraction is not None:
