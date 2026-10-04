@@ -20,7 +20,9 @@ D16 / physics design section 6):
   G0  no cross-realm gradients (gradient accumulation on)
 
 Recipe (campaign design D11 and the S2D addendum):
-  * atmosphere E02-FT S01 (A0 C1: no aerosol diagnostics, per D2); ocean pilot E2
+  * atmosphere E02-FT S03 (A0 C1: no aerosol diagnostics, per D2); ocean pilot E2.
+    S03 replaced S01 on 2026-10-03: S01 enters a dark regime (6/7 + 4/8 standalone,
+    and once coupled), S02/S03 0/16 each (cft-diag/cpl_e4x/regime_screen).
   * coupler builds hfds from the atmosphere's fluxes (combined_fluxes) and
     zeroes the four flux channels the ocean was trained without
   * atmosphere gains FSDS and FSUS outputs, appended last so the parent's
@@ -52,7 +54,7 @@ MAX_EPOCHS = 10
 WORD = "A0_B16_C1_L0_O5_V0_W0_X0_F0_H1_E1_D0_G0"
 SEEDS = (1, 2)
 
-ATM = FT / "E02-FT.aug26.atm.A0_B16_C1_L0_O5_W0_X0.S01"
+ATM = FT / "E02-FT.aug26.atm.A0_B16_C1_L0_O5_W0_X0.S03"
 OCN_TEMPLATE = FT / "E11-FT.aug26.ocn.A0_B16_C0_L0_O5_W0_X0.S01"  # data layout only
 OCN_PILOT_CFG = PILOT / "ocn-netflux-ohc2.yaml"
 OCN_PILOT_CKPT = PILOT / "ocn-netflux-ohc2/training_checkpoints/ema_ckpt_0005.tar"
@@ -157,7 +159,7 @@ def _emit(seed):
         f"WANDB_JOB_TYPE={WORD}_CFT\n"
         f"WANDB_TAGS={tags}\n"
         f'WANDB_NOTES="E4x main arm: CFT on pilot E2 (net flux + heat-content '
-        f'corrector) x E02-FT S01 with FSDS/FSUS and the energy corrector | '
+        f'corrector) x E02-FT S03 with FSDS/FSUS and the energy corrector | '
         f'{NODES} nodes, {MAX_EPOCHS} epochs, lr 1e-5 + warm-up"\n'
     )
     return runid

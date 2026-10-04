@@ -668,7 +668,7 @@ stepper_training:
         crps_weight: 0.9
         energy_score_weight: 0.1
     parameter_init:
-      weights_path: /pscratch/sd/m/mahf708/aug26-ft/E02-FT.aug26.atm.A0_B16_C1_L0_O5_W0_X0.S01/training_checkpoints/best_inference_ckpt.tar
+      weights_path: /pscratch/sd/m/mahf708/aug26-ft/E02-FT.aug26.atm.A0_B16_C1_L0_O5_W0_X0.S03/training_checkpoints/best_inference_ckpt.tar
 stepper:
   sst_name: sst
   ocean_fraction_prediction:
