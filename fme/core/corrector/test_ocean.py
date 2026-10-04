@@ -1,18 +1,22 @@
 import dataclasses
 import datetime
+from typing import Literal
 
 import pytest
 import torch
 
 from fme import get_device
+from fme.core.constants import DENSITY_OF_SEA_WATER_CM4, SPECIFIC_HEAT_OF_SEA_WATER_CM4
 from fme.core.coordinates import DepthCoordinate
 from fme.core.corrector.ocean import (
     OceanCorrectorConfig,
     OceanHeatContentBudgetConfig,
+    OceanHeatContentMethod,
     SeaIceFractionConfig,
     SurfaceEnergyFluxCorrectionConfig,
     _compute_ocean_net_surface_energy_flux,
 )
+from fme.core.distributed import Distributed
 from fme.core.gridded_ops import LatLonOperations
 from fme.core.ocean_data import OceanData
 from fme.core.spatial_mask_provider import SpatialMaskProvider
@@ -556,3 +560,405 @@ def test_ocean_corrector_empty_delta_when_nothing_modified():
     assert dict(result.diagnostics.delta) == {}
     assert set(result.modified_names) == set()
     torch.testing.assert_close(result.corrected["so_0"], gen_data["so_0"])
+
+
+# --- additive_profile ocean heat content correction ---------------------------
+
+_OHC_IDEPTH = [0.0, 20.0, 50.0, 230.0, 1020.0]
+_OHC_TIMESTEP = datetime.timedelta(days=5)
+_OHC_RHO, _OHC_CP = 1026.0, 3996.0  # E3SM / MPAS-Ocean
+
+
+@dataclasses.dataclass
+class _OHCCase:
+    area: torch.Tensor  # (lat, lon)
+    mask: torch.Tensor  # (lat, lon, nz)
+    depth: DepthCoordinate
+    ops: LatLonOperations
+    input_data: dict[str, torch.Tensor]
+    gen_data: dict[str, torch.Tensor]
+    forcing_data: dict[str, torch.Tensor]
+
+
+def _make_ohc_case(
+    net_flux: float,
+    gen_offset: float = 0.0,
+    subzero_column: tuple[int, int] | None = None,
+    deptho: torch.Tensor | None = None,
+    hfds_location: str = "input",
+    gen_dry_value: float = float("nan"),
+    nlat: int = 4,
+    nlon: int = 6,
+    seed: int = 0,
+) -> _OHCCase:
+    """A small float64 ocean with a land column, two shallow columns, a partial
+    sea surface fraction and NaN on dry input cells, as in the real data.
+    ``gen_dry_value`` fills dry cells of the prediction (the network's raw
+    output is finite there before output masking)."""
+    generator = torch.Generator().manual_seed(seed)
+    dtype = torch.float64
+    nz = len(_OHC_IDEPTH) - 1
+    mask = torch.ones(nlat, nlon, nz, dtype=dtype)
+    mask[0, 0, :] = 0.0  # land
+    mask[1, 1, 2:] = 0.0  # 50 m deep
+    mask[2, 3, 3:] = 0.0  # 230 m deep
+    if deptho is not None:  # no wet layer starts below the sea floor
+        mask = mask * (torch.tensor(_OHC_IDEPTH[:-1], dtype=dtype) < deptho[..., None])
+    area = torch.linspace(0.5, 1.0, nlat, dtype=dtype)[:, None].expand(nlat, nlon)
+    masks = {f"mask_{k}": mask[..., k] for k in range(nz)}
+    masks["mask_2d"] = mask[..., 0]
+    ops = LatLonOperations(area.clone(), SpatialMaskProvider(masks))
+    depth = DepthCoordinate(torch.tensor(_OHC_IDEPTH, dtype=dtype), mask, deptho)
+    wet = mask > 0
+    input_temperature = 2.0 + 18.0 * torch.rand(
+        nlat, nlon, nz, generator=generator, dtype=dtype
+    )
+    noise = 0.1 * torch.randn(nlat, nlon, nz, generator=generator, dtype=dtype)
+    gen_temperature = input_temperature + gen_offset + noise
+    if subzero_column is not None:
+        input_temperature[subzero_column] = -1.5
+        gen_temperature[subzero_column] = -1.5
+    nan = torch.tensor(float("nan"), dtype=dtype)
+    input_temperature = torch.where(wet, input_temperature, nan)
+    gen_temperature = torch.where(
+        wet, gen_temperature, torch.tensor(gen_dry_value, dtype=dtype)
+    )
+
+    def level_dict(temperature: torch.Tensor) -> dict[str, torch.Tensor]:
+        data = {f"thetao_{k}": temperature[None, ..., k] for k in range(nz)}
+        data["sst"] = temperature[None, ..., 0] + 273.15
+        return data
+
+    input_data = level_dict(input_temperature)
+    gen_data = level_dict(gen_temperature)
+    sea_surface_fraction = mask[None, ..., 0] * (
+        0.5 + 0.5 * torch.rand(1, nlat, nlon, generator=generator, dtype=dtype)
+    )
+    forcing_data = {
+        "hfgeou": torch.full((1, nlat, nlon), 0.05, dtype=dtype),
+        "sea_surface_fraction": sea_surface_fraction,
+    }
+    hfds = torch.full((1, nlat, nlon), net_flux, dtype=dtype)
+    if hfds_location == "input":
+        input_data["hfds"] = hfds
+    elif hfds_location == "gen":
+        gen_data["hfds"] = hfds
+    else:
+        gen_data["hfds_total_area"] = hfds * sea_surface_fraction
+    return _OHCCase(area, mask, depth, ops, input_data, gen_data, forcing_data)
+
+
+def _global_mean_heat(case: _OHCCase, data: TensorMapping, dz: torch.Tensor):
+    """Area-weighted global mean column heat content [J/m**2], computed
+    independently of the corrector."""
+    nz = case.mask.shape[-1]
+    temperature = torch.stack([data[f"thetao_{k}"] for k in range(nz)], dim=-1)
+    column = (temperature * _OHC_RHO * _OHC_CP * dz).nansum(dim=-1)
+    weights = case.area * case.mask[..., 0]
+    return (column * weights).sum(dim=(-2, -1)) / weights.sum()
+
+
+def _expected_flux(case: _OHCCase, net_flux: float) -> torch.Tensor:
+    ssf = case.forcing_data["sea_surface_fraction"]
+    weights = case.area * case.mask[..., 0]
+    flux = (net_flux + 0.05) * ssf
+    return (flux * weights).sum(dim=(-2, -1)) / weights.sum()
+
+
+def _additive_config(
+    profile: Literal["exponential", "uniform"] = "exponential",
+    e_folding_depth: float = 150.0,
+    wet_volume: Literal["coordinate", "full_cells"] = "coordinate",
+    unaccounted: float = 0.0,
+    method: OceanHeatContentMethod = "additive_profile",
+) -> OceanCorrectorConfig:
+    additive = method == "additive_profile"
+    return OceanCorrectorConfig(
+        ocean_heat_content_correction=OceanHeatContentBudgetConfig(
+            method=method,
+            constant_unaccounted_heating=unaccounted,
+            density=_OHC_RHO,
+            specific_heat=_OHC_CP,
+            wet_volume=wet_volume,
+            profile=profile if additive else None,
+            e_folding_depth=(
+                e_folding_depth if additive and profile == "exponential" else None
+            ),
+        )
+    )
+
+
+def _apply(config: OceanCorrectorConfig, case: _OHCCase) -> TensorMapping:
+    corrector = config._build(case.ops, case.depth, _OHC_TIMESTEP)
+    return corrector(case.input_data, case.gen_data, case.forcing_data, None).corrected
+
+
+@pytest.mark.parametrize(
+    "profile, e_folding_depth",
+    [
+        ("exponential", 75.0),
+        ("exponential", 150.0),
+        ("exponential", 300.0),
+        ("uniform", 0.0),
+    ],
+)
+@pytest.mark.parametrize(
+    "net_flux, gen_offset",
+    [
+        pytest.param(40.0, -0.3, id="heat_added"),
+        pytest.param(-40.0, 0.3, id="heat_removed"),
+    ],
+)
+@pytest.mark.parametrize("hfds_location", ["input", "gen", "total_area"])
+def test_additive_profile_closes_global_heat_budget(
+    profile, e_folding_depth, net_flux, gen_offset, hfds_location
+):
+    case = _make_ohc_case(net_flux, gen_offset, hfds_location=hfds_location)
+    unaccounted = -1.62
+    corrected = _apply(
+        _additive_config(profile, e_folding_depth, unaccounted=unaccounted), case
+    )
+    dt = _OHC_TIMESTEP.total_seconds()
+    dz = case.depth.dz
+    target = _global_mean_heat(case, case.input_data, dz) + dt * (
+        _expected_flux(case, net_flux) + unaccounted
+    )
+    raw = _global_mean_heat(case, case.gen_data, dz)
+    residual = target - raw
+    assert torch.sign(residual).item() == (1.0 if net_flux > 0 else -1.0)
+    corrected_heat = _global_mean_heat(case, {**case.gen_data, **corrected}, dz)
+    torch.testing.assert_close(corrected_heat, target, rtol=1e-13, atol=0.0)
+
+
+def test_additive_profile_warms_subzero_water_when_heat_is_added():
+    subzero = (3, 4)
+    case = _make_ohc_case(net_flux=60.0, gen_offset=-0.2, subzero_column=subzero)
+    additive = _apply(_additive_config("exponential", 150.0), case)
+    scaled = _apply(_additive_config(method="scaled_temperature"), case)
+    for k in range(case.mask.shape[-1]):
+        raw = case.gen_data[f"thetao_{k}"][(0, *subzero)]
+        assert raw < 0
+        assert additive[f"thetao_{k}"][(0, *subzero)] > raw
+        # the multiplicative method cools sub-zero water while adding heat
+        assert scaled[f"thetao_{k}"][(0, *subzero)] < raw
+
+
+@pytest.mark.parametrize("profile", ["exponential", "uniform"])
+def test_additive_profile_leaves_dry_cells_unchanged(profile):
+    case = _make_ohc_case(net_flux=30.0, gen_offset=-0.5, gen_dry_value=7.0)
+    corrected = _apply(_additive_config(profile), case)
+    for k in range(case.mask.shape[-1]):
+        dry = case.mask[..., k] == 0
+        assert dry.any()
+        change = (corrected[f"thetao_{k}"] - case.gen_data[f"thetao_{k}"])[0]
+        assert (change[dry] == 0).all()
+        assert (change[~dry] > 0).all()
+    land = case.mask[..., 0] == 0
+    torch.testing.assert_close(
+        corrected["sst"][0][land], case.gen_data["sst"][0][land], rtol=0, atol=0
+    )
+
+
+def test_additive_profile_keeps_sst_consistent_with_top_level():
+    case = _make_ohc_case(net_flux=-25.0, gen_offset=0.4)
+    corrected = _apply(_additive_config("exponential", 75.0), case)
+    torch.testing.assert_close(
+        corrected["sst"] - case.gen_data["sst"],
+        corrected["thetao_0"] - case.gen_data["thetao_0"],
+        equal_nan=True,
+    )
+
+
+@pytest.mark.parametrize("e_folding_depth", [75.0, 150.0, 300.0])
+def test_additive_profile_heat_follows_integrated_exponential(e_folding_depth):
+    """Per layer, the added heat in a full-depth column is proportional to the
+    integral of exp(-z / L) between the layer interfaces (not its midpoint
+    value), so the column total is L * (1 - exp(-H / L))."""
+    case = _make_ohc_case(net_flux=50.0)
+    corrected = _apply(_additive_config("exponential", e_folding_depth), case)
+    idepth = torch.tensor(_OHC_IDEPTH, dtype=torch.float64)
+    full_column = (3, 5)
+    nz = case.mask.shape[-1]
+    delta = torch.stack(
+        [
+            (corrected[f"thetao_{k}"] - case.gen_data[f"thetao_{k}"])[(0, *full_column)]
+            for k in range(nz)
+        ]
+    )
+    layer_heat = delta * idepth.diff()
+    exp_integral = e_folding_depth * (
+        torch.exp(-idepth[:-1] / e_folding_depth)
+        - torch.exp(-idepth[1:] / e_folding_depth)
+    )
+    torch.testing.assert_close(
+        layer_heat / layer_heat.sum(), exp_integral / exp_integral.sum()
+    )
+    torch.testing.assert_close(
+        exp_integral.sum(),
+        e_folding_depth * (1 - torch.exp(-idepth[-1] / e_folding_depth)),
+    )
+
+
+def test_additive_uniform_profile_adds_the_same_increment_everywhere():
+    case = _make_ohc_case(net_flux=50.0)
+    corrected = _apply(_additive_config("uniform"), case)
+    increments = torch.cat(
+        [
+            (corrected[f"thetao_{k}"] - case.gen_data[f"thetao_{k}"])[0][
+                case.mask[..., k] > 0
+            ]
+            for k in range(case.mask.shape[-1])
+        ]
+    )
+    torch.testing.assert_close(increments, increments[:1].expand_as(increments))
+
+
+@pytest.mark.parametrize("wet_volume", ["coordinate", "full_cells"])
+def test_additive_profile_closes_with_partial_bottom_cells(wet_volume):
+    deptho = torch.full((4, 6), 1020.0, dtype=torch.float64)
+    deptho[3, 2] = 35.0  # partial second layer, layers below dry
+    deptho[2, 2] = 600.0  # partial deepest layer
+    case = _make_ohc_case(net_flux=20.0, gen_offset=-0.1, deptho=deptho)
+    full_cell_dz = DepthCoordinate(case.depth.idepth, case.mask).dz
+    assert not torch.equal(full_cell_dz, case.depth.dz)
+    dz = case.depth.dz if wet_volume == "coordinate" else full_cell_dz
+    corrected = _apply(_additive_config("exponential", 150.0, wet_volume), case)
+    dt = _OHC_TIMESTEP.total_seconds()
+    target = _global_mean_heat(case, case.input_data, dz) + dt * _expected_flux(
+        case, 20.0
+    )
+    corrected_heat = _global_mean_heat(case, {**case.gen_data, **corrected}, dz)
+    torch.testing.assert_close(corrected_heat, target, rtol=1e-13, atol=0.0)
+
+
+def test_additive_profile_requires_layer_geometry():
+    case = _make_ohc_case(net_flux=10.0)
+    corrector = _additive_config()._build(case.ops, _VERTICAL_COORD, _OHC_TIMESTEP)
+    with pytest.raises(ValueError, match="layer interfaces"):
+        corrector(case.input_data, case.gen_data, case.forcing_data, None)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        pytest.param({"method": "additive_profile"}, id="additive_without_profile"),
+        pytest.param(
+            {"method": "additive_profile", "profile": "exponential"},
+            id="exponential_without_depth",
+        ),
+        pytest.param(
+            {
+                "method": "additive_profile",
+                "profile": "uniform",
+                "e_folding_depth": 150.0,
+            },
+            id="uniform_with_depth",
+        ),
+        pytest.param(
+            {"method": "scaled_temperature", "profile": "uniform"},
+            id="scaled_with_profile",
+        ),
+        pytest.param(
+            {"method": "scaled_temperature", "density": 0.0}, id="zero_density"
+        ),
+    ],
+)
+def test_ocean_heat_content_config_validation(kwargs):
+    with pytest.raises(ValueError):
+        OceanHeatContentBudgetConfig(**kwargs)
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        pytest.param(
+            {
+                "ocean_heat_content_correction": {
+                    "method": "scaled_temperature",
+                    "constant_unaccounted_heating": -1.62,
+                }
+            },
+            id="dict",
+        ),
+        pytest.param({"ocean_heat_content_correction": True}, id="deprecated_bool"),
+    ],
+)
+def test_old_ocean_heat_content_config_loads_with_unchanged_behaviour(state):
+    config = OceanCorrectorConfig.from_state(state)
+    ohc = config.ocean_heat_content_correction
+    assert ohc is not None
+    assert ohc.method == "scaled_temperature"
+    assert ohc.density == DENSITY_OF_SEA_WATER_CM4
+    assert ohc.specific_heat == SPECIFIC_HEAT_OF_SEA_WATER_CM4
+    assert ohc.wet_volume == "coordinate"
+    assert ohc.profile is None and ohc.e_folding_depth is None
+    # the scaled_temperature result is the closed form on OceanData's
+    # (CM4-constant) heat content, i.e. what the method computed before the
+    # constants became configurable
+    case = _make_ohc_case(net_flux=10.0, gen_offset=0.3, hfds_location="input")
+    corrected = _apply(config, case)
+    weights = case.area * case.mask[..., 0]
+
+    def mean_ohc(data):
+        column = OceanData(data, case.depth).ocean_heat_content
+        column = torch.where(weights > 0, column, 0.0)
+        return (column * weights).sum() / weights.sum()
+
+    unaccounted = ohc.constant_unaccounted_heating
+    ratio = (
+        mean_ohc(case.input_data)
+        + _OHC_TIMESTEP.total_seconds() * (_expected_flux(case, 10.0) + unaccounted)
+    ) / mean_ohc(case.gen_data)
+    torch.testing.assert_close(
+        corrected["thetao_2"], case.gen_data["thetao_2"] * ratio, equal_nan=True
+    )
+
+
+@pytest.mark.parallel
+def test_additive_profile_matches_global_computation_under_spatial_parallelism():
+    """Each rank holds a spatial tile; the distributed area-weighted means must
+    give the increment computed from the global arrays."""
+    dist = Distributed.get_instance()
+    nlat, nlon = 8, 12
+    case = _make_ohc_case(net_flux=35.0, gen_offset=-0.2, nlat=nlat, nlon=nlon)
+    config = _additive_config("exponential", 150.0)
+    # global reference, no distributed reductions
+    dt = _OHC_TIMESTEP.total_seconds()
+    dz = case.depth.dz
+    residual = (
+        _global_mean_heat(case, case.input_data, dz)
+        + dt * _expected_flux(case, 35.0)
+        - _global_mean_heat(case, case.gen_data, dz)
+    )
+    idepth = case.depth.idepth
+    w = (
+        150.0
+        * (torch.exp(-idepth[:-1] / 150.0) - torch.exp(-idepth[1:] / 150.0))
+        / idepth.diff()
+    ) * case.mask
+    weights = case.area * case.mask[..., 0]
+    capacity = ((w * dz).sum(-1) * _OHC_RHO * _OHC_CP * weights).sum() / weights.sum()
+    expected_delta = residual[0] / capacity * w  # (lat, lon, nz)
+    # local tile
+    h, ww = dist.get_local_slices((nlat, nlon))
+    local_mask = case.mask[h, ww]
+    masks = {f"mask_{k}": local_mask[..., k] for k in range(local_mask.shape[-1])}
+    masks["mask_2d"] = local_mask[..., 0]
+    device = get_device()
+    ops = LatLonOperations(case.area.clone(), SpatialMaskProvider(masks))
+    depth = DepthCoordinate(case.depth.idepth, local_mask).to(device)
+
+    def local(data):
+        return {k: v[..., h, ww].to(device) for k, v in data.items()}
+
+    corrector = config._build(ops, depth, _OHC_TIMESTEP)
+    gen_local = local(case.gen_data)
+    corrected = corrector(
+        local(case.input_data), gen_local, local(case.forcing_data), None
+    ).corrected
+    for k in range(case.mask.shape[-1]):
+        torch.testing.assert_close(
+            (corrected[f"thetao_{k}"] - gen_local[f"thetao_{k}"]).cpu()[0],
+            torch.where(local_mask[..., k] > 0, expected_delta[h, ww, k], torch.nan),
+            equal_nan=True,
+        )

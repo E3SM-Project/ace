@@ -38,6 +38,23 @@ class HasOceanDepthIntegral(Protocol):
     ) -> torch.Tensor: ...
 
 
+@runtime_checkable
+class HasOceanLayerGeometry(HasOceanDepthIntegral, Protocol):
+    """A depth coordinate that also exposes its layer geometry.
+
+    ``idepth`` holds the layer interface depths in meters (positive down, one
+    longer than the number of layers), ``mask`` is 1 on wet layers and 0
+    elsewhere (vertical last), and ``dz`` is the wet thickness of each layer in
+    meters, including partial bottom cells when the coordinate has them.
+    """
+
+    idepth: torch.Tensor
+    mask: torch.Tensor
+
+    @property
+    def dz(self) -> torch.Tensor: ...
+
+
 class HasCellAreaInMetersSquared(Protocol):
     """Protocol for objects that can provide cell areas in square meters."""
 
