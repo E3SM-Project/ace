@@ -6,6 +6,7 @@ import numpy as np
 
 from fme.ace.data_loading.batch_data import BatchData, PairedData, PrognosticState
 from fme.core.labels import LabelEncoding
+from fme.core.rand import alternate_seed
 from fme.core.typing_ import TensorDict, TensorMapping
 from fme.coupled.data_loading.data_typing import CoupledDatasetItem
 from fme.coupled.requirements import CoupledPrognosticStateDataRequirements
@@ -27,6 +28,26 @@ class CoupledPrognosticState:
     def to_device(self) -> "CoupledPrognosticState":
         return CoupledPrognosticState(
             self.ocean_data.to_device(), self.atmosphere_data.to_device()
+        )
+
+    def apply_config_seed(self, seed: int | None) -> "CoupledPrognosticState":
+        """Return a state with each component seeded from ``config.seed``,
+        unless that component already carries a random state.
+
+        The atmosphere is seeded with ``seed`` itself, as a standalone
+        atmosphere run would be, and the ocean with ``alternate_seed(seed)`` so
+        stochastic components in the two realms do not draw identical noise.
+        Each component defers to its own restored random state (see
+        ``PrognosticState.apply_config_seed``).
+
+        Args:
+            seed: The configured seed, or None to leave the state unseeded.
+        """
+        if seed is None:
+            return self
+        return CoupledPrognosticState(
+            ocean_data=self.ocean_data.apply_config_seed(alternate_seed(seed)),
+            atmosphere_data=self.atmosphere_data.apply_config_seed(seed),
         )
 
     def as_batch_data(self) -> "CoupledBatchData":

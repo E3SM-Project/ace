@@ -13,6 +13,7 @@ from fme.ace.inference.data_writer.main import DataWriterConfig
 from fme.ace.inference.inference import ForcingDataLoaderConfig
 from fme.ace.stepper import StepperOverrideConfig
 from fme.core.logging_utils import LoggingConfig
+from fme.core.registry.module import ModuleSelector
 from fme.core.testing import mock_wandb
 from fme.coupled.data_loading.inference import CoupledForcingDataLoaderConfig
 from fme.coupled.data_loading.test_data_loader import create_coupled_data_on_disk
@@ -29,6 +30,7 @@ from fme.coupled.inference.inference import (
     main,
 )
 from fme.coupled.inference.test_evaluator import (
+    AddNoise,
     _create_dataset_info_for_stepper,
     save_coupled_stepper,
 )
@@ -46,6 +48,8 @@ def _setup(
     n_initial_conditions: int,
     empty_ocean_forcing: bool = False,
     atmosphere_times_offset: int = 0,
+    ocean_builder: ModuleSelector | None = None,
+    atmosphere_builder: ModuleSelector | None = None,
 ):
     all_ocean_names = set(ocean_in_names + ocean_out_names)
     all_atmos_names = set(atmos_in_names + atmos_out_names)
@@ -90,6 +94,8 @@ def _setup(
         save_standalone_component_checkpoints=True,
         ocean_timedelta=mock_data.ocean.timedelta,
         atmosphere_timedelta=mock_data.atmosphere.timedelta,
+        ocean_builder=ocean_builder,
+        atmosphere_builder=atmosphere_builder,
     )
     if empty_ocean_forcing:
         atmos_forcing_config = mock_data.dataset_config.atmosphere
@@ -300,6 +306,62 @@ def test_inference(
             "lat": mock_data.img_shape[0],
             "lon": mock_data.img_shape[1],
         }
+
+
+def _run_seeded_inference(
+    config: InferenceConfig,
+    run_dir: pathlib.Path,
+    seed: int | None,
+    coupled_steps_in_memory: int,
+) -> dict[str, np.ndarray]:
+    run_dir.mkdir()
+    config = dataclasses.replace(
+        config,
+        experiment_dir=str(run_dir),
+        coupled_steps_in_memory=coupled_steps_in_memory,
+        seed=seed,
+    )
+    config_filename = run_dir / "config.yaml"
+    with open(config_filename, "w") as f:
+        yaml.dump(dataclasses.asdict(config), f)
+    with mock_wandb() as wandb:
+        wandb.configure(log_to_wandb=True)
+        main(yaml_config=str(config_filename))
+    return {
+        var: xr.open_dataset(
+            run_dir / realm / "autoregressive_predictions.nc", decode_timedelta=False
+        )[var].values
+        for realm, var in [("ocean", "o_prog"), ("atmosphere", "a_prog")]
+    }
+
+
+@pytest.mark.medium_duration
+def test_inference_seed_reproducible(tmp_path: pathlib.Path):
+    """A seeded coupled run with stochastic components is reproducible, does not
+    depend on coupled_steps_in_memory (the random state is threaded across
+    windows rather than reseeded), and a different seed gives a different
+    result (so the matches are not vacuous)."""
+    noise = ModuleSelector(type="prebuilt", config={"module": AddNoise()})
+    config, _, _ = _setup(
+        ocean_in_names=["o_prog", "sst", "mask_0", "a_diag"],
+        ocean_out_names=["o_prog", "sst", "o_diag"],
+        atmos_in_names=["a_prog", "surface_temperature", "ocean_fraction"],
+        atmos_out_names=["a_prog", "surface_temperature", "a_diag"],
+        tmp_path=tmp_path,
+        n_coupled_steps=2,
+        coupled_steps_in_memory=1,
+        n_initial_conditions=2,
+        ocean_builder=noise,
+        atmosphere_builder=noise,
+    )
+    seed0_a = _run_seeded_inference(config, tmp_path / "s0a", 0, 1)
+    seed0_b = _run_seeded_inference(config, tmp_path / "s0b", 0, 1)
+    seed0_one_window = _run_seeded_inference(config, tmp_path / "s0w", 0, 2)
+    seed1 = _run_seeded_inference(config, tmp_path / "s1", 1, 1)
+    for var in ["o_prog", "a_prog"]:
+        np.testing.assert_array_equal(seed0_a[var], seed0_b[var])
+        np.testing.assert_array_equal(seed0_a[var], seed0_one_window[var])
+        assert not np.allclose(seed0_a[var], seed1[var], equal_nan=True)
 
 
 @pytest.mark.parametrize(

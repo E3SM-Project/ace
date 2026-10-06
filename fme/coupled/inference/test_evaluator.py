@@ -5,6 +5,7 @@ import pathlib
 import shutil
 from unittest.mock import MagicMock
 
+import numpy as np
 import pytest
 import torch
 import xarray as xr
@@ -15,6 +16,8 @@ from fme.ace.stepper import StepperOverrideConfig
 from fme.ace.stepper.derived_forcings import DerivedForcingsConfig
 from fme.core.dataset.xarray import XarrayDataConfig
 from fme.core.logging_utils import LoggingConfig
+from fme.core.rand import randn
+from fme.core.registry.module import ModuleSelector
 from fme.core.testing import mock_wandb
 from fme.coupled.data_loading.config import CoupledDatasetWithOptionalOceanConfig
 from fme.coupled.data_loading.inference import (
@@ -103,6 +106,16 @@ def test_load_stepper_config_ocean_prescribed_override_updates_forcing_window(
     assert "thetao_18" in ocean_reqs.names
 
 
+class AddNoise(torch.nn.Module):
+    """A stochastic stand-in for a noise-conditioned network: it draws from
+    ``fme.core.rand.randn``, the same source ``NoiseConditionedSFNO`` uses, so
+    its output depends on the seeded random state threaded through the rollout.
+    """
+
+    def forward(self, x):
+        return x + randn(x.shape, device=x.device, dtype=x.dtype)
+
+
 def save_coupled_stepper(
     base_dir: pathlib.Path,
     ocean_in_names: list[str],
@@ -116,6 +129,8 @@ def save_coupled_stepper(
     save_standalone_component_checkpoints: bool = False,
     ocean_timedelta: str = "2D",
     atmosphere_timedelta: str = "1D",
+    ocean_builder: ModuleSelector | None = None,
+    atmosphere_builder: ModuleSelector | None = None,
 ) -> str | StandaloneComponentCheckpointsConfig:
     config = get_stepper_config(
         ocean_in_names=ocean_in_names,
@@ -127,6 +142,8 @@ def save_coupled_stepper(
         ocean_fraction_name=ocean_fraction_name,
         ocean_timedelta=ocean_timedelta,
         atmosphere_timedelta=atmosphere_timedelta,
+        ocean_builder=ocean_builder,
+        atmosphere_builder=atmosphere_builder,
     )
     if save_standalone_component_checkpoints:
         ocean_stepper = config.ocean.stepper.get_stepper(dataset_info.ocean)
@@ -165,6 +182,7 @@ def inference_helper(
     use_prediction_data: bool = False,
     expected_derived_names: list[str] | None = None,
     mock_data: MockCoupledData | None = None,
+    seed: int | None = None,
 ):
     """
     Reusable helper for running coupled inference tests.
@@ -242,6 +260,7 @@ def inference_helper(
             ),
         ),
         coupled_steps_in_memory=coupled_steps_in_memory,
+        seed=seed,
     )
     config_filename = tmp_path / "config.yaml"
     with open(config_filename, "w") as f:
@@ -486,6 +505,70 @@ def test_evaluator_inference(
         expected_derived_names=expected_derived_names,
         mock_data=mock_data,
     )
+
+
+@pytest.mark.medium_duration
+def test_evaluator_seed_reproducible(tmp_path: pathlib.Path):
+    """A seeded evaluator run with stochastic components is reproducible, and a
+    different seed gives a different result (so the match is not vacuous)."""
+    ocean_in_names = ["o_prog", "sst", "mask_0", "a_diag"]
+    ocean_out_names = ["o_prog", "sst", "o_diag"]
+    atmos_in_names = ["a_prog", "surface_temperature", "ocean_fraction"]
+    atmos_out_names = ["a_prog", "surface_temperature", "a_diag"]
+    dataset_info, mock_data = _create_dataset_info_for_stepper(
+        ocean_in_names=ocean_in_names,
+        ocean_out_names=ocean_out_names,
+        atmos_in_names=atmos_in_names,
+        atmos_out_names=atmos_out_names,
+        n_coupled_steps=2,
+        n_initial_conditions=1,
+        data_dir=tmp_path / "stepper_data",
+    )
+    checkpoint_path = save_coupled_stepper(
+        tmp_path,
+        ocean_in_names=ocean_in_names,
+        ocean_out_names=ocean_out_names,
+        atmos_in_names=atmos_in_names,
+        atmos_out_names=atmos_out_names,
+        dataset_info=dataset_info,
+        ocean_timedelta=mock_data.ocean.timedelta,
+        atmosphere_timedelta=mock_data.atmosphere.timedelta,
+        ocean_builder=ModuleSelector(type="prebuilt", config={"module": AddNoise()}),
+        atmosphere_builder=ModuleSelector(
+            type="prebuilt", config={"module": AddNoise()}
+        ),
+    )
+
+    def run(name: str, seed: int) -> dict[str, np.ndarray]:
+        run_dir = tmp_path / name
+        run_dir.mkdir()
+        inference_helper(
+            tmp_path=run_dir,
+            ocean_in_names=ocean_in_names,
+            ocean_out_names=ocean_out_names,
+            atmos_in_names=atmos_in_names,
+            atmos_out_names=atmos_out_names,
+            n_coupled_steps=2,
+            coupled_steps_in_memory=1,
+            n_initial_conditions=1,
+            checkpoint_path=checkpoint_path,
+            mock_data=mock_data,
+            seed=seed,
+        )
+        return {
+            var: xr.open_dataset(
+                run_dir / realm / "autoregressive_predictions.nc",
+                decode_timedelta=False,
+            )[var].values
+            for realm, var in [("ocean", "o_prog"), ("atmosphere", "a_prog")]
+        }
+
+    seed0_a = run("s0a", seed=0)
+    seed0_b = run("s0b", seed=0)
+    seed1 = run("s1", seed=1)
+    for name in ["o_prog", "a_prog"]:
+        np.testing.assert_array_equal(seed0_a[name], seed0_b[name])
+        assert not np.allclose(seed0_a[name], seed1[name], equal_nan=True)
 
 
 def test_inference_backwards_compatibility(tmp_path: pathlib.Path):
