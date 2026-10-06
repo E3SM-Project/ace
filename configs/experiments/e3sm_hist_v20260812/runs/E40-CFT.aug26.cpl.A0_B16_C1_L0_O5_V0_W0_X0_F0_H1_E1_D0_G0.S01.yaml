@@ -4,7 +4,7 @@ validate_using_ema: true
 ema:
   decay: 0.9995
   faster_decay_at_start: true
-max_epochs: 10
+max_epochs: 40
 save_per_epoch_diagnostics: true
 inference:
 - name: first_year

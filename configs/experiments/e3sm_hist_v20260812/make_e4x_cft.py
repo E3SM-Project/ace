@@ -31,7 +31,7 @@ Recipe (campaign design D11 and the S2D addendum):
     upstream does; unaccounted heating -0.14 W/m2 for historical EAM (Z2)
   * lr 1e-5 with a 3000-iteration LinearLR warm-up (upstream coupled recipe)
   * MSE on the deterministic ocean (CRPS on it is MAE at twice the cost)
-  * seeds 1 and 2, model and EMA checkpoints every epoch, at most 10 epochs
+  * seeds 1 and 2, model and EMA checkpoints every epoch, at most 10 epochs (extended to 40 on 2026-10-06 by resuming from ckpt.tar)
 
 Submission: both seeds go out as one 8-node bundle (bundles/e4x-cft.txt) at
 the 48 h regular-QOS walltime, `sbatch-scripts/bundle.sh bundles/e4x-cft.txt --go`.
@@ -50,7 +50,7 @@ PILOT = pathlib.Path("/pscratch/sd/m/mahf708/cft-diag/pilot")
 ROOT = pathlib.Path("/pscratch/sd/m/mahf708/aug26-cft")
 RUNS = D / "runs"
 NODES = 4
-MAX_EPOCHS = 10
+MAX_EPOCHS = 40  # 2026-10-06: extended; the 48 h walltime, not this, sets the last epoch
 WORD = "A0_B16_C1_L0_O5_V0_W0_X0_F0_H1_E1_D0_G0"
 SEEDS = (1, 2)
 
