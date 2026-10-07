@@ -88,11 +88,25 @@ class CoupledInitialConditionConfig:
         n_ensemble_per_ic: int,
     ) -> CoupledPrognosticState:
         ocean = self.ocean.get_dataset(self.start_indices)
-        # time is a required variable but not necessarily a dimension
+        # Load full atmosphere dataset and select samples that match ocean times.
+        # We need to match by time coordinate values, not indices, because ocean
+        # and atmosphere may have different time coordinate layouts in the data files.
+        # However, when times are not unique (duplicates), we must use positional
+        # indexing to preserve the exact samples selected for ocean.
+        atmos_full = self.atmosphere.get_dataset()
         sample_dim_name = ocean.time.dims[0]
-        atmos = self.atmosphere.get_dataset().sel(
-            {sample_dim_name: ocean[sample_dim_name]}
-        )
+
+        # Check if ocean times are unique
+        ocean_times = ocean.time.values
+        if len(ocean_times) == len(set(str(t) for t in ocean_times)):
+            # Times are unique - use coordinate-based selection to match times
+            atmos = atmos_full.sel({sample_dim_name: ocean[sample_dim_name]})
+        else:
+            # Times have duplicates - use the same indices for both components
+            # to ensure matching samples even when multiple ICs are aligned to
+            # the same forcing start date
+            atmos = self.atmosphere.get_dataset(self.start_indices)
+
         return CoupledPrognosticState(
             ocean_data=get_initial_condition(
                 ds=ocean,
