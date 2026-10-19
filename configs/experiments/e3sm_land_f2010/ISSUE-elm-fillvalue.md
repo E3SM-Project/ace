@@ -71,8 +71,8 @@ TSOI_0                   1e+36          1e+36         43544                0  MI
 ```
 
 It exits 1 on any mismatch, so it can be looped over all files as a
-before/after check. It reads CDF5 only. The coupler streams are netCDF4/HDF5,
-so check those with any netCDF tool.
+before/after check. It reads CDF5 only. The coupler streams are classic
+netCDF-3 (CDF1), so check those with any netCDF tool.
 
 Spot values read the same way (`0001-01`, record 0, PD):
 

@@ -69,9 +69,10 @@ Streams in `run/`:
 * **Atmospheric forcing (atm → land):** `TBOT`, `THBOT`, `QBOT`, `PBOT`,
   `ZBOT`, `WIND`, `RH`, `FLDS`, `FSDS`, the four `FSDS[VN][DI]` components,
   `RAIN`, `SNOW`, and the depositions `BCDEP`, `DSTDEP`, `OCDEP`.
-* **Land → atmosphere fluxes and diagnostics (`time: mean`):** `FSH`,
-  `EFLX_LH_TOT` (with `FCEV`, `FCTR`; no `FGEV` in this stream), `FIRE`, `FIRA`, `FSA`, `FGR`,
-  `ALB[DI]_{vis,nir}`, `TAUX`, `TAUY`, `U10`, `NEE`, `NEM`.
+* **Land → atmosphere fluxes and diagnostics:** `FSH`, `EFLX_LH_TOT` (with
+  `FCEV`, `FCTR`; no `FGEV` in this stream), `FIRE`, `FIRA`, `FSA`, `FGR`,
+  `TAUX`, `TAUY`, `NEE`, `NEM` (`time: mean`); `ALB[DI]_{vis,nir}` and `U10`
+  (instantaneous, `time: point`).
 * **Hydrology fluxes:** `QRUNOFF`, `QOVER`, `QDRAI`, `QDRAI_PERCH`, `QINFL`,
   `QSNOMELT`, `QSOIL`, `QVEGE`, `QVEGT`, `QINTR`, `QCHARGE`, `QH2OSFC`, `QRGWL`,
   `QSNWCPICE`.
@@ -108,10 +109,16 @@ because soil fields are missing where `landfrac > 0`.
 
 Each step is meant to be a reviewable commit on `e3sm/exps/land`.
 
-1. **Data audit script** (`audit_land_data.py`). Per stream and case: time
-   axis continuity, the `0000-12` stub, `1e20` coverage per variable, cells
-   where `landfrac > 0` but a state is `1e20`, value ranges, and whether
-   `elm.h0` forcings match `x2l` (to pick one source). Record the findings in
+1. **Data audit and dashboard** (`audit/`). `audit/prep.py` reads every
+   `elm.h0` file of both cases, plus `cpl.fme.x2l` for the forcing comparison,
+   and checks time axis continuity, the `0000-12` stub, `1e20` coverage per
+   variable, cells where `landfrac > 0` but a field is `1e20`, value ranges,
+   whether `elm.h0` forcings match `x2l`, and whether vegetation is
+   prescribed. It writes a static dashboard (modelled on
+   `/pscratch/sd/i/imanick/sep26v3-inference/dashboard`) to
+   `/pscratch/sd/i/imanick/land-inference/dashboard/`. The data lives there;
+   the code stays in this repo. The dashboard shows PD and PI now, and
+   inference runs are added later as further sources. Record the findings in
    `AGENTS.md`.
 2. **Variable selection.** Fix `in_names` / `out_names` /
    `next_step_forcing_names` and record the reasoning here. Starting proposal:
@@ -120,8 +127,9 @@ Each step is meant to be a reviewable commit on `e3sm/exps/land`.
    * diagnostic (out only): `FSH`, `EFLX_LH_TOT`, `FIRE`, `ALB*`, `TSA`,
      `Q2M`, `QRUNOFF` (these are what an atmosphere coupling needs)
    * forcing (in only, `next_step_forcing_names`): `TBOT`, `QBOT`, `PBOT`,
-     `WIND`, `FLDS`, `FSDS`, `RAIN`, `SNOW`, plus a CO2 channel or case flag
-     if PD and PI are trained together
+     `WIND`, `FLDS`, `FSDS`, `RAIN`, `SNOW`, plus the depositions if they
+     differ between PD and PI (the model must see whatever forcing changes
+     between the cases, or the cross-case test cannot succeed)
    * static: `landfrac`; consider topography from `x2l` `Sa_topo`
 3. **Masking support.** Make `1e20` become NaN (step 1 of the masking section),
    then add a `land_corrector` analogous to `ocean_corrector`:
@@ -132,7 +140,8 @@ Each step is meant to be a reviewable commit on `e3sm/exps/land`.
    which land variables were chosen and why.
 4. **Normalization statistics.** Adapt `../e3sm_hist_v20260812/compute_hist_stats.py`
    (streaming, exact, unweighted, training-window-only, computed on the field
-   *as the loader delivers it*) to the `elm.h0` stream with the `1e20` masking.
+   *as the loader delivers it*) to the `elm.h0` stream with the `1e20` masking,
+   over the training case's training years only.
    Write the result to CFS under
    `/global/cfs/cdirs/e3smdata/emulator/...`, next to the SamudrACE stats.
 5. **Baseline config** `config-train-lnd.yaml`, cloned from
@@ -141,25 +150,34 @@ Each step is meant to be a reviewable commit on `e3sm/exps/land`.
    `validate_config`, a smoke test with `make_smoke_config.py`, and a 4-GPU
    timing run.
 6. **Campaign.** Reuse `make_ablation_config.py` and the `sbatch-scripts/`
-   pattern (copy, or generalise in place). Candidate axes: timestep, PD/PI
-   mixing, variable set, Samudra width.
+   pattern (copy, or generalise in place). Candidate axes: training case
+   (PD→PI vs PI→PD), variable set, Samudra width.
 
-### Open decisions (ask the user if not settled)
+### Decisions
 
-* **Timestep.** The data is 6-hourly. 6h matches the atmosphere, which is the
-  natural choice if land is ever coupled to ACE. The ocean used 5-day/1-day,
-  but land states like `TG`/`TSA` have a strong diurnal cycle, so coarsening
-  would need time-averaged inputs. Default proposal: **6h**.
-* **PD vs PI split.** There are 30 years per case. Options: (a) train on
-  both with a forcing/CO2 channel and hold out the last ~3 years of each for
-  validation/test; (b) train on PD and test generalisation on PI. Default
-  proposal: (a). Only 30 years per case is much less data than the 126-year
-  historical run, so leakage controls matter more.
+Settled (2026-10-19, by the user):
+
+* **Timestep: 6 hours**, the native cadence of the data. This matches the
+  atmosphere, so the land can later be coupled to ACE, and keeps the diurnal
+  cycle that dominates `TG`/`TSA`. One year of inference is 1460 steps.
+* **PD vs PI is an extrapolation test.** Train on **one** case, with some of
+  its years held out for validation, then run inference on the **other** case
+  to measure how well the model extrapolates to a different forcing climate.
+  The case not trained on is never used for training, normalization
+  statistics or model selection. Which case trains, and which years are held
+  out, is decided **after the audit** (step 1). Normalization statistics
+  (step 4) must therefore come from the training case only.
+
+Still open:
+
+* **Which case to train on**, and the train/validation years within it.
+  Decide from the audit (step 1): how far PD and PI differ, per variable.
 * **Forcing source.** `elm.h0` (one stream, easy) or `cpl.fme.x2l` (exactly
-  what ELM saw, and what a coupled atmosphere would produce).
+  what ELM saw, and what a coupled atmosphere would produce). The audit
+  compares the two.
 * **`TG`/`TSA` as state or diagnostic.**
-* **Inference length.** The ocean ran 365 × 5-day steps. At 6h, one year is
-  1460 steps.
+* **Inference length** for the cross-case test (up to the full 30 years,
+  about 43,800 steps).
 
 ### Coupling later
 

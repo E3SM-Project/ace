@@ -1,0 +1,913 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Land Data Explorer</title>
+<script src="lib/plotly.min.js"></script>
+<script src="lib/topojson-client.min.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f4f3f0;
+  --surface-1: #fcfcfb;
+  --surface-2: #efeeea;
+  --border: #dddcd6;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #8a8984;
+  --accent: #2a78d6;
+  --grid: #e6e5e0;
+  --coast: rgba(20, 20, 20, 0.75);
+  --div-neg: #1c5cab; --div-mid: #f0efec; --div-pos: #c0302f;
+  --seq-0: #f1f5fb; --seq-1: #b9d0ee; --seq-2: #6f9fdc; --seq-3: #2a6bc0; --seq-4: #0f3a75;
+  --missing: #bdbcb6;
+  --st-ok: #0f7a45; --st-info: #52514e; --st-warn: #9a5b00; --st-bad: #b42324;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #111110; --surface-1: #1a1a19; --surface-2: #242422; --border: #34342f;
+    --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #8a8984;
+    --accent: #3987e5; --grid: #2c2c29; --coast: rgba(255, 255, 255, 0.7);
+    --div-neg: #3987e5; --div-mid: #383835; --div-pos: #e66767; --missing: #55554f;
+    --seq-0: #1c2633; --seq-1: #23466f; --seq-2: #2f6bb0; --seq-3: #5c9be6; --seq-4: #b5d3fa;
+    --st-ok: #3fc58a; --st-info: #c3c2b7; --st-warn: #e0a440; --st-bad: #f07c7c;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #111110; --surface-1: #1a1a19; --surface-2: #242422; --border: #34342f;
+  --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #8a8984;
+  --accent: #3987e5; --grid: #2c2c29; --coast: rgba(255, 255, 255, 0.7);
+  --div-neg: #3987e5; --div-mid: #383835; --div-pos: #e66767; --missing: #55554f;
+  --seq-0: #1c2633; --seq-1: #23466f; --seq-2: #2f6bb0; --seq-3: #5c9be6; --seq-4: #b5d3fa;
+  --st-ok: #3fc58a; --st-info: #c3c2b7; --st-warn: #e0a440; --st-bad: #f07c7c;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--page); color: var(--text-primary);
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+header {
+  display: flex; align-items: baseline; gap: 16px; padding: 12px 20px;
+  border-bottom: 1px solid var(--border); background: var(--surface-1);
+}
+header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+header .sub { color: var(--text-secondary); font-size: 13px; }
+header .spacer { flex: 1; }
+button, select, input[type=number] {
+  font: inherit; color: var(--text-primary); background: var(--surface-1);
+  border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px;
+}
+button { cursor: pointer; }
+button:hover { background: var(--surface-2); }
+.layout { display: grid; grid-template-columns: 270px 1fr; min-height: calc(100vh - 50px);
+  background: linear-gradient(90deg, var(--surface-1) 269px, var(--border) 269px 270px, transparent 270px); }
+aside {
+  border-right: 1px solid var(--border); background: var(--surface-1);
+  padding: 14px 16px; overflow-y: auto; max-height: calc(100vh - 50px); position: sticky; top: 0;
+}
+aside h2 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-secondary); margin: 16px 0 8px; display: flex; justify-content: space-between;
+}
+aside h2:first-child { margin-top: 0; }
+aside h2 a { text-transform: none; letter-spacing: 0; color: var(--accent); cursor: pointer; font-weight: 400; }
+aside select { width: 100%; }
+.check { display: flex; align-items: center; gap: 8px; padding: 3px 0; cursor: pointer; }
+.check input { margin: 0; }
+.lineswatch { flex: none; display: block; }
+.check .meta { color: var(--text-muted); font-size: 11px; margin-left: auto; white-space: nowrap; }
+details.group { margin: 2px 0; }
+details.group summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; padding: 3px 0; user-select: none; }
+details.group summary .n { color: var(--text-muted); }
+details.group .items { padding-left: 14px; }
+#varSearch { width: 100%; font: inherit; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface-1); color: var(--text-primary); }
+.tabs { display: flex; gap: 2px; padding: 0 20px; border-bottom: 1px solid var(--border); background: var(--surface-1); overflow-x: auto; }
+.tab { border: none; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 10px 14px; color: var(--text-secondary); white-space: nowrap; }
+.tab[aria-selected=true] { color: var(--text-primary); border-bottom-color: var(--accent); font-weight: 600; }
+main { min-width: 0; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 12px 20px; color: var(--text-secondary); }
+.toolbar label { display: flex; gap: 6px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.seg button { border: none; border-radius: 0; padding: 4px 10px; }
+.seg button[aria-pressed=true] { background: var(--accent); color: #fff; }
+.panel { display: none; padding: 0 20px 24px; }
+.panel.active { display: block; }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
+.card h3 { margin: 0 0 2px; font-size: 14px; font-weight: 600; }
+.card .desc { color: var(--text-secondary); font-size: 12px; margin-bottom: 8px; max-width: 110ch; }
+.empty { color: var(--text-muted); padding: 40px 20px; text-align: center; }
+.plot { width: 100%; height: 320px; }
+.status { font-size: 12px; color: var(--text-muted); }
+/* findings */
+.findings { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.findings li { display: grid; grid-template-columns: 74px 1fr; gap: 10px; align-items: baseline; }
+.pill { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.pill::before { margin-right: 4px; }
+.pill.ok { color: var(--st-ok); } .pill.ok::before { content: "✓"; }
+.pill.info { color: var(--st-info); } .pill.info::before { content: "ℹ"; }
+.pill.warn { color: var(--st-warn); } .pill.warn::before { content: "▲"; }
+.pill.bad { color: var(--st-bad); } .pill.bad::before { content: "✕"; }
+/* tables */
+.table-wrap { overflow-x: auto; max-height: 560px; overflow-y: auto; }
+table.data { border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 13px; min-width: 100%; }
+table.data th, table.data td { padding: 5px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+table.data th:first-child, table.data td:first-child, table.data td.l, table.data th.l { text-align: left; }
+table.data thead th { font-size: 12px; font-weight: 600; color: var(--text-secondary); position: sticky; top: 0;
+  background: var(--surface-1); cursor: pointer; user-select: none; }
+table.data thead th[data-sort]::after { content: " ↕"; color: var(--text-muted); }
+table.data thead th.asc::after { content: " ↑"; color: var(--text-primary); }
+table.data thead th.desc::after { content: " ↓"; color: var(--text-primary); }
+table.data td.flag { color: var(--st-bad); font-weight: 600; }
+table.data td.warnc { color: var(--st-warn); font-weight: 600; }
+table.data td.best { font-weight: 700; }
+table.data td.muted, .muted { color: var(--text-muted); }
+table.data tr.sel td:first-child { font-weight: 700; }
+/* maps */
+.slider-row { display: flex; align-items: center; gap: 12px; padding: 4px 20px 12px; }
+.slider-row input[type=range] { flex: 1; margin: 0; }
+#frameLabel { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 48px; }
+.map-row-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
+.map-row-head h3 { margin: 0; font-size: 14px; }
+.map-row-head .units { color: var(--text-secondary); font-size: 12px; }
+.map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 10px; }
+.map-cell .t { font-size: 12px; display: flex; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
+.map-cell .t .run { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.map-cell .t .stats { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.map-cell canvas { width: 100%; aspect-ratio: 2 / 1; display: block; border-radius: 4px; background: var(--missing); }
+.colorbar { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; flex-wrap: wrap; }
+.colorbar canvas { width: 160px; height: 10px; border-radius: 2px; }
+.colorbar input { width: 90px; }
+#tooltip {
+  position: fixed; pointer-events: none; z-index: 10; display: none;
+  background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 8px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  font-variant-numeric: tabular-nums;
+}
+.prose { max-width: 90ch; display: grid; gap: 10px; }
+.prose p, .prose ul { margin: 0; }
+.prose code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--surface-2); padding: 1px 4px; border-radius: 4px; }
+@media (max-width: 800px) {
+  .layout { grid-template-columns: 1fr; background: none; }
+  aside { position: static; max-height: none; border-right: none; border-bottom: 1px solid var(--border); }
+  header { flex-wrap: wrap; padding: 12px 16px; }
+  .toolbar, .panel, .slider-row, .tabs { padding-left: 16px; padding-right: 16px; }
+  .map-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Land data explorer</h1>
+  <span class="sub" id="headerSub"></span>
+  <span class="spacer"></span>
+  <button id="themeBtn" title="Toggle light/dark">Theme</button>
+</header>
+<div class="layout">
+  <aside>
+    <h2>Sources <a id="srcAll">all</a></h2>
+    <div id="srcList"></div>
+    <h2>Difference baseline</h2>
+    <select id="baselineSel" title="Source subtracted in 'Difference' views"></select>
+    <h2>Variables <a id="varsNone">clear</a></h2>
+    <input id="varSearch" type="search" placeholder="Filter variables…">
+    <div id="varList"></div>
+  </aside>
+  <main>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-tab="audit">Data audit</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="ts">Land-mean time series</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="maps">Climatology maps</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="about">About</button>
+    </nav>
+
+    <section class="panel active" id="panel-audit">
+      <div class="toolbar">
+        <label><input type="checkbox" id="auditSelOnly"> Tables: only the selected variables</label>
+        <span class="status" id="builtNote"></span>
+      </div>
+      <div id="auditBox"></div>
+    </section>
+
+    <section class="panel" id="panel-ts">
+      <div class="toolbar">
+        <label>Averaging
+          <span class="seg" id="avgSeg">
+            <button data-v="monthly" aria-pressed="true">Monthly</button>
+            <button data-v="running" aria-pressed="false">12-mo running</button>
+            <button data-v="annual" aria-pressed="false">Annual</button>
+          </span>
+        </label>
+        <label>Show
+          <span class="seg" id="modeSeg">
+            <button data-v="abs" aria-pressed="true">Value</button>
+            <button data-v="diff" aria-pressed="false">Difference from baseline</button>
+          </span>
+        </label>
+        <span style="flex:1"></span>
+        <button id="csvBtn">Download CSV</button>
+      </div>
+      <div id="tsPlots"></div>
+    </section>
+
+    <section class="panel" id="panel-maps">
+      <div class="toolbar">
+        <label>Show
+          <span class="seg" id="mapModeSeg">
+            <button data-v="abs" aria-pressed="true">Climatology</button>
+            <button data-v="diff" aria-pressed="false">Difference from baseline</button>
+          </span>
+        </label>
+        <label>Speed
+          <select id="speedSel"><option value="900">slow</option><option value="450" selected>medium</option><option value="150">fast</option></select>
+        </label>
+        <label><input type="checkbox" id="coastChk" checked> Coastlines</label>
+        <span class="status" id="mapStatus"></span>
+      </div>
+      <div class="slider-row">
+        <button id="playBtn" title="Play / pause">Play</button>
+        <button id="prevBtn" title="Previous month">‹</button>
+        <button id="nextBtn" title="Next month">›</button>
+        <input type="range" id="monthSlider" min="0" max="11" value="0" aria-label="Month">
+        <span id="frameLabel"></span>
+      </div>
+      <div id="mapRows" style="padding: 0 20px 24px"></div>
+    </section>
+
+    <section class="panel" id="panel-about">
+      <div class="card prose" id="aboutBox"></div>
+    </section>
+  </main>
+</div>
+<div id="tooltip"></div>
+
+<script>
+// ---------------------------------------------------------------- data loading
+// Data files are plain <script>s calling DASH.loaded(...) so the page works from file://
+const DASH = {
+  pending: {}, cache: {},
+  loaded(kind, key, obj) {
+    const id = kind + ':' + key;
+    this.cache[id] = obj;
+    (this.pending[id] || []).forEach(r => r(obj));
+    delete this.pending[id];
+  },
+  load(kind, key, src) {
+    const id = kind + ':' + key;
+    if (this.cache[id]) return Promise.resolve(this.cache[id]);
+    return new Promise((resolve, reject) => {
+      const first = !this.pending[id];
+      (this.pending[id] = this.pending[id] || []).push(resolve);
+      if (!first) return;
+      const s = document.createElement('script');
+      s.src = src;
+      s.onerror = () => { delete this.pending[id]; reject(new Error('missing ' + src)); };
+      document.head.appendChild(s);
+    });
+  },
+};
+const enc = s => s.split('/').map(encodeURIComponent).join('/');
+const loadTs = src => DASH.load('ts', src, enc(`data/ts/${src}.js`));
+const loadMapRaw = (v, s) => DASH.load('map', `${v}/${s}`, enc(`data/maps/${v}/${s}.js`));
+const decoded = {};
+async function decodeField(obj) {  // uint16, 0 = missing, linear over [lo, hi]
+  const bin = Uint8Array.from(atob(obj.data), c => c.charCodeAt(0));
+  const stream = new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'));
+  const q = new Uint16Array(await new Response(stream).arrayBuffer());
+  const out = new Float32Array(q.length), k = (obj.hi - obj.lo) / 65534;
+  for (let i = 0; i < q.length; i++) out[i] = q[i] === 0 ? NaN : obj.lo + (q[i] - 1) * k;
+  return out;
+}
+async function loadMap(v, s) {
+  const key = v + '/' + s;
+  if (!decoded[key]) decoded[key] = loadMapRaw(v, s).then(decodeField);
+  return decoded[key];
+}
+
+// ---------------------------------------------------------------- state
+const state = {
+  sources: new Set(), baseline: null, vars: new Set(['TSA', 'H2OSOI_0', 'H2OSNO', 'EFLX_LH_TOT']),
+  tab: 'audit', avg: 'monthly', mode: 'abs', mapMode: 'abs', month: 0, playing: null,
+  ranges: {}, auditSelOnly: false, sorts: {},
+};
+let META, AUDIT, LAND = null;
+const NY = 180, NX = 360;
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const srcIds = () => META.sources.map(s => s.id);
+const srcMeta = id => META.sources.find(s => s.id === id);
+const srcColorVar = id => `--s${srcIds().indexOf(id) % 8 + 1}`;
+const srcColor = id => css(srcColorVar(id));
+const lineSwatch = colorVar =>
+  `<svg class="lineswatch" width="24" height="8" aria-hidden="true"><line x1="1" y1="4" x2="23" y2="4"
+    style="stroke:var(${colorVar})" stroke-width="2.2"/></svg>`;
+const varMeta = v => META.vars.find(x => x.name === v);
+const fmtUnits = u => (u || '').replace(/\^2/g, '²').replace(/\^3/g, '³').replace(/m2/g, 'm²').replace(/mm3/g, 'mm³');
+const fmt = x => x == null || !isFinite(x) ? '–' :
+  (x !== 0 && (Math.abs(x) >= 1e5 || Math.abs(x) < 1e-2)) ? x.toExponential(3) : +x.toPrecision(4) + '';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const selectedSources = () => srcIds().filter(s => state.sources.has(s));
+const selectedVars = () => META.vars.map(v => v.name).filter(v => state.vars.has(v));
+
+// ---------------------------------------------------------------- sidebar
+function buildSidebar() {
+  const sl = document.getElementById('srcList');
+  META.sources.forEach(s => {
+    const lab = document.createElement('label');
+    lab.className = 'check';
+    lab.title = s.long_label + (s.path ? '\n' + s.path : '');
+    lab.innerHTML = `<input type="checkbox" value="${esc(s.id)}" ${state.sources.has(s.id) ? 'checked' : ''}>
+      ${lineSwatch(srcColorVar(s.id))}${esc(s.label)}<span class="meta">${esc(s.kind)}</span>`;
+    lab.querySelector('input').onchange = e => { e.target.checked ? state.sources.add(s.id) : state.sources.delete(s.id); refresh(); };
+    sl.appendChild(lab);
+  });
+  document.getElementById('srcAll').onclick = () => {
+    const all = state.sources.size < META.sources.length;
+    META.sources.forEach(s => all ? state.sources.add(s.id) : state.sources.delete(s.id));
+    sl.querySelectorAll('input').forEach(i => i.checked = all);
+    refresh();
+  };
+  const bs = document.getElementById('baselineSel');
+  bs.innerHTML = META.sources.map(s => `<option value="${esc(s.id)}">${esc(s.long_label)}</option>`).join('');
+  bs.value = state.baseline;
+  bs.onchange = () => { state.baseline = bs.value; refresh(); };
+
+  const vl = document.getElementById('varList');
+  META.groups.forEach(g => {
+    const members = META.vars.filter(v => v.group === g);
+    if (!members.length) return;
+    const d = document.createElement('details');
+    d.className = 'group';
+    d.open = members.some(v => state.vars.has(v.name));
+    d.innerHTML = `<summary>${esc(g)} <span class="n">(${members.length})</span></summary><div class="items"></div>`;
+    members.forEach(v => {
+      const lab = document.createElement('label');
+      lab.className = 'check';
+      lab.dataset.search = (v.name + ' ' + v.long_name).toLowerCase();
+      lab.title = `${v.long_name} [${fmtUnits(v.units)}] · ${v.cell_methods || 'static'} · proposed role: ${v.role}`;
+      lab.innerHTML = `<input type="checkbox" value="${esc(v.name)}" ${state.vars.has(v.name) ? 'checked' : ''}>${esc(v.name)}<span class="meta">${esc(v.role)}</span>`;
+      lab.querySelector('input').onchange = e => { e.target.checked ? state.vars.add(v.name) : state.vars.delete(v.name); refresh(); };
+      d.querySelector('.items').appendChild(lab);
+    });
+    vl.appendChild(d);
+  });
+  document.getElementById('varSearch').oninput = e => {
+    const q = e.target.value.toLowerCase();
+    vl.querySelectorAll('details').forEach(d => {
+      let any = false;
+      d.querySelectorAll('label').forEach(l => { const m = !q || l.dataset.search.includes(q); l.style.display = m ? '' : 'none'; any = any || m; });
+      d.style.display = any ? '' : 'none';
+      if (q) d.open = any;
+    });
+  };
+  document.getElementById('varsNone').onclick = () => {
+    state.vars.clear(); vl.querySelectorAll('input').forEach(i => i.checked = false); refresh();
+  };
+}
+
+// ---------------------------------------------------------------- tables
+// cols: [{key, label, fmt?(v,row), cls?(v,row), left?}]
+function tableHtml(id, cols, rows) {
+  const sort = state.sorts[id];
+  if (sort) {
+    const { key, dir } = sort;
+    rows = [...rows].sort((a, b) => {
+      const x = a[key], y = b[key];
+      if (x == null) return 1; if (y == null) return -1;
+      return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y))) * dir;
+    });
+  }
+  const head = cols.map(c => `<th data-sort="${c.key}" data-table="${id}" class="${c.left ? 'l ' : ''}${sort && sort.key === c.key ? (sort.dir > 0 ? 'asc' : 'desc') : ''}"
+    title="${esc(c.title || '')}">${esc(c.label)}</th>`).join('');
+  const body = rows.map(r => `<tr class="${state.vars.has(r.var) ? 'sel' : ''}">` + cols.map(c => {
+    const v = r[c.key];
+    const cls = (c.left ? 'l ' : '') + (c.cls ? c.cls(v, r) || '' : '');
+    return `<td class="${cls}">${c.fmt ? c.fmt(v, r) : esc(v ?? '–')}</td>`;
+  }).join('') + '</tr>').join('');
+  return `<div class="table-wrap"><table class="data"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+document.addEventListener('click', e => {
+  const th = e.target.closest('th[data-sort]');
+  if (!th) return;
+  const id = th.dataset.table, key = th.dataset.sort, cur = state.sorts[id];
+  state.sorts[id] = { key, dir: cur && cur.key === key ? -cur.dir : (key === 'var' ? 1 : -1) };
+  renderAudit();
+});
+
+// ---------------------------------------------------------------- audit
+const num = (v) => fmt(v);
+const cnt = v => v == null ? '–' : v.toLocaleString();
+const pct = v => v == null ? '–' : (100 * v).toPrecision(3) + '%';
+function auditRows(rows) {
+  return state.auditSelOnly ? rows.filter(r => state.vars.has(r.var)) : rows;
+}
+let auditCase = null;
+function renderAudit() {
+  const box = document.getElementById('auditBox');
+  const A = AUDIT;
+  auditCase = auditCase || srcIds().find(s => srcMeta(s).kind === 'case');
+  const units = v => fmtUnits((varMeta(v) || {}).units);
+  const findings = `<div class="card"><h3>Findings</h3>
+    <div class="desc">Generated from the tables below when the data was built, so they always match them.</div>
+    <ul class="findings">${A.findings.map(f => `<li><span class="pill ${f.level}">${f.level}</span><span>${esc(f.text)}</span></li>`).join('')}</ul></div>`;
+
+  const timeRows = A.time.map(t => ({
+    var: t.case, files: `${t.files_scanned}/${t.files_expected}`, records: t.n_records, expected: t.n_expected,
+    range: `${fmt(t.first)} – ${fmt(t.last)}`, gaps: t.n_gaps, dups: t.n_duplicates_or_backwards,
+    bounds: t.time_bounds_ok ? 'ok' : 'NO', formats: t.formats.join(', '),
+    stub: t.stub.present ? `${t.stub.n_records} record(s), ${(t.stub.bytes / 1e6).toFixed(0)} MB` : 'absent',
+    missing: t.missing_months.length ? t.missing_months.join(' ') : 'none',
+  }));
+  const timeCard = `<div class="card"><h3>Files and time axis</h3>
+    <div class="desc">elm.h0 monthly files, years 1–30, 6-hourly records in days since 0001-01-01 (noleap; 1460 records per year).
+    “bounds” checks that each record's time equals the end of its time_bounds interval and that intervals are 6 h.</div>
+    ${tableHtml('time', [
+      { key: 'var', label: 'case', left: true }, { key: 'files', label: 'files' },
+      { key: 'records', label: 'records', fmt: cnt, cls: (v, r) => v === r.expected ? '' : 'flag' },
+      { key: 'expected', label: 'expected', fmt: cnt }, { key: 'range', label: 'time range (days)' },
+      { key: 'gaps', label: 'gaps', cls: v => v ? 'flag' : '' }, { key: 'dups', label: 'dup/backward', cls: v => v ? 'flag' : '' },
+      { key: 'bounds', label: 'bounds', cls: v => v === 'ok' ? '' : 'flag' }, { key: 'formats', label: 'format' },
+      { key: 'stub', label: '0000-12 stub' }, { key: 'missing', label: 'months not scanned', left: true },
+    ], timeRows)}</div>`;
+
+  const fillCard = `<div class="card"><h3>Fill values and missing cells</h3>
+    <div class="desc">“stored 1e20” counts every missing value over all records; “= _FillValue” counts values equal to the declared fill —
+    a CF reader masks only those. Cell counts are on the 180×360 grid, of which ${cnt(META.land_cells)} cells have landfrac &gt; 0.
+    “missing on land” are land cells missing in every record; “sometimes” are land cells missing in some records only.</div>
+    ${tableHtml('fill', [
+      { key: 'var', label: 'variable', left: true },
+      { key: 'fill_value', label: 'declared _FillValue', fmt: num },
+      { key: 'n_sentinel', label: 'stored 1e20', fmt: cnt },
+      { key: 'n_eq_fill', label: '= _FillValue', fmt: cnt },
+      { key: 'mismatch', label: 'CF-masked?', fmt: v => v ? 'no' : 'yes', cls: v => v ? 'flag' : '' },
+      { key: 'ocean_sentinel_min', label: 'missing off land', fmt: cnt },
+      { key: 'ocean_valid_any', label: 'valid off land', fmt: cnt, cls: v => v ? 'flag' : '' },
+      { key: 'land_sentinel_max', label: 'missing on land', fmt: cnt, cls: v => v ? 'warnc' : '' },
+      { key: 'land_sentinel_some', label: 'sometimes', fmt: cnt, cls: v => v ? 'warnc' : '' },
+    ], auditRows(A.fill))}</div>`;
+
+  const caseIds = [...new Set(A.values.map(r => r.case))];
+  const valueRows = auditRows(A.values.filter(r => r.case === auditCase)).map(r => ({ ...r, units: units(r.var), role: (varMeta(r.var) || {}).role }));
+  const valueCard = `<div class="card"><h3>Value ranges</h3>
+    <div class="desc">Over every valid (non-missing) 6-hourly value of the case. “interannual” is the year-to-year spread of each calendar
+    month's mean, relative to its magnitude (land-area weighted): about 0 means the field repeats every year (prescribed).
+    Negative counts are flagged only for fields that should be non-negative.</div>
+    <div class="toolbar" style="padding:0 0 8px">Case <span class="seg" id="valCaseSeg">${caseIds.map(c =>
+      `<button data-v="${esc(c)}" aria-pressed="${c === auditCase}">${esc(c)}</button>`).join('')}</span></div>
+    ${tableHtml('values', [
+      { key: 'var', label: 'variable', left: true }, { key: 'units', label: 'units', left: true },
+      { key: 'role', label: 'proposed role', left: true },
+      { key: 'min', label: 'min', fmt: num, cls: (v, r) => r.nonnegative_expected && v < 0 ? 'warnc' : '' },
+      { key: 'max', label: 'max', fmt: num }, { key: 'mean', label: 'mean', fmt: num }, { key: 'std', label: 'std', fmt: num },
+      { key: 'n_nonfinite', label: 'NaN/inf', fmt: cnt, cls: v => v ? 'flag' : '' },
+      { key: 'n_huge', label: '≥1e10', fmt: cnt, cls: v => v ? 'flag' : '' },
+      { key: 'frac_negative', label: 'negative', fmt: pct, cls: (v, r) => r.nonnegative_expected && v ? 'warnc' : '' },
+      { key: 'iav_ratio', label: 'interannual', fmt: pct },
+    ], valueRows)}</div>`;
+
+  const pdpiCard = A.pdpi.length ? `<div class="card"><h3>PD vs PI</h3>
+    <div class="desc">How far apart the two climates are — the gap the cross-case (extrapolation) test asks the model to bridge.
+    Land-area-weighted annual means over years 1–30. “z” is the PD−PI difference of the land mean in units of its year-to-year
+    standard deviation; “cells |z|&gt;2” is the land-area fraction where the per-cell difference exceeds twice the per-cell spread.</div>
+    ${tableHtml('pdpi', [
+      { key: 'var', label: 'variable', left: true }, { key: 'units', label: 'units', left: true },
+      { key: 'pd', label: 'PD', fmt: num }, { key: 'pi', label: 'PI', fmt: num }, { key: 'diff', label: 'PD − PI', fmt: num },
+      { key: 'rel_diff', label: 'relative', fmt: pct }, { key: 'iav_std', label: 'interannual σ', fmt: num },
+      { key: 'z_land', label: 'z', fmt: v => v == null ? '–' : (v > 0 ? '+' : '') + v.toFixed(1),
+        cls: v => Math.abs(v) >= 2 ? 'warnc' : '' },
+      { key: 'frac_cells_z2', label: 'cells |z|>2', fmt: pct },
+    ], auditRows(A.pdpi).map(r => ({ ...r, units: units(r.var) }))) }</div>` : '';
+
+  const best = {};
+  A.forcing.forEach(r => { const k = r.var + r.case; if (r.rel_rms != null && (!best[k] || r.rel_rms < best[k].rel_rms)) best[k] = r; });
+  const forcingCard = A.forcing.length ? `<div class="card"><h3>Forcing: elm.h0 vs coupler (x2l)</h3>
+    <div class="desc">Each elm.h0 forcing compared with the coupler-to-land field(s) over land, under two time alignments: “same” pairs
+    records with equal time stamps; “end” pairs elm.h0 at t with x2l at t − 6 h. “relative” is the RMS difference over the field's
+    standard deviation; the better alignment per variable and case is in bold. Identical fields mean either stream can supply the forcing.</div>
+    ${tableHtml('forcing', [
+      { key: 'var', label: 'elm.h0', left: true }, { key: 'x2l', label: 'x2l', left: true }, { key: 'case', label: 'case', left: true },
+      { key: 'alignment', label: 'alignment', left: true }, { key: 'n_steps', label: 'records', fmt: cnt },
+      { key: 'mean_diff', label: 'mean diff', fmt: num }, { key: 'rms_diff', label: 'RMS diff', fmt: num },
+      { key: 'max_abs_diff', label: 'max |diff|', fmt: num },
+      { key: 'rel_rms', label: 'relative', fmt: num, cls: (v, r) => best[r.var + r.case] === r ? 'best' : 'muted' },
+    ], auditRows(A.forcing))}</div>` : '';
+
+  const maskCard = `<div class="card"><h3>Land fraction and in-land gaps</h3>
+    <div class="desc">Left: landfrac (cells with landfrac = 0 are grey). Right: how many variables are missing at each land cell in at
+    least one record — non-zero cells need a per-variable mask. ${Object.keys(A_MASKS.gap_vars).length
+      ? 'Variables with gaps: ' + Object.entries(A_MASKS.gap_vars).map(([v, n]) => `${esc(v)} (${cnt(n)} cells)`).join(', ') + '.' : ''}</div>
+    <div class="map-grid">
+      <div class="map-cell"><div class="t"><span class="run">landfrac</span><span class="stats" id="lfStats"></span></div><canvas id="lfCanvas" width="720" height="360"></canvas>
+        <div class="colorbar" id="lfBar"></div></div>
+      <div class="map-cell"><div class="t"><span class="run">variables missing (count)</span><span class="stats" id="gapStats"></span></div><canvas id="gapCanvas" width="720" height="360"></canvas>
+        <div class="colorbar" id="gapBar"></div></div>
+    </div></div>`;
+
+  box.innerHTML = findings + timeCard + pdpiCard + fillCard + valueCard + forcingCard + maskCard;
+  document.querySelectorAll('#valCaseSeg button').forEach(b => b.onclick = () => { auditCase = b.dataset.v; renderAudit(); });
+  drawMasks();
+}
+
+let A_MASKS = { gap_vars: {} }, MASK_FIELDS = null;
+async function drawMasks() {
+  if (!MASK_FIELDS) {
+    const m = await DASH.load('masks', 'null', 'data/masks.js');
+    A_MASKS = m;
+    MASK_FIELDS = { lf: await decodeField(m.landfrac), gap: (await decodeField(m.gap_count)).map(Math.round) };
+    renderAudit();
+    return;
+  }
+  await ensureLand();
+  const seq = seqLut();
+  const nVars = META.vars.length - 1;
+  paintField(document.getElementById('lfCanvas'), MASK_FIELDS.lf, 0, x => seq(x));
+  const gmax = Math.max(1, ...MASK_FIELDS.gap.filter(isFinite));
+  paintField(document.getElementById('gapCanvas'), MASK_FIELDS.gap, 0, x => x === 0 ? hexToRgb(css('--div-mid')) : seq(x / gmax));
+  colorbarHtml(document.getElementById('lfBar'), seq, '0', '1');
+  colorbarHtml(document.getElementById('gapBar'), t => seq(t), '0', String(gmax));
+  document.getElementById('gapStats').textContent = `${cnt(MASK_FIELDS.gap.filter(x => x > 0).length)} land cells with gaps · max ${gmax} of ${nVars}`;
+  document.getElementById('lfStats').textContent = `${cnt(META.land_cells)} land cells`;
+}
+
+// ---------------------------------------------------------------- time series
+const DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+const monthX = i => +META.months[i].slice(0, 4) + (i % 12 + 0.5) / 12;  // model year, fractional
+function aggregate(y) {
+  const n = y.length;
+  const x = y.map((_, i) => monthX(i));
+  if (state.avg === 'monthly') return { x, y };
+  if (state.avg === 'annual') {
+    const xs = [], ys = [];
+    for (let i = 0; i + 12 <= n; i += 12) {
+      let s = 0, w = 0;
+      for (let k = 0; k < 12; k++) if (y[i + k] != null) { s += y[i + k] * DAYS[k]; w += DAYS[k]; }
+      xs.push(+META.months[i].slice(0, 4) + 0.5);
+      ys.push(w === 365 ? s / w : null);
+    }
+    return { x: xs, y: ys };
+  }
+  const ys = new Array(n).fill(null);  // centered 12-month running mean
+  for (let i = 6; i + 6 <= n; i++) {
+    let s = 0, w = 0, ok = true;
+    for (let k = i - 6; k < i + 6; k++) { if (y[k] == null) { ok = false; break; } s += y[k] * DAYS[k % 12]; w += DAYS[k % 12]; }
+    ys[i] = ok ? s / w : null;
+  }
+  return { x, y: ys };
+}
+let tsData = {};
+async function renderTs() {
+  const box = document.getElementById('tsPlots');
+  const vars = selectedVars();
+  let srcs = selectedSources();
+  const diff = state.mode === 'diff';
+  if (diff) srcs = srcs.filter(s => s !== state.baseline);
+  if (!vars.length || !srcs.length) {
+    box.innerHTML = `<div class="empty">${diff ? 'Select a variable and at least one source other than the baseline.' : 'Select at least one source and one variable.'}</div>`;
+    return;
+  }
+  const need = [...new Set([...srcs, ...(diff ? [state.baseline] : [])])];
+  let series;
+  try { series = Object.fromEntries(await Promise.all(need.map(async s => [s, await loadTs(s)]))); }
+  catch (e) { box.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+  [...box.children].forEach(c => { if (!vars.includes(c.dataset.v)) { const p = c.querySelector('.plot'); if (p) Plotly.purge(p); c.remove(); } });
+  if (box.querySelector('.empty')) box.innerHTML = '';
+  const text = css('--text-secondary'), grid = css('--grid');
+  tsData = {};
+  vars.forEach(v => {
+    const vm = varMeta(v);
+    let card = box.querySelector(`[data-v="${CSS.escape(v)}"]`);
+    if (!card) {
+      card = document.createElement('div');
+      card.className = 'card'; card.dataset.v = v;
+      card.innerHTML = `<h3></h3><div class="desc"></div><div class="plot"></div>`;
+    }
+    box.appendChild(card);
+    card.querySelector('h3').textContent = v + (diff ? ` — difference from ${state.baseline}` : ' — land mean');
+    card.querySelector('.desc').textContent = `${vm.long_name} [${fmtUnits(vm.units)}] · ${vm.cell_methods || 'static'} · monthly means, area × landfrac weighted over land cells with data`;
+    const base = diff ? series[state.baseline][v] : null;
+    tsData[v] = {};
+    const traces = srcs.filter(s => series[s][v]).map(s => {
+      const y = diff ? series[s][v].map((val, i) => val == null || base[i] == null ? null : val - base[i]) : series[s][v];
+      const a = aggregate(y);
+      tsData[v][s] = a;
+      return { x: a.x, y: a.y, name: srcMeta(s).label, mode: 'lines', line: { color: srcColor(s), width: 2 },
+        hovertemplate: '%{y:.5g}<extra>' + esc(srcMeta(s).label) + '</extra>' };
+    });
+    const layout = {
+      margin: { l: 70, r: 16, t: 12, b: 40 }, height: 300,
+      paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+      font: { color: text, size: 12 }, hovermode: 'x unified',
+      hoverlabel: { bgcolor: css('--surface-1'), bordercolor: css('--border'), font: { color: css('--text-primary') } },
+      xaxis: { title: { text: 'model year', font: { size: 11 } }, gridcolor: grid, linecolor: grid, zeroline: false, hoverformat: '.2f' },
+      yaxis: { gridcolor: grid, linecolor: grid, zeroline: diff, zerolinecolor: css('--text-muted'),
+        title: { text: fmtUnits(vm.units), font: { size: 11 } }, exponentformat: 'e' },
+      legend: { orientation: 'h', y: -0.2, x: 0 }, showlegend: traces.length > 1,
+    };
+    Plotly.react(card.querySelector('.plot'), traces, layout, { responsive: true, displaylogo: false });
+  });
+}
+function downloadCsv() {
+  const rows = [];
+  Object.entries(tsData).forEach(([v, srcs]) => Object.entries(srcs).forEach(([s, a]) =>
+    a.x.forEach((x, i) => rows.push([v, s, x.toFixed(4), a.y[i] == null ? '' : a.y[i]].join(',')))));
+  const blob = new Blob(['variable,source,model_year,value\n' + rows.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `land_means_${state.avg}_${state.mode}.csv`;
+  a.click();
+}
+
+// ---------------------------------------------------------------- color
+function hexToRgb(h) { h = h.replace('#', ''); return [0, 2, 4].map(k => parseInt(h.slice(k, k + 2), 16)); }
+function seqLut() {  // t in [0, 1] -> rgb, one hue light to dark (dark theme: dark to light)
+  const stops = [0, 1, 2, 3, 4].map(i => hexToRgb(css(`--seq-${i}`)));
+  const lut = [];
+  for (let i = 0; i < 256; i++) {
+    const t = i / 255 * 4, k = Math.min(3, Math.floor(t)), f = t - k;
+    lut.push(stops[k].map((a, j) => Math.round(a + (stops[k + 1][j] - a) * f)));
+  }
+  return t => lut[Math.max(0, Math.min(255, Math.round(t * 255)))];
+}
+function divLut() {  // t in [-1, 1] -> rgb, two hues around a neutral midpoint
+  const neg = hexToRgb(css('--div-neg')), mid = hexToRgb(css('--div-mid')), pos = hexToRgb(css('--div-pos'));
+  const lut = [];
+  for (let i = 0; i < 256; i++) {
+    const t = i / 127.5 - 1, a = Math.min(1, Math.abs(t)), end = t < 0 ? neg : pos;
+    lut.push(mid.map((m, k) => Math.round(m + (end[k] - m) * a)));
+  }
+  return t => lut[Math.max(0, Math.min(255, Math.round((t + 1) * 127.5)))];
+}
+function colorbarHtml(el, lut, lo, hi, signed = false) {
+  el.innerHTML = `<span>${esc(lo)}</span><canvas width="160" height="10"></canvas><span>${esc(hi)}</span>`;
+  const ctx = el.querySelector('canvas').getContext('2d');
+  for (let x = 0; x < 160; x++) { const t = signed ? x / 79.5 - 1 : x / 159; ctx.fillStyle = `rgb(${lut(t)})`; ctx.fillRect(x, 0, 1, 10); }
+}
+
+// ---------------------------------------------------------------- maps
+async function ensureLand() {
+  if (LAND !== null) return;
+  LAND = false;
+  // lib/land-110m.js works from file:// (fetch does not); the CDN is a fallback when it is absent
+  const sources = [() => DASH.load('land', 'null', 'lib/land-110m.js'),
+    () => fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-110m.json').then(r => r.json())];
+  for (const get of sources) {
+    try {
+      const topo = await get();
+      LAND = topojson.feature(topo, topo.objects.land);
+      return;
+    } catch (e) { /* try next */ }
+  }
+}
+// fractional row index of a latitude on the (slightly irregular) data grid
+function latRow(lat) {
+  const L = META.lat, n = L.length;
+  if (lat <= L[0]) return (lat - L[0]) / (L[1] - L[0]);
+  if (lat >= L[n - 1]) return n - 1 + (lat - L[n - 1]) / (L[n - 1] - L[n - 2]);
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (L[m] <= lat) lo = m; else hi = m; }
+  return lo + (lat - L[lo]) / (L[hi] - L[lo]);
+}
+function drawCoast(ctx, W, H) {
+  if (!LAND || !document.getElementById('coastChk').checked) return;
+  ctx.strokeStyle = css('--coast'); ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  const proj = ([lon, lat]) => [(lon + 180) / 360 * W, (NY - 0.5 - latRow(lat)) / NY * H];
+  const ring = r => { let prev = null; r.forEach((p, i) => { const q = proj(p);
+      if (i === 0 || (prev && Math.abs(q[0] - prev[0]) > W / 2)) ctx.moveTo(...q); else ctx.lineTo(...q); prev = q; }); };
+  LAND.features.forEach(f => {
+    const g = f.geometry;
+    (g.type === 'Polygon' ? [g.coordinates] : g.coordinates).forEach(p => p.forEach(ring));
+  });
+  ctx.stroke();
+}
+// paint frame `frame` of a flat [frame][lat][lon] field; colorOf(value) -> rgb. Returns land-cell stats.
+function paintField(canvas, field, frame, colorOf) {
+  const small = document.createElement('canvas'); small.width = NX; small.height = NY;
+  const sctx = small.getContext('2d'), img = sctx.createImageData(NX, NY);
+  const miss = hexToRgb(css('--missing')), off = frame * NY * NX;
+  let s = 0, n = 0;
+  for (let row = 0; row < NY; row++) {
+    const srcRow = NY - 1 - row;  // north up
+    for (let col = 0; col < NX; col++) {
+      const srcCol = (col + NX / 2) % NX;  // data lon 0..360 -> display -180..180
+      const v = field[off + srcRow * NX + srcCol];
+      const c = isNaN(v) ? miss : colorOf(v);
+      if (!isNaN(v)) { s += v; n++; }
+      const p = (row * NX + col) * 4;
+      img.data[p] = c[0]; img.data[p + 1] = c[1]; img.data[p + 2] = c[2]; img.data[p + 3] = 255;
+    }
+  }
+  sctx.putImageData(img, 0, 0);
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(small, 0, 0, canvas.width, canvas.height);
+  drawCoast(ctx, canvas.width, canvas.height);
+  return { mean: n ? s / n : NaN, n };
+}
+
+function valueRange(v) {
+  const vm = varMeta(v);
+  return state.ranges[v + ':abs'] || [vm.p01, vm.p99];
+}
+function diffRange(v) { return state.ranges[v + ':diff'] || [Math.abs(varMeta(v).diff_p99) || 1]; }
+const mapCells = {};  // `${var}/${source}` -> {canvas, stats, field, base}
+function renderMapFrame() {
+  const m = state.month;
+  document.getElementById('monthSlider').value = m;
+  document.getElementById('frameLabel').textContent = MONTH_NAMES[m];
+  const seq = seqLut(), div = divLut();
+  Object.entries(mapCells).forEach(([key, cell]) => {
+    if (!cell.field) return;
+    const v = key.split('/')[0];
+    let st;
+    if (state.mapMode === 'diff') {
+      const [R] = diffRange(v), f = cell.field, b = cell.base, off = m * NY * NX;
+      const d = new Float32Array(NY * NX);
+      for (let i = 0; i < d.length; i++) d[i] = f[off + i] - b[off + i];
+      st = paintField(cell.canvas, d, 0, x => div(x / R));
+    } else {
+      const [lo, hi] = valueRange(v);
+      st = paintField(cell.canvas, cell.field, m, x => seq((x - lo) / (hi - lo || 1)));
+    }
+    cell.stats.textContent = st.n ? `cell mean ${fmt(st.mean)}` : 'no data';
+  });
+}
+async function renderMaps() {
+  const box = document.getElementById('mapRows');
+  const vars = selectedVars().filter(v => varMeta(v).role !== 'static');
+  const diff = state.mapMode === 'diff';
+  let srcs = selectedSources();
+  if (diff) srcs = srcs.filter(s => s !== state.baseline);
+  Object.keys(mapCells).forEach(k => delete mapCells[k]);
+  if (!vars.length || !srcs.length) {
+    box.innerHTML = `<div class="empty">${diff ? 'Select a variable and at least one source other than the baseline.' : 'Select at least one source and one variable.'}</div>`;
+    return;
+  }
+  box.innerHTML = '';
+  const status = document.getElementById('mapStatus');
+  status.textContent = 'loading…';
+  await ensureLand();
+  const seq = seqLut(), div = divLut();
+  vars.forEach(v => {
+    const vm = varMeta(v);
+    const row = document.createElement('div');
+    row.className = 'card';
+    row.innerHTML = `<div class="map-row-head"><h3>${esc(v)}</h3>
+      <span class="units">${esc(vm.long_name)} · ${diff ? `difference from ${esc(state.baseline)}` : 'monthly climatology, years 1–30'} [${esc(fmtUnits(vm.units))}]</span>
+      <span style="flex:1"></span><span class="colorbar"></span>
+      <label class="colorbar">${diff ? '±' : 'range'} <input type="number" step="any" class="r0">${diff ? '' : '<input type="number" step="any" class="r1">'}</label>
+      <button class="reset" title="Reset range">reset</button></div><div class="map-grid"></div>`;
+    const bar = row.querySelector('span.colorbar');
+    const r0 = row.querySelector('.r0'), r1 = row.querySelector('.r1');
+    const setLabels = () => {
+      if (diff) { const [R] = diffRange(v); r0.value = +fmt(R) || R; colorbarHtml(bar, div, fmt(-R), fmt(R), true); }
+      else { const [lo, hi] = valueRange(v); r0.value = lo; r1.value = hi; colorbarHtml(bar, seq, fmt(lo), fmt(hi)); }
+    };
+    setLabels();
+    const onRange = () => {
+      if (diff) { const x = Math.abs(+r0.value); if (x > 0) state.ranges[v + ':diff'] = [x]; }
+      else if (+r1.value > +r0.value) state.ranges[v + ':abs'] = [+r0.value, +r1.value];
+      setLabels(); renderMapFrame();
+    };
+    r0.onchange = onRange; if (r1) r1.onchange = onRange;
+    row.querySelector('.reset').onclick = () => { delete state.ranges[v + (diff ? ':diff' : ':abs')]; setLabels(); renderMapFrame(); };
+    const grid = row.querySelector('.map-grid');
+    srcs.forEach(s => {
+      const cell = document.createElement('div');
+      cell.className = 'map-cell';
+      cell.innerHTML = `<div class="t"><span class="run">${lineSwatch(srcColorVar(s))}${esc(srcMeta(s).label)}${diff ? ' − ' + esc(state.baseline) : ''}</span>
+        <span class="stats">loading…</span></div><canvas width="720" height="360"></canvas>`;
+      grid.appendChild(cell);
+      const key = v + '/' + s, canvas = cell.querySelector('canvas');
+      mapCells[key] = { canvas, stats: cell.querySelector('.stats') };
+      canvas.addEventListener('mousemove', e => hoverMap(e, key, v, s));
+      canvas.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+    });
+    box.appendChild(row);
+  });
+  await Promise.all(vars.flatMap(v => srcs.map(async s => {
+    const cell = mapCells[v + '/' + s];
+    try {
+      const [f, b] = await Promise.all([loadMap(v, s), diff ? loadMap(v, state.baseline) : null]);
+      if (mapCells[v + '/' + s] !== cell) return;  // re-rendered meanwhile
+      cell.field = f; cell.base = b;
+    } catch (e) { cell.stats.textContent = 'no data file'; }
+  })));
+  status.textContent = '';
+  renderMapFrame();
+}
+const tooltip = document.getElementById('tooltip');
+function hoverMap(e, key, v, s) {
+  const cell = mapCells[key];
+  if (!cell || !cell.field) return;
+  const rect = e.target.getBoundingClientRect();
+  const col = Math.floor((e.clientX - rect.left) / rect.width * NX), row = Math.floor((e.clientY - rect.top) / rect.height * NY);
+  if (col < 0 || col >= NX || row < 0 || row >= NY) return;
+  const srcRow = NY - 1 - row, srcCol = (col + NX / 2) % NX, i = state.month * NY * NX + srcRow * NX + srcCol;
+  const val = state.mapMode === 'diff' ? cell.field[i] - cell.base[i] : cell.field[i];
+  const lon = col - 179.5;
+  tooltip.innerHTML = `<b>${esc(srcMeta(s).label)}${state.mapMode === 'diff' ? ' − ' + esc(state.baseline) : ''}</b> · ${esc(v)} · ${MONTH_NAMES[state.month]}<br>
+    ${META.lat[srcRow].toFixed(2)}°, ${lon.toFixed(1)}° &nbsp; <b>${isNaN(val) ? 'no data' : fmt(val)}</b> ${esc(fmtUnits(varMeta(v).units))}`;
+  tooltip.style.display = 'block';
+  tooltip.style.left = (e.clientX + 14) + 'px';
+  tooltip.style.top = (e.clientY + 14) + 'px';
+}
+function setupMapControls() {
+  const slider = document.getElementById('monthSlider');
+  slider.oninput = () => { state.month = +slider.value; renderMapFrame(); };
+  const step = d => { state.month = (state.month + d + 12) % 12; renderMapFrame(); };
+  document.getElementById('prevBtn').onclick = () => step(-1);
+  document.getElementById('nextBtn').onclick = () => step(1);
+  const play = document.getElementById('playBtn');
+  const stop = () => { clearInterval(state.playing); state.playing = null; play.textContent = 'Play'; };
+  play.onclick = () => {
+    if (state.playing) return stop();
+    play.textContent = 'Pause';
+    state.playing = setInterval(() => step(1), +document.getElementById('speedSel').value);
+  };
+  document.getElementById('speedSel').onchange = () => { if (state.playing) { stop(); play.click(); } };
+  document.getElementById('coastChk').onchange = renderMapFrame;
+}
+
+// ---------------------------------------------------------------- about
+function renderAbout() {
+  const src = META.sources.map(s => `<li><b>${esc(s.label)}</b> — ${esc(s.long_label)}${s.path ? ` · <code>${esc(s.path)}</code>` : ''}</li>`).join('');
+  document.getElementById('aboutBox').innerHTML = `
+    <h3>About this dashboard</h3>
+    <p>Audit and reference views of the E3SMv3 F2010 land (ELM) output used to train the land emulator
+    (<code>configs/experiments/e3sm_land_f2010</code> in the ACE repo). Built ${esc(META.built)}.</p>
+    <ul>${src}</ul>
+    <p><b>Data.</b> Regridded <code>elm.h0</code> history, 180×360, 6-hourly, years 1–30 of each case; the <code>0000-12</code>
+    stub file is excluded. A value is treated as missing when |x| ≥ 1e19 or not finite — the files store 1e20 at missing cells
+    although they declare a different _FillValue (<code>ISSUE-elm-fillvalue.md</code>). Land means weight each cell by its area times
+    landfrac, over cells with data. Climatology maps average each calendar month over all 30 years.</p>
+    <p><b>Plan.</b> One case is used for training (with some of its years held out) and the other only for inference, to test how
+    well the emulator extrapolates to a different forcing climate. The audit tab's PD vs PI table shows how large that gap is.</p>
+    <p><b>Adding inference runs.</b> A run becomes another source: an entry in <code>meta.sources</code> with
+    <code>kind: "run"</code>, a <code>data/ts/&lt;run&gt;.js</code> series and <code>data/maps/&lt;var&gt;/&lt;run&gt;.js</code>
+    climatologies in the same format as the cases, so every view, including differences from a chosen baseline, works unchanged.</p>
+    <p><b>Rebuilding.</b> Code: <code>audit/prep.py</code> (<code>scan</code>, then <code>build</code>) via <code>audit/run_prep.sh</code>.</p>`;
+}
+
+// ---------------------------------------------------------------- wiring
+function refresh() {
+  if (state.tab === 'audit') renderAudit();
+  if (state.tab === 'ts') renderTs();
+  if (state.tab === 'maps') renderMaps();
+}
+function segControl(id, key, after = refresh) {
+  document.querySelectorAll(`#${id} button`).forEach(b => b.onclick = () => {
+    state[key] = b.dataset.v;
+    document.querySelectorAll(`#${id} button`).forEach(x => x.setAttribute('aria-pressed', x === b));
+    after();
+  });
+}
+function setupTabs() {
+  document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+    state.tab = t.dataset.tab;
+    document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', x === t));
+    document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + state.tab));
+    refresh();
+  });
+}
+function showError(e) {
+  document.getElementById('auditBox').innerHTML = `<div class="empty">Could not load the dashboard data (${esc(e.message)}).
+    Build it with <code>audit/prep.py build</code>.</div>`;
+}
+document.getElementById('themeBtn').onclick = () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  refresh();
+};
+Promise.all([DASH.load('meta', 'null', 'data/meta.js'), DASH.load('audit', 'null', 'data/audit.js')]).then(([meta, audit]) => {
+  META = meta; AUDIT = audit;
+  document.getElementById('title').textContent = META.title + ' explorer';
+  document.getElementById('headerSub').textContent = META.sources.map(s => s.label).join(' and ') + ' · elm.h0, 180×360, 6-hourly, years 1–30';
+  document.getElementById('builtNote').textContent = 'built ' + META.built;
+  META.sources.forEach(s => state.sources.add(s.id));
+  state.baseline = (META.sources.find(s => s.id === 'PI') || META.sources[0]).id;
+  [...state.vars].forEach(v => { if (!varMeta(v)) state.vars.delete(v); });
+  buildSidebar();
+  setupTabs();
+  segControl('avgSeg', 'avg');
+  segControl('modeSeg', 'mode');
+  segControl('mapModeSeg', 'mapMode');
+  setupMapControls();
+  document.getElementById('csvBtn').onclick = downloadCsv;
+  document.getElementById('auditSelOnly').onchange = e => { state.auditSelOnly = e.target.checked; renderAudit(); };
+  renderAbout();
+  refresh();
+}).catch(showError);
+</script>
+</body>
+</html>
