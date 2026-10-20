@@ -332,7 +332,9 @@ expandable_segments. GPU memory max per phase (nid001233, MiB):
 | inline inference | 39,605 | 39,427 |
 | checkpoint saves | 39,605 | 39,427 |
 | train epoch 2 | **40,365** | **39,427** |
-| validation (epoch 2) | **40,439** (of 40,960) | see below |
+| validation (epoch 2) | **40,439** (of 40,960) | 39,427 |
+| inline inference (epoch 2) | (run stopped) | 39,427 |
+| checkpoint saves (epoch 2) | | 39,427 |
 
 nid001240 shows the same pattern: unfixed epoch 2 at 40,333 against fixed
 39,411. With the fix, epoch 2 sits at the epoch-1 peak (set by inline
@@ -343,3 +345,8 @@ Memory steps up at the epoch boundary and stays up: EMA.restore() never
 released the copy of the live parameters taken for the swap (fixed in
 37a2b9a44). Host RAM peaks at 150-160 GB during inline inference (of
 251 GB).
+
+The fixed run completed both epochs with GPU memory flat at 39,427 MiB from
+the first inline inference on, through the second boundary (inference error
+0.409 -> 0.384). Host RAM peaks at ~160 GB during inline inference on both
+runs (251 GB nodes).

@@ -189,3 +189,153 @@ Could not import pad from earth2grid.healpix.
 2026-10-20 11:54:23,454 - root - WARNING - Power spectrum aggregator not implemented for this grid type, omitting.
 2026-10-20 11:54:23,542 - root - INFO - Dataset now has 23355 samples of length 6.
 2026-10-20 11:54:23,552 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 11:55:19,096 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 60 additional batches, or 120 total batches, with best_validation_loss 2.726048469543457 and best_inference_error 0.4092186942696571
+2026-10-20 11:55:51,242 - root - INFO - Starting validation step for model trained for 2 epochs
+2026-10-20 11:55:51,282 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 11:55:51,283 - root - INFO - Starting validation loop
+2026-10-20 11:55:51,395 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 11:55:51,404 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 11:57:24,334 - root - INFO - Flushing validation diagnostics
+2026-10-20 11:57:24,334 - root - INFO - Getting validation aggregator summary
+2026-10-20 11:57:24,334 - root - INFO - Getting logs for mean aggregator
+2026-10-20 11:57:26,880 - root - INFO - Getting logs for mean_norm aggregator
+2026-10-20 11:57:27,106 - root - INFO - Validation complete
+2026-10-20 11:57:27,106 - root - INFO - Starting inference step for model trained for 2 epochs
+2026-10-20 11:57:27,111 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 11:57:27,111 - root - WARNING - Zonal mean max size 4096 is greater than the number of timesteps 361. Setting zonal mean max size to the number of timesteps.
+2026-10-20 11:57:27,112 - root - WARNING - annual metric not supported for this configuration, omitting: annual metric requires > ~2 years of data, got 90 days
+2026-10-20 11:57:27,112 - root - WARNING - enso_index metric not supported for this configuration, omitting: enso_index metric requires > ~2 years of data, got 90 days
+2026-10-20 11:57:27,112 - root - WARNING - enso_coefficient metric not supported for this configuration, omitting: enso_coefficient metric requires > ~5 years of data, got 90 days
+2026-10-20 11:57:27,112 - root - WARNING - ipo_index metric not supported for this configuration, omitting: ipo_index metric requires > ~80 years of data, got 90 days
+2026-10-20 11:58:00,671 - root - INFO - Inference: processing output from window 1 of 18.
+2026-10-20 11:58:16,908 - root - INFO - Inference: processing output from window 2 of 18.
+2026-10-20 11:58:33,027 - root - INFO - Inference: processing output from window 3 of 18.
+2026-10-20 11:58:49,676 - root - INFO - Inference: processing output from window 4 of 18.
+2026-10-20 11:59:05,871 - root - INFO - Inference: processing output from window 5 of 18.
+2026-10-20 11:59:21,970 - root - INFO - Inference: processing output from window 6 of 18.
+2026-10-20 11:59:38,063 - root - INFO - Inference: processing output from window 7 of 18.
+2026-10-20 11:59:54,149 - root - INFO - Inference: processing output from window 8 of 18.
+2026-10-20 12:00:10,266 - root - INFO - Inference: processing output from window 9 of 18.
+2026-10-20 12:00:26,370 - root - INFO - Inference: processing output from window 10 of 18.
+2026-10-20 12:00:42,449 - root - INFO - Inference: processing output from window 11 of 18.
+2026-10-20 12:00:58,525 - root - INFO - Inference: processing output from window 12 of 18.
+2026-10-20 12:01:14,605 - root - INFO - Inference: processing output from window 13 of 18.
+2026-10-20 12:01:30,707 - root - INFO - Inference: processing output from window 14 of 18.
+2026-10-20 12:01:46,767 - root - INFO - Inference: processing output from window 15 of 18.
+2026-10-20 12:02:02,834 - root - INFO - Inference: processing output from window 16 of 18.
+2026-10-20 12:02:18,901 - root - INFO - Inference: processing output from window 17 of 18.
+2026-10-20 12:02:34,987 - root - INFO - Inference: processing output from window 18 of 18.
+2026-10-20 12:02:35,602 - root - INFO - Starting flush of reduced diagnostics to disk
+2026-10-20 12:02:35,602 - root - INFO - Getting inline inference aggregator summary
+2026-10-20 12:02:35,602 - root - INFO - Getting summary logs for mean_step_20 aggregator
+2026-10-20 12:02:41,960 - root - INFO - Getting summary logs for mean_step_20_norm aggregator
+2026-10-20 12:02:41,967 - root - INFO - Getting summary logs for zonal_mean aggregator
+2026-10-20 12:02:51,480 - root - INFO - Getting summary logs for time_mean aggregator
+2026-10-20 12:03:26,335 - root - INFO - Getting summary logs for time_mean_norm aggregator
+2026-10-20 12:03:45,031 - root - INFO - Time taken for epoch 2 is 721.4077751636505 sec
+2026-10-20 12:03:45,031 - root - INFO - Train loss: 0.5825222134590149
+2026-10-20 12:03:45,031 - root - INFO - Valid loss: 2.4710536003112793
+2026-10-20 12:03:45,031 - root - INFO - Inference error: 0.3838107965886593
+2026-10-20 12:03:45,036 - root - INFO - Logging to wandb
+2026-10-20 12:03:49,043 - root - INFO - Saving checkpoints for epoch 2
+2026-10-20 12:03:49,055 - root - INFO - Epoch inference error (0.3838107965886593) is lower than previous best inference error (0.3838107965886593).
+2026-10-20 12:03:49,055 - root - INFO - Saving lowest inference error checkpoint to /pscratch/sd/m/mahf708/hr-runs/prodtest-4n-emafix/training_checkpoints/best_inference_ckpt.tar
+2026-10-20 12:03:59,379 - root - INFO - Saving lowest validation loss checkpoint to /pscratch/sd/m/mahf708/hr-runs/prodtest-4n-emafix/training_checkpoints/best_ckpt.tar
+2026-10-20 12:04:09,449 - root - INFO - Saving latest checkpoint model trained for 2 complete epochs and 0 additional batches, or 120 total batches, with best_validation_loss 2.4710536003112793 and best_inference_error 0.3838107965886593
+2026-10-20 12:04:40,949 - root - INFO - Saving EMA epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/prodtest-4n-emafix/training_checkpoints/ema_ckpt_0002.tar
+2026-10-20 12:04:50,657 - root - INFO - Saving epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/prodtest-4n-emafix/training_checkpoints/ckpt_0002.tar
+2026-10-20 12:05:24,134 - root - INFO - DONE ---- rank 0
+2026-10-20 12:05:24,158 - fme.core.distributed.model_torch_distributed - INFO - Shutting down rank 0
+[W1020 12:05:39.513044978 TCPStore.cpp:115] [c10d] recvVector failed on SocketImpl(fd=46, addr=[nid001240-hsn0]:36596, remote=[nid001233-hsn0]:29992): Failed to recv, got 0 bytes. Connection was likely closed. Did the remote server shutdown or crash?
+Exception raised from recvBytes at /pytorch/torch/csrc/distributed/c10d/Utils.hpp:682 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7f2792fc6fdd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0x6a323bd (0x7f26f097e3bd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #2: <unknown function> + 0x6a343cf (0x7f26f09803cf in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #3: c10d::TCPStore::compareSet(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::vector<unsigned char, std::allocator<unsigned char> > const&, std::vector<unsigned char, std::allocator<unsigned char> > const&) + 0x1d1 (0x7f26f097b0a1 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #4: <unknown function> + 0xeb82fa (0x7f270026e2fa in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_python.so)
+frame #5: <unknown function> + 0x40fad0 (0x7f26ff7c5ad0 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_python.so)
+frame #6: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16179b8]
+frame #7: _PyObject_MakeTpCall + 0x118 (0x1662218 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #8: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x193feb1]
+frame #9: _PyEval_EvalFrameDefault + 0xf2c9 (0x16296c9 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #10: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16eafee]
+frame #11: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16eaf33]
+frame #12: _PyEval_EvalFrameDefault + 0xef53 (0x1629353 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #13: PyEval_EvalCode + 0x94 (0x16a0354 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #14: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x169b4fa]
+frame #15: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16d6603]
+frame #16: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843e89]
+frame #17: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843577]
+frame #18: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843090]
+frame #19: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843036]
+frame #20: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1842f1a]
+frame #21: Py_RunMain + 0x340 (0x1787092 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #22: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1786d45]
+frame #23: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1786b2d]
+frame #24: <unknown function> + 0x40eec (0x7f27cbb32eec in /lib64/libc.so.6)
+frame #25: __libc_start_main + 0x87 (0x7f27cbb32fb5 in /lib64/libc.so.6)
+frame #26: _start + 0x29 (0x1803029 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+
+[W1020 12:05:39.894269983 TCPStore.cpp:115] [c10d] recvVector failed on SocketImpl(fd=46, addr=[nid001236-hsn0]:47924, remote=[nid001233-hsn0]:29992): Failed to recv, got 0 bytes. Connection was likely closed. Did the remote server shutdown or crash?
+Exception raised from recvBytes at /pytorch/torch/csrc/distributed/c10d/Utils.hpp:682 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7f8b3ab72fdd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0x6a323bd (0x7f8a6057e3bd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #2: <unknown function> + 0x6a343cf (0x7f8a605803cf in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #3: c10d::TCPStore::compareSet(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::vector<unsigned char, std::allocator<unsigned char> > const&, std::vector<unsigned char, std::allocator<unsigned char> > const&) + 0x1d1 (0x7f8a6057b0a1 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #4: <unknown function> + 0xeb82fa (0x7f8a6fe6e2fa in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_python.so)
+frame #5: <unknown function> + 0x40fad0 (0x7f8a6f3c5ad0 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_python.so)
+frame #6: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16179b8]
+frame #7: _PyObject_MakeTpCall + 0x118 (0x1662218 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #8: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x193feb1]
+frame #9: _PyEval_EvalFrameDefault + 0xf2c9 (0x16296c9 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #10: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16eafee]
+frame #11: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16eaf33]
+frame #12: _PyEval_EvalFrameDefault + 0xef53 (0x1629353 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #13: PyEval_EvalCode + 0x94 (0x16a0354 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #14: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x169b4fa]
+frame #15: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16d6603]
+frame #16: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843e89]
+frame #17: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843577]
+frame #18: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843090]
+frame #19: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843036]
+frame #20: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1842f1a]
+frame #21: Py_RunMain + 0x340 (0x1787092 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #22: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1786d45]
+frame #23: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1786b2d]
+frame #24: <unknown function> + 0x40eec (0x7f8b3b7d3eec in /lib64/libc.so.6)
+frame #25: __libc_start_main + 0x87 (0x7f8b3b7d3fb5 in /lib64/libc.so.6)
+frame #26: _start + 0x29 (0x1803029 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+
+[W1020 12:05:39.829432951 TCPStore.cpp:115] [c10d] recvVector failed on SocketImpl(fd=47, addr=[nid001237-hsn0]:34672, remote=[nid001233-hsn0]:29992): Failed to recv, got 0 bytes. Connection was likely closed. Did the remote server shutdown or crash?
+Exception raised from recvBytes at /pytorch/torch/csrc/distributed/c10d/Utils.hpp:682 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7f1bcc4ddfdd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0x6a323bd (0x7f1af1f7e3bd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #2: <unknown function> + 0x6a343cf (0x7f1af1f803cf in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #3: c10d::TCPStore::compareSet(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::vector<unsigned char, std::allocator<unsigned char> > const&, std::vector<unsigned char, std::allocator<unsigned char> > const&) + 0x1d1 (0x7f1af1f7b0a1 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #4: <unknown function> + 0xeb82fa (0x7f1b0186e2fa in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_python.so)
+frame #5: <unknown function> + 0x40fad0 (0x7f1b00dc5ad0 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_python.so)
+frame #6: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16179b8]
+frame #7: _PyObject_MakeTpCall + 0x118 (0x1662218 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #8: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x193feb1]
+frame #9: _PyEval_EvalFrameDefault + 0xf2c9 (0x16296c9 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #10: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16eafee]
+frame #11: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16eaf33]
+frame #12: _PyEval_EvalFrameDefault + 0xef53 (0x1629353 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #13: PyEval_EvalCode + 0x94 (0x16a0354 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #14: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x169b4fa]
+frame #15: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16d6603]
+frame #16: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843e89]
+frame #17: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843577]
+frame #18: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843090]
+frame #19: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843036]
+frame #20: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1842f1a]
+frame #21: Py_RunMain + 0x340 (0x1787092 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #22: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1786d45]
+frame #23: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1786b2d]
+frame #24: <unknown function> + 0x40eec (0x7f1bcd166eec in /lib64/libc.so.6)
+frame #25: __libc_start_main + 0x87 (0x7f1bcd166fb5 in /lib64/libc.so.6)
+frame #26: _start + 0x29 (0x1803029 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+
+W1020 12:05:39.718000 669585 torch/distributed/elastic/rendezvous/dynamic_rendezvous.py:1293] The node 'nid001236-hsn0_669585_0' has failed to shutdown the rendezvous 'train29992' due to an error of type RendezvousConnectionError.
+W1020 12:05:39.719000 671817 torch/distributed/elastic/rendezvous/dynamic_rendezvous.py:1293] The node 'nid001240-hsn0_671817_0' has failed to shutdown the rendezvous 'train29992' due to an error of type RendezvousConnectionError.
+W1020 12:05:39.721000 669791 torch/distributed/elastic/rendezvous/dynamic_rendezvous.py:1293] The node 'nid001237-hsn0_669791_0' has failed to shutdown the rendezvous 'train29992' due to an error of type RendezvousConnectionError.
