@@ -317,3 +317,29 @@ checkpoint saves (the root assembling full tensors) and comes back down.
 
 No collapse reproduced. Not yet tested: the production config's longer
 validation (1 year) and 360-step inline inference, and many epochs.
+
+## 14. Production-config test on 40 GB, and the EMA leak
+
+`runs/prodtest-4n.yaml`: production config (1-year validation, 360-step
+inline inference from 8 ICs), 2-month training window, inference after every
+epoch, 4 nodes x 4x1 tiles, modes x0.5, both sharding flags,
+expandable_segments. GPU memory max per phase (nid001233, MiB):
+
+| phase | unfixed EMA | fixed (37a2b9a44) |
+|---|---|---|
+| train epoch 1 | 39,163 | 39,027 |
+| validation | 39,445 | 39,271 |
+| inline inference | 39,605 | 39,427 |
+| checkpoint saves | 39,605 | 39,427 |
+| train epoch 2 | **40,365** | **39,427** |
+| validation (epoch 2) | **40,439** (of 40,960) | see below |
+
+nid001240 shows the same pattern: unfixed epoch 2 at 40,333 against fixed
+39,411. With the fix, epoch 2 sits at the epoch-1 peak (set by inline
+inference, which the caching allocator keeps reserved) instead of a
+parameter-copy (~1 GB here) above it.
+
+Memory steps up at the epoch boundary and stays up: EMA.restore() never
+released the copy of the live parameters taken for the swap (fixed in
+37a2b9a44). Host RAM peaks at 150-160 GB during inline inference (of
+251 GB).

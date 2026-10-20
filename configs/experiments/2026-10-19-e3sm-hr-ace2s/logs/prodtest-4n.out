@@ -1,0 +1,1161 @@
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+2026-10-20 11:02:04,682 - root - INFO - --------------- Versions ---------------
+2026-10-20 11:02:04,683 - root - INFO - Torch: 2.10.0+cu128
+2026-10-20 11:02:04,683 - root - INFO - ----------------------------------------
+2026-10-20 11:02:04,683 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 11:02:04,683 - root - INFO - Beaker ID: None
+2026-10-20 11:02:04,683 - root - INFO - Beaker URL: No beaker URL.
+2026-10-20 11:02:04,683 - root - WARNING - Environmental variable BEAKER_EXPERIMENT_ID not found.
+2026-10-20 11:02:04,683 - root - INFO - Environmental variable SLURM_JOB_ID=60038940.
+2026-10-20 11:02:04,683 - root - INFO - Environmental variable SLURM_JOB_USER=mahf708.
+2026-10-20 11:02:04,683 - root - WARNING - Environmental variable FME_TRAIN_DIR not found.
+2026-10-20 11:02:04,683 - root - WARNING - Environmental variable FME_VALID_DIR not found.
+2026-10-20 11:02:04,683 - root - WARNING - Environmental variable FME_STATS_DIR not found.
+2026-10-20 11:02:04,683 - root - WARNING - Environmental variable FME_CHECKPOINT_DIR not found.
+2026-10-20 11:02:04,683 - root - WARNING - Environmental variable FME_OUTPUT_DIR not found.
+2026-10-20 11:02:04,683 - root - WARNING - Environmental variable FME_IMAGE not found.
+2026-10-20 11:02:04,684 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 11:02:04,684 - root - INFO - Current device is cuda:0
+2026-10-20 11:02:04,684 - root - INFO - Initializing training data loader
+2026-10-20 11:02:04,685 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 11:02:08,710 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 11:02:08,715 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 11:02:08,732 - root - INFO - The required variables have been found in the dataset: ['U_7', 'Vat10m', 'surface_precipitation_rate', 'STW_2', 'FLDS', 'STW_3', 'LANDFRAC', 'FSNS', 'STW_1', 'V_7', 'U_0', 'STW_0', 'T_4', 'SOLIN', 'LHFLX', 'SHFLX', 'TAUX', 'T_1', 'T_0', 'U_6', 'U_2', 'PHIS', 'STW_7', 'U_4', 'OCNFRAC', 'PS', 'U_5', 'STW_5', 'T_5', 'V_1', 'FLUS', 'U_1', 'V_0', 'Qat2m', 'T_3', 'STW_4', 'V_3', 'frozen_precipitation_rate', 'T_6', 'FSUTOA', 'TAUY', 'Tat2m', 'V_5', 'FLUT', 'TS', 'T_2', 'V_4', 'T_7', 'V_6', 'V_2', 'Uat10m', 'U_3', 'DTENDTTW', 'ICEFRAC', 'STW_6'].
+2026-10-20 11:02:08,747 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 11:02:08,777 - root - INFO - Subsetting dataset samples according to slice(124, np.int64(361), None).
+2026-10-20 11:02:08,777 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 11:02:08,780 - root - INFO - Initializing validation data loaders
+2026-10-20 11:02:08,781 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 11:02:08,838 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 11:02:08,841 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 11:02:08,858 - root - INFO - The required variables have been found in the dataset: ['U_7', 'Vat10m', 'surface_precipitation_rate', 'STW_2', 'FLDS', 'STW_3', 'LANDFRAC', 'FSNS', 'STW_1', 'V_7', 'U_0', 'STW_0', 'T_4', 'SOLIN', 'LHFLX', 'SHFLX', 'TAUX', 'T_1', 'T_0', 'U_6', 'U_2', 'PHIS', 'STW_7', 'U_4', 'OCNFRAC', 'PS', 'U_5', 'STW_5', 'T_5', 'V_1', 'FLUS', 'U_1', 'V_0', 'Qat2m', 'T_3', 'STW_4', 'V_3', 'frozen_precipitation_rate', 'T_6', 'FSUTOA', 'TAUY', 'Tat2m', 'V_5', 'FLUT', 'TS', 'T_2', 'V_4', 'T_7', 'V_6', 'V_2', 'Uat10m', 'U_3', 'DTENDTTW', 'ICEFRAC', 'STW_6'].
+2026-10-20 11:02:08,870 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 11:02:08,890 - root - INFO - Subsetting dataset samples according to slice(18980, np.int64(20440), 4).
+2026-10-20 11:02:08,890 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 11:02:08,890 - root - INFO - train data: 60 samples, 60 batches
+2026-10-20 11:02:08,890 - root - INFO - train data: pool_size=1, 5 sub-batches per window, coming from the following base loader:
+2026-10-20 11:02:08,891 - root - INFO - train (base loader) data: 12 samples, 12 batches
+2026-10-20 11:02:08,891 - root - INFO - train (base loader) data: first sample's initial time: 0001-02-01 00:00:00
+2026-10-20 11:02:08,891 - root - INFO - train (base loader) data: last sample's initial time: 0001-03-31 18:00:00
+2026-10-20 11:02:08,891 - root - INFO - val data: 92 samples, 92 batches
+2026-10-20 11:02:08,891 - root - INFO - val data: first sample's initial time: 0014-01-01 00:00:00
+2026-10-20 11:02:08,891 - root - INFO - val data: last sample's initial time: 0014-12-31 00:00:00
+2026-10-20 11:02:08,891 - root - INFO - Initializing inline inference data loaders
+2026-10-20 11:02:08,892 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 11:02:08,946 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 11:02:08,948 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 11:02:08,965 - root - INFO - The required variables have been found in the dataset: ['U_7', 'Vat10m', 'surface_precipitation_rate', 'STW_2', 'FLDS', 'STW_3', 'LANDFRAC', 'FSNS', 'STW_1', 'V_7', 'U_0', 'STW_0', 'T_4', 'SOLIN', 'LHFLX', 'SHFLX', 'TAUX', 'T_1', 'T_0', 'U_6', 'U_2', 'PHIS', 'STW_7', 'U_4', 'OCNFRAC', 'PS', 'U_5', 'STW_5', 'T_5', 'V_1', 'FLUS', 'U_1', 'V_0', 'Qat2m', 'T_3', 'STW_4', 'V_3', 'frozen_precipitation_rate', 'T_6', 'FSUTOA', 'TAUY', 'Tat2m', 'V_5', 'FLUT', 'TS', 'T_2', 'V_4', 'T_7', 'V_6', 'V_2', 'Uat10m', 'U_3', 'DTENDTTW', 'ICEFRAC', 'STW_6'].
+2026-10-20 11:02:08,977 - root - INFO - Dataset now has 23340 samples of length 21.
+2026-10-20 11:02:08,977 - root - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 11:02:08,994 - root - INFO - Multiprocessing inference context: fork
+2026-10-20 11:02:27,410 - root - INFO - Starting model initialization
+2026-10-20 11:02:27,411 - root - INFO - Initializing stepper from provided config
+2026-10-20 11:02:27,411 - root - INFO - Initializing stepper from provided config
+2026-10-20 11:02:51,299 - root - INFO - Current device is cuda:0
+2026-10-20 11:02:51,354 - root - INFO - Number of trainable model parameters: 318536448
+2026-10-20 11:02:51,355 - root - INFO - Starting Training Loop...
+2026-10-20 11:02:51,621 - root - INFO - Beginning epoch after 0 complete epochs
+2026-10-20 11:02:51,622 - root - INFO - Starting training step for model trained for 0 complete epochs
+2026-10-20 11:02:51,672 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 11:02:51,682 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 11:03:01,737 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 11:03:01,743 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 11:05:50,193 - root - WARNING - Power spectrum aggregator not implemented for this grid type, omitting.
+2026-10-20 11:05:50,292 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 11:05:50,310 - root - INFO - Dataset now has 23355 samples of length 6.
+[rank3]:[W1020 11:06:43.044750184 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 4 PG GUID 73fd43c6382230e4139a92b4f3644819bcd96168 Rank 3] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 4.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank1]:[W1020 11:06:43.044752989 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 4 PG GUID 73fd43c6382230e4139a92b4f3644819bcd96168 Rank 1] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 4.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank2]:[W1020 11:06:43.044771234 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 4 PG GUID 73fd43c6382230e4139a92b4f3644819bcd96168 Rank 2] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 4.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank0]:[W1020 11:06:43.049346216 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 4 PG GUID 73fd43c6382230e4139a92b4f3644819bcd96168 Rank 0] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 4.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+2026-10-20 11:06:45,026 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 60 additional batches, or 60 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-20 11:07:18,793 - root - INFO - Starting validation step for model trained for 1 epochs
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+2026-10-20 11:07:18,840 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+2026-10-20 11:07:18,846 - root - INFO - Starting validation loop
+2026-10-20 11:07:18,949 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 11:07:18,965 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 11:08:51,842 - root - INFO - Flushing validation diagnostics
+2026-10-20 11:08:51,842 - root - INFO - Getting validation aggregator summary
+2026-10-20 11:08:51,842 - root - INFO - Getting logs for mean aggregator
+2026-10-20 11:08:58,451 - root - INFO - Getting logs for mean_norm aggregator
+2026-10-20 11:08:58,671 - root - INFO - Validation complete
+2026-10-20 11:08:58,672 - root - INFO - Starting inference step for model trained for 1 epochs
+2026-10-20 11:08:58,679 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 11:08:58,679 - root - WARNING - Zonal mean max size 4096 is greater than the number of timesteps 361. Setting zonal mean max size to the number of timesteps.
+2026-10-20 11:08:58,679 - root - WARNING - annual metric not supported for this configuration, omitting: annual metric requires > ~2 years of data, got 90 days
+2026-10-20 11:08:58,679 - root - WARNING - enso_index metric not supported for this configuration, omitting: enso_index metric requires > ~2 years of data, got 90 days
+2026-10-20 11:08:58,680 - root - WARNING - enso_coefficient metric not supported for this configuration, omitting: enso_coefficient metric requires > ~5 years of data, got 90 days
+2026-10-20 11:08:58,680 - root - WARNING - ipo_index metric not supported for this configuration, omitting: ipo_index metric requires > ~80 years of data, got 90 days
+2026-10-20 11:09:43,686 - root - INFO - Inference: processing output from window 1 of 18.
+2026-10-20 11:10:00,005 - root - INFO - Inference: processing output from window 2 of 18.
+2026-10-20 11:10:22,735 - root - INFO - Inference: processing output from window 3 of 18.
+2026-10-20 11:10:39,582 - root - INFO - Inference: processing output from window 4 of 18.
+2026-10-20 11:11:01,559 - root - INFO - Inference: processing output from window 5 of 18.
+2026-10-20 11:11:17,639 - root - INFO - Inference: processing output from window 6 of 18.
+2026-10-20 11:11:33,709 - root - INFO - Inference: processing output from window 7 of 18.
+2026-10-20 11:11:49,799 - root - INFO - Inference: processing output from window 8 of 18.
+2026-10-20 11:12:05,868 - root - INFO - Inference: processing output from window 9 of 18.
+2026-10-20 11:12:22,557 - root - INFO - Inference: processing output from window 10 of 18.
+2026-10-20 11:12:38,636 - root - INFO - Inference: processing output from window 11 of 18.
+2026-10-20 11:12:54,723 - root - INFO - Inference: processing output from window 12 of 18.
+2026-10-20 11:13:10,787 - root - INFO - Inference: processing output from window 13 of 18.
+2026-10-20 11:13:26,894 - root - INFO - Inference: processing output from window 14 of 18.
+2026-10-20 11:13:42,966 - root - INFO - Inference: processing output from window 15 of 18.
+2026-10-20 11:13:59,045 - root - INFO - Inference: processing output from window 16 of 18.
+2026-10-20 11:14:15,106 - root - INFO - Inference: processing output from window 17 of 18.
+2026-10-20 11:14:31,192 - root - INFO - Inference: processing output from window 18 of 18.
+2026-10-20 11:14:31,853 - root - INFO - Starting flush of reduced diagnostics to disk
+2026-10-20 11:14:31,853 - root - INFO - Getting inline inference aggregator summary
+2026-10-20 11:14:31,853 - root - INFO - Getting summary logs for mean_step_20 aggregator
+2026-10-20 11:14:32,200 - root - INFO - Getting summary logs for mean_step_20_norm aggregator
+2026-10-20 11:14:32,207 - root - INFO - Getting summary logs for zonal_mean aggregator
+2026-10-20 11:14:41,455 - root - INFO - Getting summary logs for time_mean aggregator
+2026-10-20 11:15:16,483 - root - INFO - Getting summary logs for time_mean_norm aggregator
+2026-10-20 11:15:35,389 - root - INFO - Time taken for epoch 1 is 763.7670333385468 sec
+2026-10-20 11:15:35,389 - root - INFO - Train loss: 0.8966926336288452
+2026-10-20 11:15:35,389 - root - INFO - Valid loss: 2.726034641265869
+2026-10-20 11:15:35,389 - root - INFO - Inference error: 0.40922121435403824
+2026-10-20 11:15:35,399 - root - INFO - Logging to wandb
+2026-10-20 11:15:36,946 - root - INFO - Saving checkpoints for epoch 1
+2026-10-20 11:15:36,956 - root - INFO - Epoch inference error (0.40922121435403824) is lower than previous best inference error (0.40922121435403824).
+2026-10-20 11:15:36,956 - root - INFO - Saving lowest inference error checkpoint to /pscratch/sd/m/mahf708/hr-runs/prodtest-4n/training_checkpoints/best_inference_ckpt.tar
+2026-10-20 11:15:44,455 - root - INFO - Saving lowest validation loss checkpoint to /pscratch/sd/m/mahf708/hr-runs/prodtest-4n/training_checkpoints/best_ckpt.tar
+2026-10-20 11:15:54,225 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 0 additional batches, or 60 total batches, with best_validation_loss 2.726034641265869 and best_inference_error 0.40922121435403824
+2026-10-20 11:16:30,837 - root - INFO - Saving EMA epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/prodtest-4n/training_checkpoints/ema_ckpt_0001.tar
+2026-10-20 11:16:37,890 - root - INFO - Saving epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/prodtest-4n/training_checkpoints/ckpt_0001.tar
+2026-10-20 11:17:31,188 - root - INFO - Beginning epoch after 1 complete epochs
+2026-10-20 11:17:31,189 - root - INFO - Starting training step for model trained for 1 complete epochs
+2026-10-20 11:17:31,313 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 11:17:31,317 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 11:19:19,529 - root - INFO - Step 100: {'batch_loss': tensor(0.7219, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.3694716343748204, 'lr': 0.0001}
+2026-10-20 11:20:12,723 - root - WARNING - Power spectrum aggregator not implemented for this grid type, omitting.
+2026-10-20 11:20:12,813 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 11:20:12,829 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 11:21:04,193 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 60 additional batches, or 120 total batches, with best_validation_loss 2.726034641265869 and best_inference_error 0.40922121435403824
+2026-10-20 11:21:36,339 - root - INFO - Starting validation step for model trained for 2 epochs
+2026-10-20 11:21:36,379 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 11:21:36,380 - root - INFO - Starting validation loop
+2026-10-20 11:21:36,476 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 11:21:36,487 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 11:23:09,851 - root - INFO - Flushing validation diagnostics
+2026-10-20 11:23:09,852 - root - INFO - Getting validation aggregator summary
+2026-10-20 11:23:09,852 - root - INFO - Getting logs for mean aggregator
+2026-10-20 11:23:11,134 - root - INFO - Getting logs for mean_norm aggregator
+2026-10-20 11:23:11,325 - root - INFO - Validation complete
+2026-10-20 11:23:11,326 - root - INFO - Starting inference step for model trained for 2 epochs
+2026-10-20 11:23:11,337 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 11:23:11,337 - root - WARNING - Zonal mean max size 4096 is greater than the number of timesteps 361. Setting zonal mean max size to the number of timesteps.
+2026-10-20 11:23:11,337 - root - WARNING - annual metric not supported for this configuration, omitting: annual metric requires > ~2 years of data, got 90 days
+2026-10-20 11:23:11,337 - root - WARNING - enso_index metric not supported for this configuration, omitting: enso_index metric requires > ~2 years of data, got 90 days
+2026-10-20 11:23:11,337 - root - WARNING - enso_coefficient metric not supported for this configuration, omitting: enso_coefficient metric requires > ~5 years of data, got 90 days
+2026-10-20 11:23:11,337 - root - WARNING - ipo_index metric not supported for this configuration, omitting: ipo_index metric requires > ~80 years of data, got 90 days
+2026-10-20 11:23:43,037 - root - INFO - Inference: processing output from window 1 of 18.
+2026-10-20 11:23:59,650 - root - INFO - Inference: processing output from window 2 of 18.
+2026-10-20 11:24:15,728 - root - INFO - Inference: processing output from window 3 of 18.
+2026-10-20 11:24:31,805 - root - INFO - Inference: processing output from window 4 of 18.
+2026-10-20 11:24:50,810 - root - INFO - Inference: processing output from window 5 of 18.
+2026-10-20 11:25:06,887 - root - INFO - Inference: processing output from window 6 of 18.
+2026-10-20 11:25:22,974 - root - INFO - Inference: processing output from window 7 of 18.
+2026-10-20 11:25:39,176 - root - INFO - Inference: processing output from window 8 of 18.
+2026-10-20 11:25:55,265 - root - INFO - Inference: processing output from window 9 of 18.
+2026-10-20 11:26:13,380 - root - INFO - Inference: processing output from window 10 of 18.
+2026-10-20 11:26:29,463 - root - INFO - Inference: processing output from window 11 of 18.
+2026-10-20 11:26:45,532 - root - INFO - Inference: processing output from window 12 of 18.
+2026-10-20 11:27:01,607 - root - INFO - Inference: processing output from window 13 of 18.
+2026-10-20 11:27:17,685 - root - INFO - Inference: processing output from window 14 of 18.
+2026-10-20 11:27:33,761 - root - INFO - Inference: processing output from window 15 of 18.
+2026-10-20 11:27:49,822 - root - INFO - Inference: processing output from window 16 of 18.
+2026-10-20 11:28:05,893 - root - INFO - Inference: processing output from window 17 of 18.
+2026-10-20 11:28:21,965 - root - INFO - Inference: processing output from window 18 of 18.
+2026-10-20 11:28:22,579 - root - INFO - Starting flush of reduced diagnostics to disk
+2026-10-20 11:28:22,580 - root - INFO - Getting inline inference aggregator summary
+2026-10-20 11:28:22,580 - root - INFO - Getting summary logs for mean_step_20 aggregator
+2026-10-20 11:28:30,234 - root - INFO - Getting summary logs for mean_step_20_norm aggregator
+2026-10-20 11:28:30,240 - root - INFO - Getting summary logs for zonal_mean aggregator
+2026-10-20 11:28:39,721 - root - INFO - Getting summary logs for time_mean aggregator
+2026-10-20 11:29:17,033 - root - INFO - Getting summary logs for time_mean_norm aggregator
+2026-10-20 11:29:36,601 - root - INFO - Time taken for epoch 2 is 725.4120733737946 sec
+2026-10-20 11:29:36,601 - root - INFO - Train loss: 0.5824975967407227
+2026-10-20 11:29:36,601 - root - INFO - Valid loss: 2.471072196960449
+2026-10-20 11:29:36,601 - root - INFO - Inference error: 0.3838248470425606
+2026-10-20 11:29:36,610 - root - INFO - Logging to wandb
+2026-10-20 11:29:39,090 - root - INFO - Saving checkpoints for epoch 2
+2026-10-20 11:29:39,101 - root - INFO - Epoch inference error (0.3838248470425606) is lower than previous best inference error (0.3838248470425606).
+2026-10-20 11:29:39,101 - root - INFO - Saving lowest inference error checkpoint to /pscratch/sd/m/mahf708/hr-runs/prodtest-4n/training_checkpoints/best_inference_ckpt.tar
+2026-10-20 11:29:49,237 - root - INFO - Saving lowest validation loss checkpoint to /pscratch/sd/m/mahf708/hr-runs/prodtest-4n/training_checkpoints/best_ckpt.tar
+2026-10-20 11:29:59,678 - root - INFO - Saving latest checkpoint model trained for 2 complete epochs and 0 additional batches, or 120 total batches, with best_validation_loss 2.471072196960449 and best_inference_error 0.3838248470425606
+2026-10-20 11:30:35,973 - root - INFO - Saving EMA epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/prodtest-4n/training_checkpoints/ema_ckpt_0002.tar
+2026-10-20 11:30:44,766 - root - INFO - Saving epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/prodtest-4n/training_checkpoints/ckpt_0002.tar
+2026-10-20 11:31:43,206 - root - INFO - Beginning epoch after 2 complete epochs
+2026-10-20 11:31:43,207 - root - INFO - Starting training step for model trained for 2 complete epochs
+2026-10-20 11:31:43,312 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 11:31:43,322 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 11:34:23,341 - root - WARNING - Power spectrum aggregator not implemented for this grid type, omitting.
+2026-10-20 11:34:23,430 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 11:34:23,449 - root - INFO - Dataset now has 23355 samples of length 6.
+W1020 11:34:46.822000 635139 torch/distributed/elastic/agent/server/api.py:739] Received 15 death signal, shutting down workers
+W1020 11:34:46.825000 635139 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 635352 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 11:34:46.826000 635139 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 635353 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 11:34:46.827000 635139 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 635354 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 11:34:46.828000 635139 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 635355 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 11:34:46.842000 637325 torch/distributed/elastic/agent/server/api.py:739] Received 15 death signal, shutting down workers
+W1020 11:34:46.844000 637325 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 637537 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 11:34:46.845000 637325 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 637538 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 11:34:46.846000 637325 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 637539 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 11:34:46.847000 637325 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 637540 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+Main thread reached a loop boundary for termination; draining local device work.
+Main thread reached a loop boundary for termination; draining local device work.
+Main thread reached a loop boundary for termination; draining local device work.
+Main thread parked at a loop boundary for termination.
+Main thread parked at a loop boundary for termination.
+Main thread parked at a loop boundary for termination.
+Main thread reached a loop boundary for termination; draining local device work.
+Main thread parked at a loop boundary for termination.
+W1020 11:34:46.881000 635139 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 635352 closing signal SIGTERM
+W1020 11:34:46.882000 635139 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 635353 closing signal SIGTERM
+W1020 11:34:46.883000 635139 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 635354 closing signal SIGTERM
+W1020 11:34:46.883000 635139 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 635355 closing signal SIGTERM
+W1020 11:34:46.887000 697835 torch/distributed/elastic/agent/server/api.py:739] Received 15 death signal, shutting down workers
+W1020 11:34:46.889000 697835 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 698091 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 11:34:46.890000 697835 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 698093 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 11:34:46.891000 697835 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 698094 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 11:34:46.892000 697835 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 698095 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 11:34:46.903000 637325 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 637537 closing signal SIGTERM
+W1020 11:34:46.904000 637325 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 637538 closing signal SIGTERM
+W1020 11:34:46.905000 637325 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 637539 closing signal SIGTERM
+W1020 11:34:46.906000 637325 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 637540 closing signal SIGTERM
+[rank6]: Traceback (most recent call last):
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 196, in applied_params
+[rank6]:     yield
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 727, in _ema_context
+[rank6]:     yield
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 709, in validation_context
+[rank6]:     yield
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 667, in train_one_epoch
+[rank6]:     dist.park_if_terminating()
+[rank6]:     ~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 701, in park_if_terminating
+[rank6]:     park_if_terminating()
+[rank6]:     ~~~~~~~~~~~~~~~~~~~^^
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 251, in park_if_terminating
+[rank6]:     threading.Event().wait()
+[rank6]:     ~~~~~~~~~~~~~~~~~~~~~~^^
+[rank6]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 659, in wait
+[rank6]:     signaled = self._cond.wait(timeout)
+[rank6]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 359, in wait
+[rank6]:     waiter.acquire()
+[rank6]:     ~~~~~~~~~~~~~~^^
+[rank6]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank6]:     _error_if_any_worker_fails()
+[rank6]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank6]: RuntimeError: DataLoader worker (pid 668483) is killed by signal: Terminated. 
+
+[rank6]: During handling of the above exception, another exception occurred:
+
+[rank6]: Traceback (most recent call last):
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+[rank6]:     yield
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 126, in context
+[rank6]:     yield
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/__main__.py", line 9, in <module>
+[rank6]:     main(args.yaml_config, override_dotlist=args.override)
+[rank6]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/train.py", line 107, in main
+[rank6]:     run_train(config)
+[rank6]:     ~~~~~~~~~^^^^^^^^
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/train.py", line 91, in run_train
+[rank6]:     trainer.train()
+[rank6]:     ~~~~~~~~~~~~~^^
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 495, in train
+[rank6]:     train_summary = self.train_one_epoch()
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 663, in train_one_epoch
+[rank6]:     with torch.no_grad(), self.validation_context():
+[rank6]:                           ~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank6]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank6]:     self.gen.throw(value)
+[rank6]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 708, in validation_context
+[rank6]:     with self._ema_context():
+[rank6]:          ~~~~~~~~~~~~~~~~~^^
+[rank6]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank6]:     self.gen.throw(value)
+[rank6]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 726, in _ema_context
+[rank6]:     with self._ema.applied_params(self.stepper.modules):
+[rank6]:          ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+[rank6]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank6]:     self.gen.throw(value)
+[rank6]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 198, in applied_params
+[rank6]:     self.restore(parameters=model.parameters())
+[rank6]:     ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 236, in restore
+[rank6]:     param.data.copy_(c_param.data)
+[rank6]:     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+[rank6]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank6]:     _error_if_any_worker_fails()
+[rank6]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank6]: RuntimeError: DataLoader worker (pid 663315) is killed by signal: Terminated. 
+
+[rank6]: During handling of the above exception, another exception occurred:
+
+[rank6]: Traceback (most recent call last):
+[rank6]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank6]:   File "<frozen runpy>", line 88, in _run_code
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/__main__.py", line 8, in <module>
+[rank6]:     with Distributed.context():
+[rank6]:          ~~~~~~~~~~~~~~~~~~~^^
+[rank6]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank6]:     self.gen.throw(value)
+[rank6]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 118, in context
+[rank6]:     with contextlib.ExitStack() as stack:
+[rank6]:          ~~~~~~~~~~~~~~~~~~~~^^
+[rank6]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 619, in __exit__
+[rank6]:     raise exc
+[rank6]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 604, in __exit__
+[rank6]:     if cb(*exc_details):
+[rank6]:        ~~^^^^^^^^^^^^^^
+[rank6]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank6]:     self.gen.throw(value)
+[rank6]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 487, in abort_and_exit_on_termination
+[rank6]:     listener.block_until_process_exit()
+[rank6]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/_signal_listener.py", line 174, in block_until_process_exit
+[rank6]:     self._thread.join()
+[rank6]:     ~~~~~~~~~~~~~~~~~^^
+[rank6]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 1094, in join
+[rank6]:     self._handle.join(timeout)
+[rank6]:     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+[rank6]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank6]:     _error_if_any_worker_fails()
+[rank6]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank6]: RuntimeError: DataLoader worker (pid 637873) is killed by signal: Terminated. 
+[rank7]: Traceback (most recent call last):
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 196, in applied_params
+[rank7]:     yield
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 727, in _ema_context
+[rank7]:     yield
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 709, in validation_context
+[rank7]:     yield
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 667, in train_one_epoch
+[rank7]:     dist.park_if_terminating()
+[rank7]:     ~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 701, in park_if_terminating
+[rank7]:     park_if_terminating()
+[rank7]:     ~~~~~~~~~~~~~~~~~~~^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 251, in park_if_terminating
+[rank7]:     threading.Event().wait()
+[rank7]:     ~~~~~~~~~~~~~~~~~~~~~~^^
+[rank7]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 659, in wait
+[rank7]:     signaled = self._cond.wait(timeout)
+[rank7]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 359, in wait
+[rank7]:     waiter.acquire()
+[rank7]:     ~~~~~~~~~~~~~~^^
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank7]:     _error_if_any_worker_fails()
+[rank7]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank7]: RuntimeError: DataLoader worker (pid 663311) is killed by signal: Terminated. 
+
+[rank7]: During handling of the above exception, another exception occurred:
+
+[rank7]: Traceback (most recent call last):
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+[rank7]:     yield
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 126, in context
+[rank7]:     yield
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/__main__.py", line 9, in <module>
+[rank7]:     main(args.yaml_config, override_dotlist=args.override)
+[rank7]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/train.py", line 107, in main
+[rank7]:     run_train(config)
+[rank7]:     ~~~~~~~~~^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/train.py", line 91, in run_train
+[rank7]:     trainer.train()
+[rank7]:     ~~~~~~~~~~~~~^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 495, in train
+[rank7]:     train_summary = self.train_one_epoch()
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 663, in train_one_epoch
+[rank7]:     with torch.no_grad(), self.validation_context():
+[rank7]:                           ~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank7]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank7]:     self.gen.throw(value)
+[rank7]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 708, in validation_context
+[rank7]:     with self._ema_context():
+[rank7]:          ~~~~~~~~~~~~~~~~~^^
+[rank7]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank7]:     self.gen.throw(value)
+[rank7]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 726, in _ema_context
+[rank7]:     with self._ema.applied_params(self.stepper.modules):
+[rank7]:          ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+[rank7]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank7]:     self.gen.throw(value)
+[rank7]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 198, in applied_params
+[rank7]:     self.restore(parameters=model.parameters())
+[rank7]:     ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 236, in restore
+[rank7]:     param.data.copy_(c_param.data)
+[rank7]:     ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank7]:     _error_if_any_worker_fails()
+[rank7]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank7]: RuntimeError: DataLoader worker (pid 668484) is killed by signal: Terminated. 
+
+[rank7]: During handling of the above exception, another exception occurred:
+
+[rank7]: Traceback (most recent call last):
+[rank7]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank7]:   File "<frozen runpy>", line 88, in _run_code
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/__main__.py", line 8, in <module>
+[rank7]:     with Distributed.context():
+[rank7]:          ~~~~~~~~~~~~~~~~~~~^^
+[rank7]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank7]:     self.gen.throw(value)
+[rank7]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 118, in context
+[rank7]:     with contextlib.ExitStack() as stack:
+[rank7]:          ~~~~~~~~~~~~~~~~~~~~^^
+[rank7]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 619, in __exit__
+[rank7]:     raise exc
+[rank7]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 604, in __exit__
+[rank7]:     if cb(*exc_details):
+[rank7]:        ~~^^^^^^^^^^^^^^
+[rank7]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank7]:     self.gen.throw(value)
+[rank7]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 487, in abort_and_exit_on_termination
+[rank7]:     listener.block_until_process_exit()
+[rank7]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/_signal_listener.py", line 174, in block_until_process_exit
+[rank7]:     self._thread.join()
+[rank7]:     ~~~~~~~~~~~~~~~~~^^
+[rank7]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 1094, in join
+[rank7]:     self._handle.join(timeout)
+[rank7]:     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank7]:     _error_if_any_worker_fails()
+[rank7]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank7]: RuntimeError: DataLoader worker (pid 637878) is killed by signal: Terminated. 
+[rank5]: Traceback (most recent call last):
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+[rank5]:     yield
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 126, in context
+[rank5]:     yield
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/__main__.py", line 9, in <module>
+[rank5]:     main(args.yaml_config, override_dotlist=args.override)
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/train.py", line 107, in main
+[rank5]:     run_train(config)
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/train.py", line 91, in run_train
+[rank5]:     trainer.train()
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 495, in train
+[rank5]:     train_summary = self.train_one_epoch()
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 667, in train_one_epoch
+[rank5]:     dist.park_if_terminating()
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 701, in park_if_terminating
+[rank5]:     park_if_terminating()
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 251, in park_if_terminating
+[rank5]:     threading.Event().wait()
+[rank5]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 659, in wait
+[rank5]:     signaled = self._cond.wait(timeout)
+[rank5]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 359, in wait
+[rank5]:     waiter.acquire()
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank5]:     _error_if_any_worker_fails()
+[rank5]: RuntimeError: DataLoader worker (pid 663312) is killed by signal: Terminated. 
+
+[rank5]: During handling of the above exception, another exception occurred:
+
+[rank5]: Traceback (most recent call last):
+[rank5]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank5]:   File "<frozen runpy>", line 88, in _run_code
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/__main__.py", line 8, in <module>
+[rank5]:     with Distributed.context():
+[rank5]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank5]:     self.gen.throw(value)
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 118, in context
+[rank5]:     with contextlib.ExitStack() as stack:
+[rank5]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 619, in __exit__
+[rank5]:     raise exc
+[rank5]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 604, in __exit__
+[rank5]:     if cb(*exc_details):
+[rank5]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank5]:     self.gen.throw(value)
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 487, in abort_and_exit_on_termination
+[rank5]:     listener.block_until_process_exit()
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/_signal_listener.py", line 174, in block_until_process_exit
+[rank5]:     self._thread.join()
+[rank5]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 1094, in join
+[rank5]:     self._handle.join(timeout)
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank5]:     _error_if_any_worker_fails()
+[rank5]: RuntimeError: DataLoader worker (pid 668481) is killed by signal: Terminated. 
+[rank4]: Traceback (most recent call last):
+[rank4]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+[rank4]:     yield
+[rank4]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 126, in context
+[rank4]:     yield
+[rank4]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/__main__.py", line 9, in <module>
+[rank4]:     main(args.yaml_config, override_dotlist=args.override)
+[rank4]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/train.py", line 107, in main
+[rank4]:     run_train(config)
+[rank4]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/train.py", line 91, in run_train
+[rank4]:     trainer.train()
+[rank4]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 495, in train
+[rank4]:     train_summary = self.train_one_epoch()
+[rank4]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 667, in train_one_epoch
+[rank4]:     dist.park_if_terminating()
+[rank4]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 701, in park_if_terminating
+[rank4]:     park_if_terminating()
+[rank4]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 251, in park_if_terminating
+[rank4]:     threading.Event().wait()
+[rank4]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 659, in wait
+[rank4]:     signaled = self._cond.wait(timeout)
+[rank4]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 359, in wait
+[rank4]:     waiter.acquire()
+[rank4]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank4]:     _error_if_any_worker_fails()
+[rank4]: RuntimeError: DataLoader worker (pid 663309) is killed by signal: Terminated. 
+
+[rank4]: During handling of the above exception, another exception occurred:
+
+[rank4]: Traceback (most recent call last):
+[rank4]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank4]:   File "<frozen runpy>", line 88, in _run_code
+[rank4]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/__main__.py", line 8, in <module>
+[rank4]:     with Distributed.context():
+[rank4]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank4]:     self.gen.throw(value)
+[rank4]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 118, in context
+[rank4]:     with contextlib.ExitStack() as stack:
+[rank4]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 619, in __exit__
+[rank4]:     raise exc
+[rank4]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 604, in __exit__
+[rank4]:     if cb(*exc_details):
+[rank4]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank4]:     self.gen.throw(value)
+[rank4]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 487, in abort_and_exit_on_termination
+[rank4]:     listener.block_until_process_exit()
+[rank4]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/_signal_listener.py", line 174, in block_until_process_exit
+[rank4]:     self._thread.join()
+[rank4]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 1094, in join
+[rank4]:     self._handle.join(timeout)
+[rank4]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank4]:     _error_if_any_worker_fails()
+[rank4]: RuntimeError: DataLoader worker (pid 637837) is killed by signal: Terminated. 
+W1020 11:34:46.944000 697835 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 698091 closing signal SIGTERM
+W1020 11:34:46.945000 697835 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 698093 closing signal SIGTERM
+W1020 11:34:46.946000 697835 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 698094 closing signal SIGTERM
+W1020 11:34:46.947000 697835 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 698095 closing signal SIGTERM
+W1020 11:34:46.972000 635293 torch/distributed/elastic/agent/server/api.py:739] Received 15 death signal, shutting down workers
+W1020 11:34:46.974000 635293 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 635482 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 11:34:46.975000 635293 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 635487 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 11:34:46.975000 635293 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 635488 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 11:34:46.976000 635293 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 635489 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 11:34:47.034000 635293 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 635482 closing signal SIGTERM
+W1020 11:34:47.035000 635293 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 635487 closing signal SIGTERM
+W1020 11:34:47.035000 635293 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 635488 closing signal SIGTERM
+W1020 11:34:47.036000 635293 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 635489 closing signal SIGTERM
+Draining local device work failed:
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 196, in applied_params
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 727, in _ema_context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 709, in validation_context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 669, in train_one_epoch
+    stepped = self.stepper.train_on_batch(
+        batch, self._no_optimization, evaluate_all_steps=True
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/stepper/single_module.py", line 1727, in train_on_batch
+    output_list, per_channel_losses = self._accumulate_loss(
+                                      ~~~~~~~~~~~~~~~~~~~~~^
+        data,
+        ^^^^^
+    ...<4 lines>...
+        n_loss_steps=n_loss_steps,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/stepper/single_module.py", line 1819, in _accumulate_loss
+    step_total_loss = self._accumulate_step_loss(
+        gen_step=gen_step,
+    ...<7 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/stepper/single_module.py", line 1846, in _accumulate_step_loss
+    step_loss = self._loss_obj(
+        gen_step,
+    ...<3 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/loss.py", line 1304, in forward
+    main=self.step_loss(predict_dict, target_dict, step, data_mask)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/loss.py", line 934, in forward
+    return self.loss(predict_dict, target_dict, data_mask=data_mask).scale(
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/loss.py", line 248, in __call__
+    self.normalizer.normalize(predict_dict), axis=self.channel_dim
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/normalizer.py", line 159, in normalize
+    return _normalize(
+        filtered_tensors,
+    ...<3 lines>...
+        apply_mean=apply_mean,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/normalizer.py", line 220, in _normalize
+    normalized = {k: (t - means[k]) / stds[k] for k, t in tensors.items()}
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 668643) is killed by signal: Terminated. 
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 126, in context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/__main__.py", line 9, in <module>
+    main(args.yaml_config, override_dotlist=args.override)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/train.py", line 107, in main
+    run_train(config)
+    ~~~~~~~~~^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/train.py", line 91, in run_train
+    trainer.train()
+    ~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 495, in train
+    train_summary = self.train_one_epoch()
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 663, in train_one_epoch
+    with torch.no_grad(), self.validation_context():
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 708, in validation_context
+    with self._ema_context():
+         ~~~~~~~~~~~~~~~~~^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 726, in _ema_context
+    with self._ema.applied_params(self.stepper.modules):
+         ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 198, in applied_params
+    self.restore(parameters=model.parameters())
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 236, in restore
+    param.data.copy_(c_param.data)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 637997) is killed by signal: Terminated. 
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 466, in abort_and_exit_on_termination
+    drain()
+    ~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 709, in _drain_local_work
+    torch.cuda.synchronize()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/cuda/__init__.py", line 1108, in synchronize
+    return torch._C._cuda_synchronize()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 663470) is killed by signal: Terminated. 
+Draining local device work failed:
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 196, in applied_params
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 727, in _ema_context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 709, in validation_context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 669, in train_one_epoch
+    stepped = self.stepper.train_on_batch(
+        batch, self._no_optimization, evaluate_all_steps=True
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/stepper/single_module.py", line 1727, in train_on_batch
+    output_list, per_channel_losses = self._accumulate_loss(
+                                      ~~~~~~~~~~~~~~~~~~~~~^
+        data,
+        ^^^^^
+    ...<4 lines>...
+        n_loss_steps=n_loss_steps,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/stepper/single_module.py", line 1819, in _accumulate_loss
+    step_total_loss = self._accumulate_step_loss(
+        gen_step=gen_step,
+    ...<7 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/stepper/single_module.py", line 1846, in _accumulate_step_loss
+    step_loss = self._loss_obj(
+        gen_step,
+    ...<3 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/loss.py", line 1304, in forward
+    main=self.step_loss(predict_dict, target_dict, step, data_mask)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/loss.py", line 934, in forward
+    return self.loss(predict_dict, target_dict, data_mask=data_mask).scale(
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/loss.py", line 248, in __call__
+    self.normalizer.normalize(predict_dict), axis=self.channel_dim
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/normalizer.py", line 159, in normalize
+    return _normalize(
+        filtered_tensors,
+    ...<3 lines>...
+        apply_mean=apply_mean,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/normalizer.py", line 220, in _normalize
+    normalized = {k: (t - means[k]) / stds[k] for k, t in tensors.items()}
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 668647) is killed by signal: Terminated. 
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 126, in context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/__main__.py", line 9, in <module>
+    main(args.yaml_config, override_dotlist=args.override)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/train.py", line 107, in main
+    run_train(config)
+    ~~~~~~~~~^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/train.py", line 91, in run_train
+    trainer.train()
+    ~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 495, in train
+    train_summary = self.train_one_epoch()
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 663, in train_one_epoch
+    with torch.no_grad(), self.validation_context():
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 708, in validation_context
+    with self._ema_context():
+         ~~~~~~~~~~~~~~~~~^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 726, in _ema_context
+    with self._ema.applied_params(self.stepper.modules):
+         ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 198, in applied_params
+    self.restore(parameters=model.parameters())
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 236, in restore
+    param.data.copy_(c_param.data)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 663478) is killed by signal: Terminated. 
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 466, in abort_and_exit_on_termination
+    drain()
+    ~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 709, in _drain_local_work
+    torch.cuda.synchronize()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/cuda/__init__.py", line 1108, in synchronize
+    return torch._C._cuda_synchronize()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 638003) is killed by signal: Terminated. 
+Draining local device work failed:
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 196, in applied_params
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 727, in _ema_context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 709, in validation_context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 669, in train_one_epoch
+    stepped = self.stepper.train_on_batch(
+        batch, self._no_optimization, evaluate_all_steps=True
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/stepper/single_module.py", line 1727, in train_on_batch
+    output_list, per_channel_losses = self._accumulate_loss(
+                                      ~~~~~~~~~~~~~~~~~~~~~^
+        data,
+        ^^^^^
+    ...<4 lines>...
+        n_loss_steps=n_loss_steps,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/stepper/single_module.py", line 1819, in _accumulate_loss
+    step_total_loss = self._accumulate_step_loss(
+        gen_step=gen_step,
+    ...<7 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/stepper/single_module.py", line 1846, in _accumulate_step_loss
+    step_loss = self._loss_obj(
+        gen_step,
+    ...<3 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/loss.py", line 1304, in forward
+    main=self.step_loss(predict_dict, target_dict, step, data_mask)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/loss.py", line 934, in forward
+    return self.loss(predict_dict, target_dict, data_mask=data_mask).scale(
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/loss.py", line 248, in __call__
+    self.normalizer.normalize(predict_dict), axis=self.channel_dim
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/normalizer.py", line 159, in normalize
+    return _normalize(
+        filtered_tensors,
+    ...<3 lines>...
+        apply_mean=apply_mean,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/normalizer.py", line 220, in _normalize
+    normalized = {k: (t - means[k]) / stds[k] for k, t in tensors.items()}
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 663471) is killed by signal: Terminated. 
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 126, in context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/__main__.py", line 9, in <module>
+    main(args.yaml_config, override_dotlist=args.override)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/train.py", line 107, in main
+    run_train(config)
+    ~~~~~~~~~^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/train.py", line 91, in run_train
+    trainer.train()
+    ~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 495, in train
+    train_summary = self.train_one_epoch()
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 663, in train_one_epoch
+    with torch.no_grad(), self.validation_context():
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 708, in validation_context
+    with self._ema_context():
+         ~~~~~~~~~~~~~~~~~^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 726, in _ema_context
+    with self._ema.applied_params(self.stepper.modules):
+         ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 198, in applied_params
+    self.restore(parameters=model.parameters())
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 236, in restore
+    param.data.copy_(c_param.data)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 638010) is killed by signal: Terminated. 
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 466, in abort_and_exit_on_termination
+    drain()
+    ~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 709, in _drain_local_work
+    torch.cuda.synchronize()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/cuda/__init__.py", line 1108, in synchronize
+    return torch._C._cuda_synchronize()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 668646) is killed by signal: Terminated. 
+Draining local device work failed:
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 196, in applied_params
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 727, in _ema_context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 709, in validation_context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 669, in train_one_epoch
+    stepped = self.stepper.train_on_batch(
+        batch, self._no_optimization, evaluate_all_steps=True
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/stepper/single_module.py", line 1727, in train_on_batch
+    output_list, per_channel_losses = self._accumulate_loss(
+                                      ~~~~~~~~~~~~~~~~~~~~~^
+        data,
+        ^^^^^
+    ...<4 lines>...
+        n_loss_steps=n_loss_steps,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/stepper/single_module.py", line 1819, in _accumulate_loss
+    step_total_loss = self._accumulate_step_loss(
+        gen_step=gen_step,
+    ...<7 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/stepper/single_module.py", line 1846, in _accumulate_step_loss
+    step_loss = self._loss_obj(
+        gen_step,
+    ...<3 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/loss.py", line 1304, in forward
+    main=self.step_loss(predict_dict, target_dict, step, data_mask)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/loss.py", line 934, in forward
+    return self.loss(predict_dict, target_dict, data_mask=data_mask).scale(
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/loss.py", line 248, in __call__
+    self.normalizer.normalize(predict_dict), axis=self.channel_dim
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/normalizer.py", line 159, in normalize
+    return _normalize(
+        filtered_tensors,
+    ...<3 lines>...
+        apply_mean=apply_mean,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/normalizer.py", line 220, in _normalize
+    normalized = {k: (t - means[k]) / stds[k] for k, t in tensors.items()}
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 668645) is killed by signal: Terminated. 
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 126, in context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/__main__.py", line 9, in <module>
+    main(args.yaml_config, override_dotlist=args.override)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/train.py", line 107, in main
+    run_train(config)
+    ~~~~~~~~~^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/ace/train/train.py", line 91, in run_train
+    trainer.train()
+    ~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 495, in train
+    train_summary = self.train_one_epoch()
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 663, in train_one_epoch
+    with torch.no_grad(), self.validation_context():
+                          ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 708, in validation_context
+    with self._ema_context():
+         ~~~~~~~~~~~~~~~~~^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/generics/trainer.py", line 726, in _ema_context
+    with self._ema.applied_params(self.stepper.modules):
+         ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 198, in applied_params
+    self.restore(parameters=model.parameters())
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/ema.py", line 236, in restore
+    param.data.copy_(c_param.data)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 663486) is killed by signal: Terminated. 
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/shutdown.py", line 466, in abort_and_exit_on_termination
+    drain()
+    ~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/distributed/distributed.py", line 709, in _drain_local_work
+    torch.cuda.synchronize()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/cuda/__init__.py", line 1108, in synchronize
+    return torch._C._cuda_synchronize()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 638023) is killed by signal: Terminated. 
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+srun: error: nid001237: task 2: Killed
+srun: Terminating StepId=60038940.20
+srun: error: nid001236: task 1: Killed
+srun: error: nid001240: task 3: Killed
+srun: error: nid001233: task 0: Killed
+srun: Force Terminated StepId=60038940.20

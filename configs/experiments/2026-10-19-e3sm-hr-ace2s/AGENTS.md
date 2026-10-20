@@ -185,3 +185,20 @@ Newest last. Times are PDT on 2026-10-19 unless noted.
   run_in_background on the script itself.
 - Random rendezvous ports collided for concurrent multi-node runs; use fixed,
   distinct ports.
+
+### 2026-10-20, 40 GB allocation 60038940
+- 40 GB A100s: full harmonics at 4x1 OOM. Modes x0.5 at 4x1 (both
+  sharding flags) fit at 39.6 GB, or 38.0 with expandable_segments. Full
+  harmonics at 8x1 over 2 nodes fit at 28.6 GB (notes §12b).
+- **EMA leak found and fixed (37a2b9a44).** EMATracker.restore() never
+  released the parameter copy taken by store(), so after the first epoch-end
+  validation a full parameter-sized copy stayed on every GPU, and the next
+  store() briefly held two. The production test on 40 GB stepped GPU memory
+  up 39.2 -> 40.4 GB at the epoch 1 -> 2 transition and peaked at
+  40,439 MiB of 40,960 in epoch 2's validation. This is probably the
+  "collapse at the epoch 1 -> 2 transition" the user saw. It is also in the
+  hist branch and in upstream ai2cm/ace main.
+- Gotcha: `scancel <job>.<step>` on steps launched with `srun --overlap`
+  from this session found no matching step (squeue did not list them), and
+  the training processes kept running and holding the GPUs. Check with
+  nvidia-smi / pgrep and kill with `pkill -f "[f]me.ace.train"` per node.
