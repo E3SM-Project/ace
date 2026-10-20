@@ -9,6 +9,7 @@ import cftime
 import numpy as np
 import numpy.typing as npt
 import torch
+import xarray as xr
 
 from fme.ace.data_loading.batch_data import (
     _RESERVED_PREFIX,
@@ -19,6 +20,7 @@ from fme.ace.data_loading.batch_data import (
 )
 from fme.core.cloud import to_netcdf_via_inter_filesystem_copy
 from fme.core.dataset.data_typing import VariableMetadata
+from fme.core.device import get_device
 from fme.core.distributed import Distributed
 from fme.core.generics.writer import WriterABC
 from fme.core.step.step_diagnostics import StepDiagnostics
@@ -101,18 +103,6 @@ class DataWriterConfig:
             or bool(self.files)
         )
 
-    def _raise_if_unsupported_under_multi_gpu(self, n_ranks: int) -> None:
-        """Raise if per-timestep writers are enabled under multi-GPU."""
-        if n_ranks > 1 and self.has_subwriters_enabled:
-            raise ValueError(
-                "Multi-GPU inference does not yet support per-timestep data "
-                "writers (prediction files, monthly files, step diagnostics, "
-                "or custom file writers). Set save_prediction_files, "
-                "save_monthly_files, and save_step_diagnostics to false and "
-                "files to null in the data_writer config, or run with a "
-                "single GPU."
-            )
-
     @property
     def _has_file_subwriters(self) -> bool:
         """Whether any sub-writer of prediction (and target) data is enabled."""
@@ -152,10 +142,10 @@ class DataWriterConfig:
         dataset_metadata: DatasetMetadata,
     ) -> "PairedDataWriter":
         dist = Distributed.get_instance()
-        self._raise_if_unsupported_under_multi_gpu(dist.total_data_parallel_ranks)
+        initial_condition_times = _all_initial_condition_times(initial_condition_times)
         writers: list[PairedSubwriter] = []
-        # Spatial co-ranks of the root (the only data-parallel rank when
-        # sub-writers are enabled) send it their tiles and open no files.
+        # The other ranks send the root their tiles and samples and open no
+        # files.
         writes_files = dist.is_root()
         if self.save_prediction_files and writes_files:
             raw_writer: PairedSubwriter = PairedRawDataWriter(
@@ -251,12 +241,12 @@ class DataWriterConfig:
         dataset_metadata: DatasetMetadata,
     ) -> "DataWriter":
         dist = Distributed.get_instance()
-        self._raise_if_unsupported_under_multi_gpu(dist.total_data_parallel_ranks)
+        initial_condition_times = _all_initial_condition_times(initial_condition_times)
         writers: list[Subwriter] = []
         # TODO: handle writing HEALPix data
         # https://github.com/ai2cm/full-model/issues/1089
-        # Spatial co-ranks of the root (the only data-parallel rank when
-        # sub-writers are enabled) send it their tiles and write nothing.
+        # The other ranks send the root their tiles and samples and write
+        # nothing.
         if "face" not in coords and dist.is_root():
             if self.save_prediction_files:
                 raw_writer: Subwriter = RawDataWriter(
@@ -383,14 +373,16 @@ class PairedDataWriter(WriterABC[PrognosticState, PairedData]):
             batch: Prediction and target data.
         """
         if self._has_subwriters:
-            target = _gather_spatial_to_root(batch.reference, self._gather_names)
-            prediction = _gather_spatial_to_root(batch.prediction, self._gather_names)
+            target = _gather_to_root(batch.reference, batch.time, self._gather_names)
+            prediction = _gather_to_root(
+                batch.prediction, batch.time, self._gather_names
+            )
             if target is not None and prediction is not None:
                 for writer in self._writers:
                     writer.append_batch(
-                        target=target,
-                        prediction=prediction,
-                        batch_time=batch.time,
+                        target=target[0],
+                        prediction=prediction[0],
+                        batch_time=prediction[1],
                     )
         _append_step_diagnostics(self._step_diagnostics_writer, batch)
 
@@ -475,19 +467,69 @@ def _gather_spatial_to_root(
     return gathered if dist.is_spatial_root() else None
 
 
+def _gather_to_root(
+    data: TensorMapping, time: xr.DataArray, names: frozenset[str] | None = None
+) -> tuple[dict[str, torch.Tensor], xr.DataArray] | None:
+    """Assemble the global fields of every data-parallel rank's samples on the
+    root, with their time coordinate; None on the other ranks.
+
+    Each data-parallel rank holds a contiguous block of samples, so
+    concatenating them in rank order gives the layout of a serial run.
+    Collective over all ranks (every rank must call it with the same
+    variables); returns the data as it is on a single rank.
+
+    Args:
+        data: Tensors with a leading sample dimension whose last two
+            dimensions are this rank's tile.
+        time: The time coordinate of ``data``, with a ``sample`` dimension.
+        names: The variables to assemble, or None for all of them.
+    """
+    dist = Distributed.get_instance()
+    tiles = _gather_spatial_to_root(data, names)
+    if dist.total_data_parallel_ranks == 1 or tiles is None:
+        # every rank of a data-parallel group holds the same tile, so a
+        # group's ranks are all spatial roots or all skip together
+        return None if tiles is None else (tiles, time)
+    device = get_device()
+    gathered: dict[str, torch.Tensor] = {}
+    for name in sorted(tiles):
+        parts = dist.data_parallel_gather(tiles[name].to(device).contiguous())
+        if parts is not None:
+            gathered[name] = torch.cat(parts, dim=0).cpu()
+    times = dist.data_parallel_gather_object(time)
+    if times is None:
+        return None
+    return gathered, xr.concat(times, dim="sample")
+
+
+def _all_initial_condition_times(
+    times: npt.NDArray[cftime.datetime],
+) -> npt.NDArray[cftime.datetime]:
+    """The initial condition times of every data-parallel rank in rank order
+    on the data-parallel root, and this rank's own elsewhere. Collective over
+    the data-parallel group.
+    """
+    dist = Distributed.get_instance()
+    if dist.total_data_parallel_ranks == 1:
+        return times
+    gathered = dist.data_parallel_gather_object(np.asarray(times))
+    return times if gathered is None else np.concatenate(gathered)
+
+
 def _append_step_diagnostics(
     writer: StepDiagnosticsWriter | None, batch: PairedData
 ) -> None:
-    """Append the batch's step diagnostics, assembled on the spatial root,
-    to ``writer``. Collective over the spatial group when there is a writer
-    and diagnostics; the writer is built on every rank but only appended to
-    (and so only creates files) on the root.
+    """Append the batch's step diagnostics, assembled on the root, to
+    ``writer``. Collective over all ranks when there is a writer and
+    diagnostics; the writer is built on every rank but only appended to (and
+    so only creates files) on the root.
     """
     if writer is None or batch.step_diagnostics is None:
         return
-    delta = _gather_spatial_to_root(batch.step_diagnostics.delta)
-    if delta is not None:
-        writer.append_batch(StepDiagnostics(delta=delta).to_datasets(batch.time))
+    gathered = _gather_to_root(batch.step_diagnostics.delta, batch.time)
+    if gathered is not None:
+        delta, time = gathered
+        writer.append_batch(StepDiagnostics(delta=delta).to_datasets(time))
 
 
 def _gather_and_write(
@@ -601,13 +643,14 @@ class DataWriter(WriterABC[PrognosticState, PairedData]):
     def _append_batch(self, batch: BatchData):
         if not self._has_subwriters:
             return
-        data = _gather_spatial_to_root(batch.data, self._gather_names)
-        if data is None:
+        gathered = _gather_to_root(batch.data, batch.time, self._gather_names)
+        if gathered is None:
             return
+        data, batch_time = gathered
         for writer in self._writers:
             writer.append_batch(
                 data=data,
-                batch_time=batch.time,
+                batch_time=batch_time,
             )
 
     def flush(self):

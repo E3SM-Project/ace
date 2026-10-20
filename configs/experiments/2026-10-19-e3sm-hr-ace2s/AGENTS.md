@@ -202,3 +202,15 @@ Newest last. Times are PDT on 2026-10-19 unless noted.
   from this session found no matching step (squeue did not list them), and
   the training processes kept running and holding the GPUs. Check with
   nvidia-smi / pgrep and kill with `pkill -f "[f]me.ace.train"` per node.
+
+## 2026-10-20 (late): writers under data parallelism, video off
+
+- Per-timestep writers (prediction, monthly, custom files, step
+  diagnostics) no longer refuse data parallelism. `_gather_to_root` in
+  `data_writer/main.py` does the spatial gather, then a data-parallel gather
+  of each variable in rank order plus the time coordinate; the root's
+  writers are built with all ranks' IC times. Test: the distributed
+  evaluator test is parametrized over writers on/off (2 data-parallel CPU
+  ranks vs serial); the writers-on case fails on the old code and passes now.
+  Not yet run on GPUs at 0.25 deg with tiles + replicas.
+- `eval-spatial-check.yaml`: video disabled.

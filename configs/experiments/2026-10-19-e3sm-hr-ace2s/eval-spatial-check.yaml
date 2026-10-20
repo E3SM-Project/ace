@@ -40,8 +40,8 @@ data_writer:
   names: [PS, TS, T_7, U_7, surface_precipitation_rate, FLUT]
 aggregator:
   # every map-type metric that can run on 5 days, so all of them are compared
+  # off: impractical at 0.25 deg; training never enables it either
   video:
-    enabled: true
-    variables: [PS, TS]
+    enabled: false
   step_diagnostics:
     correction_maps: true

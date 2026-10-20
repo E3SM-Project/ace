@@ -208,10 +208,15 @@ tests the gathers on a different tiling.
 
 ## Remaining caveats
 
-- **Per-timestep writers still refuse data parallelism** (pre-existing): with
-  H*W < number of GPUs, either disable them or use one IC per spatial group
-  layout with no data parallelism. IC/restart and all diagnostics work with
-  data parallelism + tiles.
+- ~~Per-timestep writers refuse data parallelism~~ Fixed 2026-10-20: the
+  prediction, monthly, custom-file and step-diagnostics writers now gather
+  every data-parallel rank's samples (after the spatial gather) onto the
+  root and write one file in serial sample order. The writers on the root
+  get all ranks' initial-condition times. Tested by
+  `test_distributed_evaluator[True]` (2 data-parallel ranks vs serial;
+  fails on the old code). Cost: per variable, the root's GPU briefly holds
+  n_replicas x its own block.
+- Video is off in `eval-spatial-check.yaml`: impractical at 0.25 deg.
 - **Histogram aggregator** (off by default) never reduces across ranks: it
   reports the root's samples, and under spatial parallelism the root's tile.
   Pre-existing for data parallelism too; not fixed.
