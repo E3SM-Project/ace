@@ -256,6 +256,12 @@ class DistributedBackend(ABC):
         """
         return None
 
+    def spatial_rank(self) -> tuple[int, int]:
+        """This rank's (h, w) coordinates within its spatial group; (0, 0)
+        without spatial parallelism.
+        """
+        return (0, 0)
+
     @abstractmethod
     def weighted_mean(
         self,

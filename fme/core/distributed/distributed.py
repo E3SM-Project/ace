@@ -265,6 +265,14 @@ class Distributed:
             )
         return group
 
+    @property
+    def spatial_rank(self) -> tuple[int, int]:
+        """This rank's (h, w) coordinates within its spatial group, (0, 0)
+        without spatial parallelism. ``get_local_slices`` splits the last two
+        dimensions of a shape by these coordinates.
+        """
+        return self._distributed.spatial_rank()
+
     def require_no_spatial_parallelism(self, msg: str) -> None:
         """Raise if spatial parallelism is active.
 

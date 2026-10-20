@@ -64,6 +64,11 @@ import torch
 import fme
 from fme.core.cli import remove_stale_tmp_checkpoints
 from fme.core.distributed import Distributed
+from fme.core.distributed.parameter_sharding import (
+    gathered_parameter_shards,
+    has_parameter_shards,
+    parameter_shards_gathered,
+)
 from fme.core.distributed.shutdown import add_post_abort_callback, write_stderr
 from fme.core.ema import EMA_CHECKPOINT_KEY, EMATracker
 from fme.core.generics.aggregator import (
@@ -291,6 +296,16 @@ class Trainer:
 
         self.stepper = stepper
         self.stepper.update_training_history(TrainingJob.from_env())
+        # With spatially sharded parameters, reading the stepper's or the
+        # EMA's state for a checkpoint is a collective (it assembles the full
+        # tensors), so every rank runs the checkpoint saves and only the root
+        # writes them.
+        self._collective_checkpoints = has_parameter_shards(stepper.modules)
+        if self._collective_checkpoints and params.lr_tuning is not None:
+            raise ValueError(
+                "lr_tuning is not supported with spatially sharded parameters "
+                "(shard_spatial_parameters)."
+            )
 
         self._build_optimization = build_optimization
         self._build_ema = build_ema
@@ -377,11 +392,18 @@ class Trainer:
         is sharded, gathering it for the root is a collective (see
         ``OptimizationABC.consolidated_state``). One gather serves all the
         checkpoints ``save`` writes, as no step happens in between.
+
+        With spatially sharded parameters every rank runs ``save``, as each
+        read of the stepper or EMA state assembles the full tensors for the
+        root; ``save_checkpoint`` writes on the root only.
         """
         if not self.params.save_checkpoint:
             return
         with self.optimization.consolidated_state():
-            if self._should_save_checkpoints():
+            if self._collective_checkpoints:
+                with gathered_parameter_shards(dst=0):
+                    save()
+            elif self._should_save_checkpoints():
                 save()
 
     def _copy_stepper(self) -> TrainStepperABC:
@@ -713,10 +735,24 @@ class Trainer:
     ):
         """Write a checkpoint. Root only; with ``include_optimization``, every
         rank must be inside ``self.optimization.consolidated_state()`` (see
-        ``_save_checkpoints_on_root``).
+        ``_save_checkpoints_on_root``). With spatially sharded parameters,
+        every rank calls it inside ``_save_checkpoints_on_root`` and the root
+        writes.
         """
-        if not Distributed.get_instance().is_root():
+        is_root = Distributed.get_instance().is_root()
+        if self._collective_checkpoints:
+            if not parameter_shards_gathered():
+                raise RuntimeError(
+                    "With spatially sharded parameters, checkpoints are only "
+                    "saved inside _save_checkpoints_on_root, on every rank."
+                )
+        elif not is_root:
             raise RuntimeError("Only the root process should save checkpoints")
+        # on every rank, if they assemble sharded tensors
+        stepper_state = self.stepper.get_state()
+        ema_state = self._ema.get_state(include_params=include_optimization)
+        if not is_root:
+            return
         # save to a temporary file in case we get pre-empted during save
         temporary_location = os.path.join(
             os.path.dirname(checkpoint_path), f".{uuid.uuid4()}.tmp"
@@ -728,10 +764,8 @@ class Trainer:
                 "epoch": self._epochs_trained,
                 "best_validation_loss": self._best_validation_loss,
                 "best_inference_error": self._best_inference_error,
-                "stepper": self.stepper.get_state(),
-                EMA_CHECKPOINT_KEY: self._ema.get_state(
-                    include_params=include_optimization
-                ),
+                "stepper": stepper_state,
+                EMA_CHECKPOINT_KEY: ema_state,
             }
             if include_optimization:
                 data["optimization"] = self.optimization.get_state()
@@ -794,6 +828,14 @@ class Trainer:
         save_best_checkpoint, save_best_inference_checkpoint = (
             self._update_best_metrics(valid_loss, inference_error)
         )
+        if self._collective_checkpoints:
+            # every rank runs this and must save the same checkpoints
+            dist = Distributed.get_instance()
+            save_best_checkpoint, save_best_inference_checkpoint = dist.scatter_object(
+                (save_best_checkpoint, save_best_inference_checkpoint)
+                if dist.is_root()
+                else None
+            )
         with best_checkpoint_context():
             if save_best_inference_checkpoint:
                 logging.info(

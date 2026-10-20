@@ -35,6 +35,7 @@ from ._gloo_patch import patch_gloo_alltoall
 from .base import DistributedBackend
 from .external.pnd_manager import DistributedManager
 from .non_distributed import DummyWrapper
+from .parameter_sharding import ParameterShard, named_parameter_shards
 from .torch_distributed import _gather_irregular, _rank_metadata_from_env
 
 logger = logging.getLogger(__name__)
@@ -81,6 +82,72 @@ def _sum_spatial_mean_data_hook(data_size: int):
         return fut.then(lambda f: f.value()[0])
 
     return hook
+
+
+def _ddp_ignore_names(names: set[str]) -> list[str]:
+    """Parameter names for DDP to ignore. Part of DDP spells the root
+    module's own parameters with a leading dot, part without.
+    """
+    return sorted(names | {f".{name}" for name in names if "." not in name})
+
+
+def _register_mean_hooks(
+    params: list[nn.Parameter], group: torch.distributed.ProcessGroup, size: int
+) -> None:
+    """Average the gradients of ``params`` over ``group`` in every backward.
+
+    For spatially sharded parameters whose gradient is complete on each rank
+    (DDP over the world cannot handle them: their shapes and values differ
+    between spatial ranks), so that data-parallel replicas of the same slice
+    only need its mean. Each all-reduce starts as soon as the parameter's
+    gradient is accumulated, overlapping the rest of the backward pass, and
+    the backward pass waits for all of them before it returns, as DDP's does.
+    Repeated backward passes before an optimizer step (gradient accumulation)
+    average correctly: the mean of the already averaged part is itself.
+    """
+    pending: list[Any] = []
+
+    def wait_for_all():
+        for work in pending:
+            work.wait()
+        pending.clear()
+
+    def hook(param: torch.Tensor) -> None:
+        if not pending:
+            torch.autograd.Variable._execution_engine.queue_callback(wait_for_all)
+        assert param.grad is not None
+        param.grad.div_(size)
+        pending.append(
+            torch.distributed.all_reduce(param.grad, group=group, async_op=True)
+        )
+
+    for param in params:
+        param.register_post_accumulate_grad_hook(hook)
+
+
+def _register_sum_hooks(
+    params: list[nn.Parameter],
+    group: torch.distributed.ProcessGroup,
+    divisor: int = 1,
+) -> None:
+    """Sum each backward pass's gradient of ``params`` over ``group`` (then
+    divide by ``divisor``), before it is accumulated into ``.grad``.
+
+    Reducing the per-pass gradient rather than the accumulated one keeps a
+    sum right under gradient accumulation. It is stream-synchronous (no
+    overlap), which is acceptable for the layouts that need it (a polar-split
+    spectral weight under an azimuth split).
+    """
+
+    def hook(grad: torch.Tensor) -> torch.Tensor:
+        reduced = grad.contiguous().clone()
+        if divisor != 1:
+            reduced.div_(divisor)
+        torch.distributed.all_reduce(reduced, group=group)
+        return reduced
+
+    for param in params:
+        param.register_hook(hook)
 
 
 class _AutogradAllReduce(torch.autograd.Function):
@@ -469,7 +536,25 @@ class ModelTorchDistributed(DistributedBackend):
             else:
                 output_device = None
             has_spatial = self._h_size > 1 or self._w_size > 1
+            # Spatially sharded parameters (see parameter_sharding) hold a
+            # different slice on each spatial rank. Their gradient is only
+            # summed over the ranks that hold the same slice, if any.
+            shards = named_parameter_shards(module)
             if has_spatial and _spatial_grad_sync() == "ddp":
+                if shards:
+                    # DDP over the world would check that they have the same
+                    # shape on every rank, overwrite them with rank 0's slice
+                    # and sum their gradients over tiles
+                    DistributedDataParallel._set_params_and_buffers_to_ignore_for_model(
+                        module, _ddp_ignore_names(set(shards))
+                    )
+                    self._register_shard_grad_hooks(module, shards, data=True)
+                    if not any(
+                        p.requires_grad
+                        for name, p in module.named_parameters()
+                        if name not in shards
+                    ):
+                        return DummyWrapper(module)
                 # One bucketed, backward-overlapped all-reduce over the whole
                 # world replaces the per-parameter spatial hooks: parameters
                 # are replicated on every rank, so summing over (data, h, w)
@@ -489,6 +574,8 @@ class ModelTorchDistributed(DistributedBackend):
                     state=None, hook=_sum_spatial_mean_data_hook(self._data_size)
                 )
                 return wrapped
+            # DDP over the data group is right for sharded parameters too:
+            # its ranks hold the same slice; the spatial hooks sum the others
             wrapped = DistributedDataParallel(
                 SyncBatchNorm.convert_sync_batchnorm(module),
                 device_ids=self._device_ids,
@@ -516,6 +603,8 @@ class ModelTorchDistributed(DistributedBackend):
         if self._h_size <= 1 and self._w_size <= 1:
             return
         spatial_group = self._spatial_group
+        sharded = named_parameter_shards(module)
+        self._register_shard_grad_hooks(module, sharded, data=False)
 
         def _hook(grad: torch.Tensor) -> torch.Tensor:
             if grad is None:
@@ -525,15 +614,59 @@ class ModelTorchDistributed(DistributedBackend):
             torch.distributed.all_reduce(reduced, group=spatial_group)
             return reduced
 
-        for p in module.parameters():
-            if p.requires_grad:
+        for name, p in module.named_parameters():
+            if p.requires_grad and name not in sharded:
                 p.register_hook(_hook)
+
+    def _register_shard_grad_hooks(
+        self, module: nn.Module, shards: dict[str, ParameterShard], data: bool
+    ) -> None:
+        """Gradient sync of spatially sharded parameters: a sum over the
+        spatial axes that do not split a parameter (its slice's replicas),
+        and with ``data``, the mean over data-parallel replicas.
+        """
+        params: dict[tuple[str, ...], list[nn.Parameter]] = {}
+        for name, param in module.named_parameters():
+            if name not in shards or not param.requires_grad:
+                continue
+            split_h, split_w = shards[name].split
+            axes = tuple(
+                axis
+                for axis, size, split in (
+                    ("h", self._h_size, split_h),
+                    ("w", self._w_size, split_w),
+                )
+                if size > 1 and not split
+            )
+            params.setdefault(axes, []).append(param)
+        for axes, group_params in params.items():
+            if axes:
+                group_axes = (("data",) if data else ()) + axes
+                _register_sum_hooks(
+                    group_params,
+                    self._mesh_group(group_axes),
+                    divisor=self._data_size if data else 1,
+                )
+            elif data and self._data_size > 1:
+                _register_mean_hooks(group_params, self._data_group, self._data_size)
+
+    def _mesh_group(self, axes: tuple[str, ...]) -> torch.distributed.ProcessGroup:
+        """The process group of the ranks that differ only along ``axes``."""
+        if len(axes) == 1:
+            return {"data": self._data_group, "h": self._h_group, "w": self._w_group}[
+                axes[0]
+            ]
+        return self._dm.get_mesh_group(self._mesh[axes])
 
     def spatial_process_group(self) -> torch.distributed.ProcessGroup | None:
         """The (h, w) process group, or None without spatial parallelism."""
         if self._h_size > 1 or self._w_size > 1:
             return self._spatial_group
         return None
+
+    def spatial_rank(self) -> tuple[int, int]:
+        """This rank's (h, w) coordinates within its spatial group."""
+        return (self._h_rank, self._w_rank)
 
     def barrier(self):
         """Global barrier across all ranks."""

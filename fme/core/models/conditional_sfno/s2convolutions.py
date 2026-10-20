@@ -20,6 +20,7 @@ import torch.nn as nn
 
 from fme.core.benchmark.timer import NullTimer, Timer
 from fme.core.distributed.distributed import Distributed
+from fme.core.distributed.parameter_sharding import shard_parameter, spatial_shard
 
 from .activations import ComplexReLU
 
@@ -164,6 +165,7 @@ class SpectralConvS2(nn.Module):
         lora_alpha: float | None = None,
         preserve_global_mean: bool = False,
         spectral_ratio: float = 1.0,
+        shard_spatial_parameters: bool = False,
     ):  # pragma: no cover
         super(SpectralConvS2, self).__init__()
 
@@ -275,6 +277,27 @@ class SpectralConvS2(nn.Module):
         # rewrite old checkpoints on load
         self.register_load_state_dict_pre_hook(self._add_singleton_group_dim)
         self.register_load_state_dict_pre_hook(self._reorder_weight_dims)
+
+        # Index of this rank's l-range into the stored l-dependent weights:
+        # the polar (H) split gives each rank a slice of l, which is all that
+        # forward uses. With shard_spatial_parameters only that slice is
+        # stored (after the full weight was drawn, so the initialization is
+        # the serial one), and the index becomes the identity. The azimuth (W)
+        # split leaves l whole, so it does not shard these weights.
+        self._weight_l_index = l_slice
+        if shard_spatial_parameters:
+            for name in ("weight", "lora_A", "lora_B"):
+                param = getattr(self, name)
+                if param is None:
+                    continue
+                shard = spatial_shard(
+                    param.shape,
+                    split_shape=(self.modes_lat, self.modes_lon),
+                    dims=(1, None),
+                )
+                shard_parameter(self, name, shard)
+                if shard is not None:
+                    self._weight_l_index = slice(None)
 
     @staticmethod
     def _reorder_weight_dims(
@@ -388,13 +411,13 @@ class SpectralConvS2(nn.Module):
         x = x.reshape(B, self.num_groups, C // self.num_groups, H, W)
 
         # Slice global weights to the local spectral partition (lat only).
-        weight_local = self.weight[:, self._l_slice]
+        weight_local = self.weight[:, self._weight_l_index]
         if self.lora_A is not None and self.lora_B is not None:
             with timer.child("lora_update"):
                 lora_update = _contract_lora(
-                    self.lora_A,
-                    self.lora_B,
-                    x[..., : self.modes_lat, : self.modes_lon],
+                    self.lora_A[:, self._weight_l_index],
+                    self.lora_B[:, self._weight_l_index],
+                    x[..., : self.modes_lat_local, : self.modes_lon],
                 )
         else:
             lora_update = 0.0
