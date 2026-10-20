@@ -57,6 +57,13 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
 </header>
 
 <section class="answer">
+  <span class="eyebrow">Production readiness (2026-10-20, allocation 60048637)</span>
+  <p><b>Full harmonics run on 40&nbsp;GB A100s,</b> one node (4&times;1 tiles) per replica. This needs both sharding flags, <code>expandable_segments</code>, the EMA fix, and at most 2 inline-inference initial conditions per replica. In a production config (1-year validation, 360-step inference) on a real 40&nbsp;GB card, training peaks at 35.6&nbsp;GiB allocated and 37.1 reserved, and stays flat across epochs. A 1&nbsp;h&nbsp;45&nbsp;min run held at the 40&nbsp;GB budget through 4 epoch boundaries showed no drift on GPU or host. A 40&nbsp;GB card is ~19% slower per GPU than an 80&nbsp;GB one, because of its lower memory bandwidth.</p>
+  <p><b>Walltime handling works through the real queue.</b> A debug job on 40&nbsp;GB nodes was requeued 3 times by its walltime signal: mid-epoch, at an epoch end, and in epoch 2. It resumed on a different node each time and completed. A SIGTERM exits cleanly in under 45&nbsp;s.</p>
+  <p><b>The standalone evaluator, writers and map diagnostics now work under spatial parallelism</b> (commit <code>0d68ed82f</code>). At 0.25&deg; with 4&times;1 tiles, the evaluator matches serial to fp32 round-off with TF32 off (3e-7), and to ~1e-4 with TF32 on, which is TF32 rounding rather than the decomposition. Per-variable metrics in earlier spatial runs may have mixed variables between ranks; that is fixed now.</p>
+</section>
+
+<section class="answer">
   <span class="eyebrow">Current answer (2026-10-20)</span>
   <p><b>Cutting the spherical harmonics is not needed.</b> The full-harmonics model (2.1&nbsp;B params, all 720 modes) trains end to end on one node with 4&times;1 tiles. The memory problem was that every parameter-sized buffer was replicated on every tile. Now committed:</p>
   <ul>
