@@ -214,3 +214,13 @@ Newest last. Times are PDT on 2026-10-19 unless noted.
   ranks vs serial); the writers-on case fails on the old code and passes now.
   Not yet run on GPUs at 0.25 deg with tiles + replicas.
 - `eval-spatial-check.yaml`: video disabled.
+- GPU check (nid008309, 80 GB, TF32 off, seed 0, 2 ICs, 5 days):
+  `hr-runs/eval-dp-writers-1020/` 4x1 x 1 replica vs 2x1 x 2 replicas.
+  Both complete and write the same files. Target files (and monthly
+  targets) are bit-identical, with the same sample order and init_time:
+  the writer gather is right. Predictions differ by ~10% of the field std
+  after one step (each sample is still 4x closer to its counterpart than
+  to the other sample). Expected cause: the noise generator is per
+  replica (restart.nc holds rank_0/rank_1 generator states), so the
+  stochastic model draws different noise. Not yet confirmed; a 2x1 x 1
+  replica run (`tiles2x1-dp1`) was launched to separate it from 2x1 tiling.
