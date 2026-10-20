@@ -184,3 +184,47 @@ spatial), `scripts/sweep.sh` (single GPU), `scripts/sweep_spatial.sh` (one node)
 `scripts/scaling*.sh` (multi-node), `scripts/nccl_bench.py`,
 `scripts/read_bench.py`. Results go to `logs/*.jsonl`
 (`python scripts/summarize.py logs/<x>.jsonl`), with per-run logs in `logs/runs/`.
+
+## Running on 40 GB A100s (validated 2026-10-20)
+
+The full-harmonics model trains on one node of 4x A100-40GB per replica.
+What makes it fit:
+
+1. `shard_spatial_parameters: true` (builder) and `shard_optimizer_state:
+   true` (optimization). Both are on in `config-train-hr.yaml`.
+2. `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`, exported by
+   `scripts/sbatch-train-hr.sh`. Without it the run OOMs at the first steps.
+3. The EMA fix (37a2b9a44). Without it, memory grows by one parameter copy
+   at the first epoch boundary.
+4. At most 2 inline-inference ICs per replica (each adds ~10 GiB of
+   inference memory).
+
+Measured on a real 40 GB node, production config (1-year validation,
+360-step inference): training peaks at 35.6 GiB allocated / 37.1 GiB
+reserved, and the epoch-end phases stay below it, across 2 epochs. With
+4x1 tiles, each node is one replica.
+
+Throughput, samples/s per replica (one node):
+
+| | 40 GB | 80 GB |
+|---|---|---|
+| full harmonics | 0.206 | 0.253 |
+| modes x0.5 | 0.387 | 0.42 |
+
+40 GB cards are ~19% slower per GPU (lower HBM bandwidth). A 13-year epoch
+(~19,000 samples) at full harmonics on 8 x 40 GB nodes takes ~3.2 h of
+training plus ~13 min of validation, inference and checkpoints, so 20 epochs
+is ~68 h (two 48 h jobs; requeue works). On 16 nodes it is ~36 h.
+
+Submit (40 GB):
+
+```bash
+cd configs/experiments/2026-10-19-e3sm-hr-ace2s
+RUN=hr-full-e01 sbatch -N 8 -C "gpu&hbm40g" scripts/sbatch-train-hr.sh \
+  # plus EXTRA="stepper.step.config.builder.config.hard_thresholding_fraction=1.0"
+  # for full harmonics (the config's default is 0.5)
+```
+
+Walltime handling has been tested through the real queue: USR1 at T-5 min,
+the job requeues itself and resumes from the last `checkpoint_every_n_batches`
+save (default 400), on any node.
