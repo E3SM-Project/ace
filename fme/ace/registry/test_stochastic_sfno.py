@@ -4,7 +4,12 @@ import pytest
 import torch
 from torch_harmonics import InverseRealSHT
 
-from fme.ace.registry.stochastic_sfno import NoiseConditionedSFNO, isotropic_noise
+from fme.ace.registry.stochastic_sfno import (
+    NoiseConditionedSFNO,
+    NoiseConditionedSFNOBuilder,
+    isotropic_noise,
+)
+from fme.core.dataset_info import DatasetInfo
 from fme.core.device import get_device
 from fme.core.models.conditional_sfno.layers import Context
 
@@ -88,3 +93,25 @@ def test_noise_conditioned_sfno_onehot_labels():
     args, _ = mock_sfno.call_args
     context = args[1]
     assert context.labels.shape == (batch_size, n_labels)
+
+
+@pytest.mark.parametrize("fraction", [1.0, 0.5])
+def test_noise_conditioned_sfno_hard_thresholding_fraction(fraction: float):
+    """The fraction truncates the spectral filters' modes, not the grid."""
+    img_shape = (16, 32)
+    builder = NoiseConditionedSFNOBuilder(
+        embed_dim=8,
+        noise_embed_dim=4,
+        num_layers=1,
+        noise_type="isotropic",
+        hard_thresholding_fraction=fraction,
+    )
+    model = builder.build(3, 2, DatasetInfo(img_shape=img_shape))
+    assert model.conditional_model.trans.lmax == int(img_shape[0] * fraction)
+    out = model(torch.randn(2, 3, *img_shape))
+    assert out.shape == (2, 2, *img_shape)
+
+
+def test_noise_conditioned_sfno_hard_thresholding_fraction_validated():
+    with pytest.raises(ValueError, match="hard_thresholding_fraction"):
+        NoiseConditionedSFNOBuilder(hard_thresholding_fraction=0.0)
