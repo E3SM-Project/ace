@@ -167,13 +167,14 @@ class InlineInferenceConfig:
                 "checkpoint selection requires the time_mean_norm/rmse/channel_mean "
                 "metric."
             )
-        dist = Distributed.get_instance()
-        if self.loader.start_indices.n_initial_conditions % dist.world_size != 0:
+        # Initial conditions are split over data-parallel ranks; spatial
+        # co-ranks share theirs, so the world size is the wrong divisor.
+        n_data = Distributed.get_instance().total_data_parallel_ranks
+        if self.loader.start_indices.n_initial_conditions % n_data != 0:
             raise ValueError(
                 "Number of inference initial conditions must be divisible by the "
-                "number of parallel workers, got "
-                f"{self.loader.start_indices.n_initial_conditions} and "
-                f"{dist.world_size}."
+                "number of data-parallel ranks, got "
+                f"{self.loader.start_indices.n_initial_conditions} and {n_data}."
             )
 
     @property

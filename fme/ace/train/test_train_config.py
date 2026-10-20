@@ -51,12 +51,13 @@ def _make_inference_config(
     weight: float = 1.0,
     epochs: Slice | None = None,
     aggregator: InferenceEvaluatorAggregatorConfig | None = None,
+    n_initial_conditions: int = 1,
 ) -> InlineInferenceConfig:
     return InlineInferenceConfig(
         loader=InferenceDataLoaderConfig(
             dataset=XarrayDataConfig(data_path=""),
             start_indices=InferenceInitialConditionIndices(
-                first=0, n_initial_conditions=1, interval=1
+                first=0, n_initial_conditions=n_initial_conditions, interval=1
             ),
         ),
         n_forward_steps=1,
@@ -621,3 +622,28 @@ class TestGetInferenceCallback:
                 entries,
                 [InferenceSummary(logs={"a/other_metric": 1.0}, loss=None)],
             )
+
+
+@pytest.mark.parametrize(
+    "world_size, data_parallel_ranks, n_ics, raises",
+    [
+        (4, 1, 1, False),  # one 4-tile spatial group: one IC is enough
+        (4, 2, 2, False),
+        (4, 2, 1, True),
+        (2, 2, 3, True),
+    ],
+)
+def test_inline_inference_ics_divide_data_parallel_ranks(
+    world_size: int, data_parallel_ranks: int, n_ics: int, raises: bool
+):
+    dist = MagicMock(
+        world_size=world_size, total_data_parallel_ranks=data_parallel_ranks
+    )
+    with patch(
+        "fme.ace.train.train_config.Distributed.get_instance", return_value=dist
+    ):
+        if raises:
+            with pytest.raises(ValueError, match="data-parallel ranks"):
+                _make_inference_config(n_initial_conditions=n_ics)
+        else:
+            _make_inference_config(n_initial_conditions=n_ics)
