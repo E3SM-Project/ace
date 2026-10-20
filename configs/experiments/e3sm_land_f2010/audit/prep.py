@@ -7,7 +7,7 @@ writes a static dashboard (``index.html`` + ``data/*.js``) that opens from
 ``file://``. Modelled on /pscratch/sd/i/imanick/sep26v3-inference/dashboard.
 The code lives in the repo; the data and work files live under ``--root``.
 
-Stages (each resumable; finished work files are skipped):
+Stages (each resumable; finished work files are skipped unless --force):
 
   scan   one worker per (case, month). Reads every lat/lon variable of the
          elm.h0 file once and records: the time axis; per variable, the
@@ -24,8 +24,12 @@ Stages (each resumable; finished work files are skipped):
            maps/<var>/<source>.js
                               monthly climatology (12 frames, all years),
                               uint16-quantized, gzip + base64
-           masks.js           landfrac and the in-land gap count, same encoding
-         and copies index.html and lib/ next to data/.
+           masks.js           landfrac and the in-land gap count, same encoding,
+                              plus a gap bitmask per variable that has gaps
+         and copies index.html and lib/ next to data/. Files in data/ that
+         build did not write (e.g. inference sources added later) are left
+         alone: data/.build-manifest.json lists what the last build wrote,
+         and only those files are replaced or, if no longer produced, removed.
 
 Missing data: a value is missing when |x| >= 1e19 (the stored sentinel is
 1e20 regardless of the declared _FillValue, see ../ISSUE-elm-fillvalue.md) or
@@ -34,6 +38,7 @@ value attributes are fixed.
 
 Usage (on a CPU node; see run_prep.sh):
   python prep.py scan --workers 64
+  python prep.py scan --force [--months 0001-01 ...]   # redo finished months
   python prep.py build
 """
 
@@ -315,9 +320,9 @@ def _compare_forcing(elm, elm_t, x2l, land) -> dict:
 
 
 def _scan_one(job) -> str:
-    root, case, month = job
+    root, case, month, force = job
     out_json = _work(root) / case / f"{month}.json"
-    if out_json.exists():
+    if out_json.exists() and not force:
         return f"{case} {month} skip"
     t0 = time.time()
     path = _path(case, "elm.h0", month)
@@ -408,11 +413,14 @@ def _stub_info(case: str) -> dict:
         }
 
 
-def scan(root: pathlib.Path, workers: int) -> None:
-    jobs = [(root, c, m) for c in CASES for m in MONTHS]
-    todo = [j for j in jobs if not (_work(root) / j[1] / f"{j[2]}.json").exists()]
+def scan(root: pathlib.Path, workers: int, force: bool = False) -> None:
+    jobs = [(root, c, m, force) for c in CASES for m in MONTHS]
+    todo = [
+        j for j in jobs if force or not (_work(root) / j[1] / f"{j[2]}.json").exists()
+    ]
     print(
-        f"scan: {len(jobs) - len(todo)} done, {len(todo)} to do, {workers} workers",
+        f"scan: {len(jobs) - len(todo)} done, {len(todo)} to do"
+        f"{' (--force)' if force else ''}, {workers} workers",
         flush=True,
     )
     with cf.ProcessPoolExecutor(workers) as pool:
@@ -421,10 +429,33 @@ def scan(root: pathlib.Path, workers: int) -> None:
 
 
 # ---------------------------------------------------------------- build
-def _js(path: pathlib.Path, kind: str, key, obj) -> None:
+def _js(path: pathlib.Path, kind: str, key, obj, written: set) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     body = json.dumps(obj, separators=(",", ":"), allow_nan=False)
     path.write_text(f"DASH.loaded({json.dumps(kind)},{json.dumps(key)},{body});\n")
+    written.add(path)
+
+
+MANIFEST = ".build-manifest.json"
+
+
+def _prune(out: pathlib.Path, written: set) -> None:
+    """Remove files the previous build wrote that this one did not; record this
+    build's files. Files build never wrote are not touched.
+    """
+    manifest = out / MANIFEST
+    old = set(json.loads(manifest.read_text())) if manifest.exists() else set()
+    new = {str(p.relative_to(out)) for p in written}
+    for rel in sorted(old - new):
+        f = out / rel
+        f.unlink(missing_ok=True)
+        for d in f.parents:  # drop directories this left empty, up to data/
+            if d == out or any(d.iterdir()):
+                break
+            d.rmdir()
+    manifest.write_text(json.dumps(sorted(new), indent=0) + "\n")
+    if old - new:
+        print(f"build: removed {len(old - new)} stale file(s) from the last build")
 
 
 def _sig(x, n=6):
@@ -687,8 +718,7 @@ def _findings(time_rows, fill_rows, value_rows, pdpi_rows, forcing_rows) -> list
 
 def build(root: pathlib.Path, lib_src: pathlib.Path) -> None:
     out = root / "data"
-    if out.exists():
-        shutil.rmtree(out)
+    written: set = set()
     by_case = {c: _load_case(root, c) for c in CASES}
     first = next(r for recs in by_case.values() for r in recs if r)
     names = list(first["vars"])
@@ -917,9 +947,10 @@ def build(root: pathlib.Path, lib_src: pathlib.Path) -> None:
             "pdpi": pdpi_rows,
             "forcing": forcing_rows,
         },
+        written,
     )
     for case in CASES:
-        _js(out / "ts" / f"{case}.js", "ts", case, ts[case])
+        _js(out / "ts" / f"{case}.js", "ts", case, ts[case], written)
     for k, n in enumerate(names):
         vm = var_meta[k]
         frames_all = np.concatenate([clim[c][k][:, land] for c in clim])
@@ -933,6 +964,7 @@ def build(root: pathlib.Path, lib_src: pathlib.Path) -> None:
                 "map",
                 f"{n}/{case}",
                 {"var": n, "source": case, **enc},
+                written,
             )
         vm["map_lo"], vm["map_hi"] = _sig(lo, 8), _sig(hi, 8)
     gap_count = np.where(
@@ -948,7 +980,15 @@ def build(root: pathlib.Path, lib_src: pathlib.Path) -> None:
                 gap_count[None].astype(np.float64), 0.0, float(len(names))
             ),
             "gap_vars": {n: int(g.sum()) for n, g in gap_union.items() if g.any()},
+            # per variable, land cells missing in any record of either case,
+            # np.packbits of the row-major (lat, lon) grid
+            "gap_bits": {
+                n: base64.b64encode(np.packbits(g & land)).decode()
+                for n, g in gap_union.items()
+                if g.any()
+            },
         },
+        written,
     )
     _js(
         out / "meta.js",
@@ -965,7 +1005,9 @@ def build(root: pathlib.Path, lib_src: pathlib.Path) -> None:
             "lon0": float(lon[0]),
             "land_cells": int(land.sum()),
         },
+        written,
     )
+    _prune(out, written)
     shutil.copy2(HERE / "index.html", root / "index.html")
     if lib_src.is_dir():
         shutil.copytree(lib_src, root / "lib", dirs_exist_ok=True)
@@ -989,12 +1031,17 @@ def main():
         help="directory with plotly.min.js, topojson-client.min.js, land-110m.json",
     )
     p.add_argument("--months", nargs="*", help="limit scan to these YYYY-MM (testing)")
+    p.add_argument(
+        "--force",
+        action="store_true",
+        help="scan: redo months that already have work files (all, or --months)",
+    )
     a = p.parse_args()
     if a.months:
         global MONTHS
         MONTHS = a.months
     if a.stage == "scan":
-        scan(a.root, a.workers)
+        scan(a.root, a.workers, a.force)
     else:
         build(a.root, a.lib_src)
 

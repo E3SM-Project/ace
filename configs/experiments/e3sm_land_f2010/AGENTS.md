@@ -4,6 +4,71 @@ Dated entries, newest first. The plan of record is `README.md`; this file
 records what was found and why decisions were made. Follow the conventions of
 `../e3sm_hist_v20260812/AGENTS.md`.
 
+## 2026-10-20: cold start, BGC mode, spin-up drift, glacier check
+
+From `run/lnd_in` (same in both cases) and the rebuilt dashboard data.
+
+* **ELM cold-started.** `finidat = ' '`, so there is no initial-condition
+  file. This explains the spin-up drift seen in the annual land means, which
+  is the same in PD and PI. ZWT falls from 8.7 m to 5.85 m, TWS rises by about
+  760 mm, H2OSOI_2 rises from 0.214 to 0.275, and ELAI rises from 0.02 to
+  0.25 by year 5, then decays to 0.12. Hydrology states settle (annual mean
+  within 2σ of the years 21–30 mean) around years 15–25. ZWT, TWS and
+  ELAI/TLAI/TSAI still trend in years 10–30. It also explains the ~0.004 ELAI
+  in the first months noted on 2026-10-19. Drop at least years 1–10 from
+  training, validation and normalization statistics.
+* **ELM ran with prognostic BGC** (`-bgc bgc -nutrient cnp` in the
+  build-namelist call). Phenology is not prescribed (not SP mode), so
+  `ELAI`/`TLAI`/`TSAI` are states, not forcings. The dashboard's "61%
+  interannual variability" for ELAI is mostly the spin-up transient, not
+  year-to-year variability.
+* **The soil gaps are no-soil cells.** Surface dataset
+  `surfdata_0.5x0.5_simyr2010_c230922_with_TOP.nc` (on Perlmutter under
+  `/global/cfs/cdirs/e3sm/inputdata/lnd/clm2/surfdata_map/`). Of the 5,883 gap
+  cells, matching each output cell to the native 0.5° cells at its center:
+  5,750 are `PCT_GLACIER = 100`, 118 are `PCT_WETLAND = 100` along the
+  Antarctic ice-shelf edge (no vegetated landunit, so no soil column either),
+  7 are glacier/lake/wetland mixes, and 8 have some vegetated land (slivers
+  with landfrac ≈ 0, or the Ross Ice Shelf edge). The converse fails: 674
+  output cells centred on 100%-glacier native cells do have soil values,
+  because the history remap blends in neighbouring vegetated cells. So build
+  the soil mask from the output itself, not from `PCT_GLACIER`. An exact check
+  needs the remap weights
+  `/compyfs/inputdata/fme/map_r05_to_gaussian_180by360_shifted_trintbilin.nc`
+  (`hist_horiz_remap_file`), which is on Compy only.
+* **Dashboard rebuilt** after a `FORCE=1` rescan of all 720 months (data
+  built 2026-10-20 08:38). The fill-value finding now reads ok. The deployed
+  `index.html` is the repo version, with the About tab's fill-value history
+  removed. Values are unchanged from the 17:14 build.
+
+## 2026-10-19 (later): `elm.h0` fill value fixed upstream
+
+* All 722 `elm.h0` files of both cases were rewritten in place at 17:29–17:30
+  PDT, after the first full dashboard build (17:14). They now declare
+  `_FillValue = missing_value = 1e20`, which matches the stored sentinel.
+  `check_cdf5_fillvalue.py` passes (exit 0) on every file. Sentinel counts are
+  unchanged, so only the attributes changed. `ISSUE-elm-fillvalue.md` is marked
+  resolved.
+* **The dashboard is stale on this point.** Its "72 of 72 … declaring
+  `_FillValue` 1e+36" finding comes from `work/scan/*.json`, which recorded
+  the attributes before the fix. A plain `build` repeats it; rescan first with
+  `prep.py scan --force` (`FORCE=1` in `run_prep.sh`). A one-month test
+  rescan took about 20 s per file and recorded `_FillValue` 1e20 with no
+  mismatches.
+* `build` no longer wipes `data/`. It records the files it writes in
+  `data/.build-manifest.json` and removes only files from that list it no
+  longer produces, so files added by other stages (inference sources) survive.
+  It still rewrites `meta.js` from scratch, so a source added there by hand
+  would be lost; inference sources will need to be merged in by `build`.
+* New **Land coverage** tab: land mask (or landfrac) next to the coverage of
+  the variables selected in the sidebar, one map per variable, a table of
+  missing land cells, and PNG export. It needs only a `build` (the per-variable
+  gap masks were already in the scans). All 9 gap variables miss the same
+  5,883 land cells (7.80% of land area, Greenland and Antarctica).
+* Unaffected: the `|x| >= 1e19` missing rule in `audit/prep.py` and the loader,
+  and the in-land gaps of the soil fields (a data property, still needs a
+  per-variable mask).
+
 ## 2026-10-19: decisions, data audit tooling, first verified facts
 
 ### Decisions (from the user)

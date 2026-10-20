@@ -22,6 +22,7 @@
   --div-neg: #1c5cab; --div-mid: #f0efec; --div-pos: #c0302f;
   --seq-0: #f1f5fb; --seq-1: #b9d0ee; --seq-2: #6f9fdc; --seq-3: #2a6bc0; --seq-4: #0f3a75;
   --missing: #bdbcb6;
+  --cov-ocean: #e3e8ee; --cov-land: #7fb685; --cov-some: #eda100; --cov-all: #c0302f;
   --st-ok: #0f7a45; --st-info: #52514e; --st-warn: #9a5b00; --st-bad: #b42324;
   --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
   --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
@@ -33,6 +34,7 @@
     --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #8a8984;
     --accent: #3987e5; --grid: #2c2c29; --coast: rgba(255, 255, 255, 0.7);
     --div-neg: #3987e5; --div-mid: #383835; --div-pos: #e66767; --missing: #55554f;
+    --cov-ocean: #1f2830; --cov-land: #4f8a5a; --cov-some: #c98500; --cov-all: #e66767;
     --seq-0: #1c2633; --seq-1: #23466f; --seq-2: #2f6bb0; --seq-3: #5c9be6; --seq-4: #b5d3fa;
     --st-ok: #3fc58a; --st-info: #c3c2b7; --st-warn: #e0a440; --st-bad: #f07c7c;
     --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
@@ -45,6 +47,7 @@
   --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #8a8984;
   --accent: #3987e5; --grid: #2c2c29; --coast: rgba(255, 255, 255, 0.7);
   --div-neg: #3987e5; --div-mid: #383835; --div-pos: #e66767; --missing: #55554f;
+  --cov-ocean: #1f2830; --cov-land: #4f8a5a; --cov-some: #c98500; --cov-all: #e66767;
   --seq-0: #1c2633; --seq-1: #23466f; --seq-2: #2f6bb0; --seq-3: #5c9be6; --seq-4: #b5d3fa;
   --st-ok: #3fc58a; --st-info: #c3c2b7; --st-warn: #e0a440; --st-bad: #f07c7c;
   --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
@@ -147,6 +150,12 @@ table.data tr.sel td:first-child { font-weight: 700; }
 .colorbar { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; flex-wrap: wrap; }
 .colorbar canvas { width: 160px; height: 10px; border-radius: 2px; }
 .colorbar input { width: 90px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: var(--text-secondary); margin-top: 8px; font-variant-numeric: tabular-nums; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border); display: inline-block; }
+.card-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.card-head h3 { flex: 1; }
+.map-cell .t button { padding: 0 6px; font-size: 11px; }
 #tooltip {
   position: fixed; pointer-events: none; z-index: 10; display: none;
   background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--border);
@@ -185,6 +194,7 @@ table.data tr.sel td:first-child { font-weight: 700; }
   <main>
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" aria-selected="true" data-tab="audit">Data audit</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="cov">Land coverage</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="ts">Land-mean time series</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="maps">Climatology maps</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="about">About</button>
@@ -196,6 +206,22 @@ table.data tr.sel td:first-child { font-weight: 700; }
         <span class="status" id="builtNote"></span>
       </div>
       <div id="auditBox"></div>
+    </section>
+
+    <section class="panel" id="panel-cov">
+      <div class="toolbar">
+        <label>Land map
+          <span class="seg" id="covLandSeg">
+            <button data-v="mask" aria-pressed="true">Land mask</button>
+            <button data-v="frac" aria-pressed="false">landfrac</button>
+          </span>
+        </label>
+        <label><input type="checkbox" id="covPerVar" checked> One map per variable</label>
+        <label><input type="checkbox" id="covCoast" checked> Coastlines</label>
+        <span style="flex:1"></span>
+        <button id="covGapVars" title="Replace the sidebar selection with the variables that have gaps over land">Select variables with gaps</button>
+      </div>
+      <div id="covBox"></div>
     </section>
 
     <section class="panel" id="panel-ts">
@@ -297,7 +323,7 @@ async function loadMap(v, s) {
 const state = {
   sources: new Set(), baseline: null, vars: new Set(['TSA', 'H2OSOI_0', 'H2OSNO', 'EFLX_LH_TOT']),
   tab: 'audit', avg: 'monthly', mode: 'abs', mapMode: 'abs', month: 0, playing: null,
-  ranges: {}, auditSelOnly: false, sorts: {},
+  ranges: {}, auditSelOnly: false, sorts: {}, covLand: 'mask',
 };
 let META, AUDIT, LAND = null;
 const NY = 180, NX = 360;
@@ -503,7 +529,7 @@ function renderAudit() {
 
   const maskCard = `<div class="card"><h3>Land fraction and in-land gaps</h3>
     <div class="desc">Left: landfrac (cells with landfrac = 0 are grey). Right: how many variables are missing at each land cell in at
-    least one record — non-zero cells need a per-variable mask. ${Object.keys(A_MASKS.gap_vars).length
+    least one record — non-zero cells need a per-variable mask. The Land coverage tab maps the gaps of any chosen variables. ${Object.keys(A_MASKS.gap_vars).length
       ? 'Variables with gaps: ' + Object.entries(A_MASKS.gap_vars).map(([v, n]) => `${esc(v)} (${cnt(n)} cells)`).join(', ') + '.' : ''}</div>
     <div class="map-grid">
       <div class="map-cell"><div class="t"><span class="run">landfrac</span><span class="stats" id="lfStats"></span></div><canvas id="lfCanvas" width="720" height="360"></canvas>
@@ -676,9 +702,9 @@ function latRow(lat) {
   while (hi - lo > 1) { const m = (lo + hi) >> 1; if (L[m] <= lat) lo = m; else hi = m; }
   return lo + (lat - L[lo]) / (L[hi] - L[lo]);
 }
-function drawCoast(ctx, W, H) {
-  if (!LAND || !document.getElementById('coastChk').checked) return;
-  ctx.strokeStyle = css('--coast'); ctx.lineWidth = 0.8;
+function drawCoast(ctx, W, H, show = document.getElementById('coastChk').checked) {
+  if (!LAND || !show) return;
+  ctx.strokeStyle = css('--coast'); ctx.lineWidth = 0.8 * Math.max(1, W / 720);
   ctx.beginPath();
   const proj = ([lon, lat]) => [(lon + 180) / 360 * W, (NY - 0.5 - latRow(lat)) / NY * H];
   const ring = r => { let prev = null; r.forEach((p, i) => { const q = proj(p);
@@ -690,7 +716,7 @@ function drawCoast(ctx, W, H) {
   ctx.stroke();
 }
 // paint frame `frame` of a flat [frame][lat][lon] field; colorOf(value) -> rgb. Returns land-cell stats.
-function paintField(canvas, field, frame, colorOf) {
+function paintField(canvas, field, frame, colorOf, coast) {
   const small = document.createElement('canvas'); small.width = NX; small.height = NY;
   const sctx = small.getContext('2d'), img = sctx.createImageData(NX, NY);
   const miss = hexToRgb(css('--missing')), off = frame * NY * NX;
@@ -710,7 +736,7 @@ function paintField(canvas, field, frame, colorOf) {
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(small, 0, 0, canvas.width, canvas.height);
-  drawCoast(ctx, canvas.width, canvas.height);
+  drawCoast(ctx, canvas.width, canvas.height, coast);
   return { mean: n ? s / n : NaN, n };
 }
 
@@ -838,6 +864,246 @@ function setupMapControls() {
   document.getElementById('coastChk').onchange = renderMapFrame;
 }
 
+// ---------------------------------------------------------------- land coverage
+// Which land cells each variable is missing at (in any record of either case), against the land mask.
+let COV = null;  // {lf, w: cell area x landfrac (0 off land), landArea, landCells, gaps: {var: Uint8Array}}
+async function loadCoverage() {
+  if (COV) return COV;
+  const m = await DASH.load('masks', 'null', 'data/masks.js');
+  const lf = await decodeField(m.landfrac);
+  const L = META.lat, edges = [-90, ...L.slice(1).map((x, j) => (x + L[j]) / 2), 90];
+  const rowW = L.map((_, j) => Math.sin(edges[j + 1] * Math.PI / 180) - Math.sin(edges[j] * Math.PI / 180));
+  const w = new Float64Array(NY * NX);
+  let landArea = 0, landCells = 0;
+  for (let i = 0; i < w.length; i++) {
+    if (isNaN(lf[i])) continue;
+    w[i] = rowW[Math.floor(i / NX)] * lf[i]; landArea += w[i]; landCells++;
+  }
+  const gaps = {};
+  Object.entries(m.gap_bits || {}).forEach(([v, b64]) => {
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0)), g = new Uint8Array(NY * NX);
+    for (let i = 0; i < g.length; i++) g[i] = (bytes[i >> 3] >> (7 - (i & 7))) & 1;  // np.packbits is big-endian
+    gaps[v] = g;
+  });
+  COV = { lf, w, landArea, landCells, gaps, hasBits: !!m.gap_bits };
+  return COV;
+}
+// per-cell class: 0 not land, 1 land with data in every selected variable, 2 missing in some, 3 missing in all
+function covClasses(vars) {
+  const out = new Float32Array(NY * NX), gs = vars.map(v => COV.gaps[v]).filter(Boolean);
+  for (let i = 0; i < out.length; i++) {
+    if (isNaN(COV.lf[i])) continue;
+    let k = 0;
+    for (const g of gs) k += g[i];
+    out[i] = k === 0 ? 1 : k === vars.length ? 3 : 2;
+  }
+  return out;
+}
+function covTally(cls) {  // class -> {cells, area as a fraction of land area}
+  const t = [0, 1, 2, 3].map(() => ({ cells: 0, area: 0 }));
+  for (let i = 0; i < cls.length; i++) { t[cls[i]].cells++; t[cls[i]].area += COV.w[i]; }
+  t.forEach(x => x.area /= COV.landArea);
+  return t;
+}
+const COV_COLORS = ['--cov-ocean', '--cov-land', '--cov-some', '--cov-all'];
+const covRgb = () => COV_COLORS.map(c => hexToRgb(css(c)));
+function covLegend(tally, n) {  // [{color, label}] for the classes that can occur with n variables
+  const share = k => k ? ` · ${cnt(tally[k].cells)} cells, ${pct(tally[k].area)} of land area` : '';
+  return [
+    { color: '--cov-ocean', label: 'not land (landfrac = 0)' },
+    { color: '--cov-land', label: (n > 1 ? 'land, data in all' : 'land, data present') + share(1) },
+    ...(n > 1 ? [{ color: '--cov-some', label: 'land, missing in some' + share(2) }] : []),
+    { color: '--cov-all', label: (n > 1 ? 'land, missing in all' : 'land, missing') + share(3) },
+  ];
+}
+const legendHtml = items => `<div class="legend">${items.map(it => it.ramp
+  ? `<span>${esc(it.lo)}<canvas width="120" height="10" data-ramp="1" style="width:120px;height:10px;border-radius:2px"></canvas>${esc(it.hi)} ${esc(it.label)}</span>`
+  : `<span><i style="background:var(${it.color})"></i>${esc(it.label)}</span>`).join('')}</div>`;
+function paintRamps(el, lut) {
+  el.querySelectorAll('canvas[data-ramp]').forEach(c => {
+    const ctx = c.getContext('2d');
+    for (let x = 0; x < c.width; x++) { ctx.fillStyle = `rgb(${lut(x / (c.width - 1))})`; ctx.fillRect(x, 0, 1, c.height); }
+  });
+}
+function selectGapVars() {
+  state.vars = new Set(Object.keys((COV && COV.gaps) || {}));
+  document.querySelectorAll('#varList input').forEach(i => i.checked = state.vars.has(i.value));
+  document.querySelectorAll('#varList details').forEach(d => { if (d.querySelector('input:checked')) d.open = true; });
+  refresh();
+}
+
+// figure export: panels [{label, paint(canvas)}] in a grid, title above, legend below, current theme colors
+function exportFigure(file, title, sub, panels, legend, cols) {
+  const PW = 1080, PH = 540, pad = 28, gap = 18, labH = 32, sw = 20;
+  const font = (wt, px) => `${wt} ${px}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
+  cols = Math.max(1, Math.min(cols, panels.length));
+  const rows = Math.ceil(panels.length / cols), W = pad * 2 + cols * PW + (cols - 1) * gap;
+  // lay out the legend first so the canvas height is known
+  const meas = document.createElement('canvas').getContext('2d');
+  meas.font = font(400, 19);
+  const legPos = [];
+  let lx = pad, lrow = 0;
+  legend.forEach(it => {
+    const iw = it.ramp ? meas.measureText(`${it.lo} ${it.hi} ${it.label}`).width + 200 + 24 : sw + 10 + meas.measureText(it.label).width;
+    if (lx > pad && lx + iw > W - pad) { lx = pad; lrow++; }
+    legPos.push([lx, lrow]); lx += iw + 32;
+  });
+  const titleH = sub ? 78 : 46, legH = legend.length ? (lrow + 1) * 32 + 10 : 0;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = pad * 2 + titleH + rows * (labH + PH) + (rows - 1) * gap + legH;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = css('--surface-1'); ctx.fillRect(0, 0, c.width, c.height);
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = css('--text-primary'); ctx.font = font(600, 28); ctx.fillText(title, pad, pad);
+  if (sub) { ctx.fillStyle = css('--text-secondary'); ctx.font = font(400, 19); ctx.fillText(sub, pad, pad + 40); }
+  panels.forEach((p, k) => {
+    const x = pad + (k % cols) * (PW + gap), y = pad + titleH + Math.floor(k / cols) * (labH + PH + gap);
+    ctx.fillStyle = css('--text-primary'); ctx.font = font(600, 21); ctx.fillText(p.label, x, y + 2);
+    const m = document.createElement('canvas'); m.width = PW; m.height = PH;
+    p.paint(m);
+    ctx.drawImage(m, x, y + labH);
+  });
+  const ly0 = c.height - pad - legH + 10;
+  ctx.font = font(400, 19);
+  legend.forEach((it, k) => {
+    const [x, r] = legPos[k], y = ly0 + r * 32;
+    ctx.fillStyle = css('--text-secondary');
+    if (it.ramp) {
+      ctx.fillText(it.lo, x, y + 1);
+      const rx = x + meas.measureText(it.lo).width + 8;
+      for (let j = 0; j < 200; j++) { ctx.fillStyle = `rgb(${it.ramp(j / 199)})`; ctx.fillRect(rx + j, y + 4, 1, 14); }
+      ctx.fillStyle = css('--text-secondary');
+      ctx.fillText(`${it.hi} ${it.label}`, rx + 208, y + 1);
+      return;
+    }
+    ctx.fillStyle = css(it.color); ctx.fillRect(x, y, sw, sw);
+    ctx.strokeStyle = css('--border'); ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, sw - 1, sw - 1);
+    ctx.fillStyle = css('--text-secondary'); ctx.fillText(it.label, x + sw + 10, y + 1);
+  });
+  c.toBlob(b => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b); a.download = file; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }, 'image/png');
+}
+
+function covHover(canvas, text) {  // text(i) -> html for grid index i
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const col = Math.floor((e.clientX - rect.left) / rect.width * NX), row = Math.floor((e.clientY - rect.top) / rect.height * NY);
+    if (col < 0 || col >= NX || row < 0 || row >= NY) return;
+    const srcRow = NY - 1 - row, i = srcRow * NX + (col + NX / 2) % NX;
+    tooltip.innerHTML = `${META.lat[srcRow].toFixed(2)}°, ${(col - 179.5).toFixed(1)}°<br>${text(i)}`;
+    tooltip.style.display = 'block';
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top = (e.clientY + 14) + 'px';
+  });
+  canvas.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+}
+async function renderCov() {
+  const box = document.getElementById('covBox');
+  try { await loadCoverage(); } catch (e) { box.innerHTML = `<div class="empty">No data/masks.js (${esc(e.message)}).</div>`; return; }
+  if (!COV.hasBits) {
+    box.innerHTML = `<div class="empty">This build has no per-variable gap masks. Rerun <code>audit/prep.py build</code>.</div>`;
+    return;
+  }
+  await ensureLand();
+  const coast = document.getElementById('covCoast').checked, perVar = document.getElementById('covPerVar').checked;
+  const vars = selectedVars().filter(v => varMeta(v).role !== 'static');
+  const rgb = covRgb(), seq = seqLut();
+  const lfText = i => isNaN(COV.lf[i]) ? 'not land' : `landfrac ${COV.lf[i].toFixed(3)}`;
+  const missText = i => {
+    if (isNaN(COV.lf[i])) return '';
+    const m = vars.filter(v => COV.gaps[v] && COV.gaps[v][i]);
+    return '<br>' + (m.length ? `missing: <b>${m.map(esc).join(', ')}</b>` : 'data in all selected');
+  };
+  const frac = state.covLand === 'frac';
+  const landLegend = frac
+    ? [{ color: '--cov-ocean', label: 'landfrac = 0' }, { ramp: seq, lo: '0', hi: '1', label: 'landfrac' }]
+    : [{ color: '--cov-ocean', label: 'not land (landfrac = 0)' }, { color: '--cov-land', label: `land · ${cnt(COV.landCells)} cells` }];
+  // paintField greys NaN; here off-land is its own class, so mark it -1
+  const landField = COV.lf.map(x => isNaN(x) ? -1 : x);
+  const landPanel = {
+    label: frac ? 'landfrac' : 'Land mask (landfrac > 0)',
+    paint: cv => paintField(cv, landField, 0, x => x < 0 ? rgb[0] : frac ? seq(x) : rgb[1], coast),
+  };
+
+  const cls = vars.length ? covClasses(vars) : null, tally = cls && covTally(cls);
+  const covPanel = cls && {
+    label: vars.length === 1 ? `${vars[0]} coverage` : `Coverage of ${vars.length} selected variables`,
+    paint: cv => paintField(cv, cls, 0, k => rgb[k], coast),
+  };
+  const covLeg = cls ? covLegend(tally, vars.length) : [];
+  const sub = 'E3SMv3 F2010 elm.h0, 180×360 · missing = |x| ≥ 1e19 in any 6-hourly record, years 1–30, PD or PI';
+
+  const summary = !cls ? 'Select variables in the sidebar to map where they are missing over land.'
+    : tally[2].cells + tally[3].cells === 0 ? `None of the selected variables is missing over land.`
+    : `${cnt(tally[2].cells + tally[3].cells)} of ${cnt(COV.landCells)} land cells (${pct(tally[2].area + tally[3].area)} of land area)
+       lack data in at least one selected variable${vars.length > 1 ? `; ${cnt(tally[3].cells)} lack it in all` : ''}.`;
+  const cellHtml = (id, label, stats) => `<div class="map-cell"><div class="t"><span class="run">${esc(label)}</span>
+    <span class="stats">${stats} <button data-png="${id}" title="Save this map as PNG">PNG</button></span></div>
+    <canvas id="${id}" width="720" height="360"></canvas></div>`;
+  let html = `<div class="card"><div class="card-head"><h3>Land mask and coverage of the selected variables</h3>
+      <button id="covFigBtn">Save figure (PNG)</button></div>
+    <div class="desc">Left: the land cells (landfrac &gt; 0). Right: the same cells coloured by whether the selected variables have data.
+      Gaps are the same cells in every record. ${summary}</div>
+    <div class="map-grid">${cellHtml('covLand', landPanel.label, `${cnt(COV.landCells)} land cells`)}
+      ${cls ? cellHtml('covMap', covPanel.label, '') : '<div class="map-cell"><div class="empty">No variables selected.</div></div>'}</div>
+    ${legendHtml([...landLegend, ...covLeg.slice(1)])}</div>`;
+
+  const rows = vars.map(v => {
+    const g = COV.gaps[v];
+    let cells = 0, area = 0;
+    if (g) for (let i = 0; i < g.length; i++) if (g[i]) { cells++; area += COV.w[i]; }
+    return { var: v, long_name: varMeta(v).long_name, cells, frac_cells: cells / COV.landCells, frac_area: area / COV.landArea };
+  });
+  const perVarLeg = [{ color: '--cov-ocean', label: 'not land' }, { color: '--cov-land', label: 'data present' }, { color: '--cov-all', label: 'missing' }];
+  if (perVar && vars.length) {
+    html += `<div class="card"><div class="card-head"><h3>Coverage per variable</h3><button id="covVarsBtn">Save figure (PNG)</button></div>
+      <div class="desc">One map per selected variable: land cells with data, and land cells where it is missing.</div>
+      <div class="map-grid">${rows.map(r => cellHtml('cov_' + r.var, r.var, r.cells ? `${cnt(r.cells)} cells · ${pct(r.frac_area)} of land area` : 'no gaps')).join('')}</div>
+      ${legendHtml(perVarLeg)}</div>`;
+  }
+  if (vars.length) {
+    html += `<div class="card"><h3>Missing land cells by variable</h3>
+      <div class="desc">Land cells (landfrac &gt; 0) where the variable is missing in any record. Area shares weight each cell by its area × landfrac.</div>
+      ${tableHtml('cov', [
+        { key: 'var', label: 'variable', left: true }, { key: 'long_name', label: 'long name', left: true },
+        { key: 'cells', label: 'land cells missing', fmt: cnt, cls: v => v ? 'warnc' : '' },
+        { key: 'frac_cells', label: 'of land cells', fmt: pct }, { key: 'frac_area', label: 'of land area', fmt: pct },
+      ], rows)}</div>`;
+  }
+  box.innerHTML = html;
+  paintRamps(box, seq);
+
+  // paint, hover and export
+  const panels = { covLand: landPanel };
+  if (cls) panels.covMap = covPanel;
+  rows.forEach(r => {
+    const g = COV.gaps[r.var], f = new Float32Array(NY * NX);
+    for (let i = 0; i < f.length; i++) f[i] = isNaN(COV.lf[i]) ? 0 : g && g[i] ? 3 : 1;
+    panels['cov_' + r.var] = { label: `${r.var}${r.cells ? ` · ${cnt(r.cells)} land cells missing` : ' · no gaps'}`, paint: cv => paintField(cv, f, 0, k => rgb[k], coast) };
+  });
+  Object.entries(panels).forEach(([id, p]) => {
+    const cv = document.getElementById(id);
+    if (!cv) return;
+    p.paint(cv);
+    covHover(cv, id === 'covLand' ? lfText : id === 'covMap' ? i => lfText(i) + missText(i)
+      : i => lfText(i) + (isNaN(COV.lf[i]) ? '' : `<br>${esc(id.slice(4))}: ${COV.gaps[id.slice(4)] && COV.gaps[id.slice(4)][i] ? '<b>missing</b>' : 'data'}`));
+  });
+  box.querySelectorAll('button[data-png]').forEach(b => b.onclick = () => {
+    const id = b.dataset.png, p = panels[id];
+    const leg = id === 'covLand' ? landLegend : id === 'covMap' ? covLeg : perVarLeg;
+    exportFigure(`${id}.png`, p.label, sub, [p], leg, 1);
+  });
+  const fig = document.getElementById('covFigBtn');
+  if (fig) fig.onclick = () => exportFigure('land_coverage.png', 'Land mask and variable coverage over land', sub + (vars.length ? ` · ${vars.join(', ')}` : ''),
+    cls ? [landPanel, covPanel] : [landPanel], [...landLegend, ...covLeg.slice(1)], 2);
+  const vfig = document.getElementById('covVarsBtn');
+  if (vfig) vfig.onclick = () => exportFigure('land_coverage_per_variable.png', 'Coverage over land, per variable', sub,
+    rows.map(r => panels['cov_' + r.var]), perVarLeg, Math.min(3, rows.length));
+}
+
 // ---------------------------------------------------------------- about
 function renderAbout() {
   const src = META.sources.map(s => `<li><b>${esc(s.label)}</b> — ${esc(s.long_label)}${s.path ? ` · <code>${esc(s.path)}</code>` : ''}</li>`).join('');
@@ -847,8 +1113,8 @@ function renderAbout() {
     (<code>configs/experiments/e3sm_land_f2010</code> in the ACE repo). Built ${esc(META.built)}.</p>
     <ul>${src}</ul>
     <p><b>Data.</b> Regridded <code>elm.h0</code> history, 180×360, 6-hourly, years 1–30 of each case; the <code>0000-12</code>
-    stub file is excluded. A value is treated as missing when |x| ≥ 1e19 or not finite — the files store 1e20 at missing cells
-    although they declare a different _FillValue (<code>ISSUE-elm-fillvalue.md</code>). Land means weight each cell by its area times
+    stub file is excluded. A value is treated as missing when |x| ≥ 1e19 or not finite (the files store and declare 1e20 at
+    missing cells). Land means weight each cell by its area times
     landfrac, over cells with data. Climatology maps average each calendar month over all 30 years.</p>
     <p><b>Plan.</b> One case is used for training (with some of its years held out) and the other only for inference, to test how
     well the emulator extrapolates to a different forcing climate. The audit tab's PD vs PI table shows how large that gap is.</p>
@@ -861,6 +1127,7 @@ function renderAbout() {
 // ---------------------------------------------------------------- wiring
 function refresh() {
   if (state.tab === 'audit') renderAudit();
+  if (state.tab === 'cov') renderCov();
   if (state.tab === 'ts') renderTs();
   if (state.tab === 'maps') renderMaps();
 }
@@ -902,6 +1169,10 @@ Promise.all([DASH.load('meta', 'null', 'data/meta.js'), DASH.load('audit', 'null
   segControl('avgSeg', 'avg');
   segControl('modeSeg', 'mode');
   segControl('mapModeSeg', 'mapMode');
+  segControl('covLandSeg', 'covLand');
+  document.getElementById('covPerVar').onchange = refresh;
+  document.getElementById('covCoast').onchange = refresh;
+  document.getElementById('covGapVars').onclick = selectGapVars;
   setupMapControls();
   document.getElementById('csvBtn').onclick = downloadCsv;
   document.getElementById('auditSelOnly').onchange = e => { state.auditSelOnly = e.target.checked; renderAudit(); };

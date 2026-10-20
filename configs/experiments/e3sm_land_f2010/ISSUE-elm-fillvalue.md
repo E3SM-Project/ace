@@ -1,5 +1,24 @@
 # Issue: `elm.h0` files declare `_FillValue = 1e36` but store `1e20`
 
+## Status: resolved 2026-10-19
+
+The files were fixed in place by their owner on 2026-10-19 (modification times
+17:29–17:30 PDT on all 722 `elm.h0` files). Every lat/lon variable now declares
+`_FillValue = missing_value = 1e20`, matching what is stored.
+
+Verified the same day by running `check_cdf5_fillvalue.py` on **all 722 files**
+(361 per case, including the `0000-12` stubs). Every file exits 0 with
+`0 variable(s) store sentinels that differ from _FillValue`. The sentinel
+counts are unchanged (for example `0015-07` PD: 37,661 cells for most
+variables, 43,544 for the soil fields, now all equal to `_FillValue`). Only
+the attributes changed, not the data.
+
+Still true after the fix: the soil fields are missing at about 5,900 land
+cells, so they need a mask per variable, not just `landfrac`. That is a
+property of the data, not a fill-value bug.
+
+The rest of this file is the original report, kept as a record.
+
 **Affected:** the regridded ELM land history files (`*.elm.h0.*.nc`) of
 
 ```
