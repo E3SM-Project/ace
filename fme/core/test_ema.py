@@ -297,3 +297,17 @@ def test_load_ema_params_if_available_mismatched_model():
 
     with pytest.raises(ValueError, match="not a parameter of the model"):
         load_ema_params_if_available({"ema": state}, other, "ckpt.tar")
+
+
+def test_applied_params_releases_stored_copy():
+    """The copy of the live parameters taken for the EMA swap must not outlive
+    the swap: it is a full parameter-sized buffer that otherwise stays on the
+    GPU for the rest of training after the first validation."""
+    model = nn.Linear(4, 4).to(get_device())
+    ema = EMATracker(model, decay=0.9)
+    original = [p.detach().clone() for p in model.parameters()]
+    with ema.applied_params(model):
+        assert len(ema._stored_params) == len(original)
+    assert ema._stored_params == []
+    for p, o in zip(model.parameters(), original):
+        torch.testing.assert_close(p, o)

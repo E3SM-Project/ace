@@ -218,7 +218,7 @@ class EMATracker:
         Args:
             parameters: The parameters to be stored for later restoration by `restore`
         """
-        self._stored_params = [param.clone() for param in parameters]
+        self._stored_params = [param.detach().clone() for param in parameters]
 
     def restore(self, parameters: Iterable[nn.Parameter]):
         """
@@ -234,6 +234,10 @@ class EMATracker:
         """
         for c_param, param in zip(self._stored_params, parameters):
             param.data.copy_(c_param.data)
+        # Release the copy: it is parameter-sized, and kept it would stay
+        # allocated for the rest of training after the first validation (and
+        # double up during the next ``store``).
+        self._stored_params = []
 
     def get_state(self, include_params: bool = True):
         """
