@@ -38,3 +38,23 @@ from `report/narrative.html` by `scripts/build_report.py`).
 - `pkill -f` patterns must not match your own shell command line.
 - srun into another allocation: `scripts/srun-other.sh JOBID ...`.
 - Multi-node: `source scripts/nccl-ofi.sh` (train.sh and bench_spatial.sh do).
+
+
+## Update 2026-10-20 (allocation 60032495)
+- Pushed: E3SM-Project/ace `e3sm/exps/hr-2026.10.0`.
+- New fme features, all opt-in and validated on GPU:
+  - `optimization.shard_optimizer_state` (ZeRO over each spatial group);
+  - `stepper.step.config.builder.config.shard_spatial_parameters` (local
+    l-slices of spectral weights and pos_embed tiles);
+  - SHT dedup and `gradient_as_bucket_view` (always on).
+- With both flags the FULL-harmonics model (hard_thresholding_fraction 1.0)
+  trains at 4x1 tiles per node: 45.5 GB peak, 0.255 samples/s per replica.
+  The production config still says 0.5; switching back to 1.0 is now a
+  pure modeling choice at ~1.65x the step time.
+- Serial vs spatial: forward bitwise identical in fp32; fp64 agrees to
+  1e-15; sharded vs unsharded drift equals the run-to-run noise floor.
+- Comm: 4x1 within a node is 9-14% overhead; tiles across nodes are 35-48%.
+  Use data parallelism across nodes.
+- Not done: standalone evaluator under spatial parallelism (pre-existing
+  failure in flush_diagnostics); use_gradient_accumulation with the ddp
+  grad sync (pre-existing, wrong); bf16/overlapped transposes.

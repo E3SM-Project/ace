@@ -53,7 +53,7 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
 <header style="display:grid;gap:6px">
   <span class="eyebrow">e3sm/exps/hr-2026.10.0 &middot; v3.HR.F2010.aigo.PD.y1 &middot; 720&times;1440 Gaussian &middot; atmosphere only</span>
   <h1>HR ACE2S Bring-up</h1>
-  <p class="mono" style="color:var(--muted);font-size:.85rem">Updated 2026-10-20 08:07 &middot; allocations 60022811 + 60023253 (10-19) and 60032495 (10-20)</p>
+  <p class="mono" style="color:var(--muted);font-size:.85rem">Updated 2026-10-20 08:23 &middot; allocations 60022811 + 60023253 (10-19) and 60032495 (10-20)</p>
 </header>
 
 <section class="answer">
@@ -64,7 +64,7 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
     <li><b><code>shard_optimizer_state</code></b>: ZeRO over the tiles.</li>
     <li>Shared SHTs and <code>gradient_as_bucket_view</code>.</li>
   </ul>
-  <p>Validated on GPU: peak <b>45.5&nbsp;GB, down from 66.7</b>, with 0.53&nbsp;B instead of 2.10&nbsp;B params per GPU, and <b>4% faster</b> (0.255 vs 0.245 samples/s). Losses match the unsharded run (identical through step 25, 0.6957 vs 0.6954 at step 115). Checkpoints keep the plain format, and an unsharded run resumed from a sharded checkpoint got the same loss.</p>
+  <p>Validated on GPU: peak <b>45.5&nbsp;GB, down from 66.7</b>, with 0.53&nbsp;B instead of 2.10&nbsp;B params per GPU, and <b>4% faster</b> (0.255 vs 0.245 samples/s). Losses match the unsharded run (identical through step 25, 0.6957 vs 0.6954 at step 115). Checkpoints keep the plain format, and an unsharded run resumed from a sharded checkpoint got the same loss. After 115 steps the sharded weights differ from unsharded by 2.7e-5 (global relative L2). Two identical unsharded runs differ by 2.5e-5, so the difference is GPU nondeterminism.</p>
   <p><b>Communication within a node is cheap; across nodes it is not.</b> At 4&times;1 tiles on one node, transposes and gradient sync are 9% of the step for the 0.5-modes model (14% at full modes); the split compute itself is at ideal. 1&times;4 costs 16% and 2&times;2 37%, because they pay the azimuth transposes too. Across nodes, all-to-all runs at ~31&nbsp;GB/s per GPU against ~200 on NVLink, so splitting one sample over 2&ndash;4 nodes spends 35&ndash;48% of the step communicating. Data-parallel replicas across nodes cost nothing (2.53&ndash;2.54&nbsp;s/step on 1, 2 and 4 nodes).</p>
   <p><b>Recommended layout: 4&times;1 tiles per node, data parallelism across nodes.</b> 4&times;1 also beats 2-GPU tile groups per node by 4&ndash;14% in throughput. Exact per-GPU memory is in the &ldquo;Memory budget&rdquo; section, for node planning.</p>
   <p>Earlier results still hold: end-to-end training, validation, inference and resume work; 8 nodes are about 37&nbsp;h for 20 epochs at 0.5 modes. At full modes it is ~1.7&times; that until the weight sharding lands.</p>

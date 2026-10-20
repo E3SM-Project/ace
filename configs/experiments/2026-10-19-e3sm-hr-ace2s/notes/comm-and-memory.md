@@ -232,3 +232,16 @@ Checkpoints:
 
 The CPU parallel suite (102 tests, incl. 20 for sharding) passes at (2,1),
 (1,2), (2,2), DP2x(2,1) and serial.
+
+Noise floor: a second, identical unsharded run (`smoke-1n-4x1-full-zero-2`).
+Epoch checkpoints after 115 steps:
+
+| pair | global rel. L2 diff of weights | max per-tensor rel. diff |
+|---|---|---|
+| unsharded 1 vs unsharded 2 | 2.47e-5 | 1.2% (norm0.W_scale_2d) |
+| unsharded 1 vs sharded | 2.69e-5 | 2.7% (norm0.W_bias_2d) |
+| unsharded 2 vs sharded | 2.70e-5 | 2.8% (norm0.W_bias_2d) |
+
+Sharding is indistinguishable from run-to-run GPU nondeterminism. The
+per-tensor maxima are in conditioning-norm weights initialized at zero,
+where a tiny absolute difference is a large relative one.

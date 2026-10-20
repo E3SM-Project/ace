@@ -126,3 +126,40 @@ Could not import pad from earth2grid.healpix.
 2026-10-20 08:07:02,986 - root - INFO - Dataset now has 23359 samples of length 2.
 2026-10-20 08:07:02,987 - root - INFO - Dataset now has 23359 samples of length 2.
 2026-10-20 08:07:02,996 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 08:07:45,646 - root - INFO - Flushing validation diagnostics
+2026-10-20 08:07:45,648 - root - INFO - Getting validation aggregator summary
+2026-10-20 08:07:45,648 - root - INFO - Getting logs for mean aggregator
+2026-10-20 08:07:45,665 - root - INFO - Getting logs for mean_norm aggregator
+2026-10-20 08:07:45,781 - root - INFO - Validation complete
+2026-10-20 08:07:45,782 - root - INFO - Starting inference step for model trained for 1 epochs
+2026-10-20 08:07:45,786 - root - WARNING - mean_step_20 metric not supported for this configuration, omitting: step_mean step 20 exceeds n_forward_steps=12
+2026-10-20 08:07:45,786 - root - WARNING - mean_step_20_norm metric not supported for this configuration, omitting: step_mean step 20 exceeds n_forward_steps=12
+2026-10-20 08:07:45,786 - root - WARNING - ensemble_step_20 metric not supported for this configuration, omitting: ensemble step 20 exceeds n_forward_steps=12
+2026-10-20 08:07:45,786 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 08:07:45,787 - root - WARNING - Zonal mean max size 4096 is greater than the number of timesteps 13. Setting zonal mean max size to the number of timesteps.
+2026-10-20 08:07:45,787 - root - WARNING - annual metric not supported for this configuration, omitting: annual metric requires > ~2 years of data, got 3 days
+2026-10-20 08:07:45,787 - root - WARNING - enso_index metric not supported for this configuration, omitting: enso_index metric requires > ~2 years of data, got 3 days
+2026-10-20 08:07:45,787 - root - WARNING - enso_coefficient metric not supported for this configuration, omitting: enso_coefficient metric requires > ~5 years of data, got 3 days
+2026-10-20 08:07:45,787 - root - WARNING - ipo_index metric not supported for this configuration, omitting: ipo_index metric requires > ~80 years of data, got 3 days
+2026-10-20 08:07:49,645 - root - INFO - Inference: processing output from window 1 of 3.
+2026-10-20 08:07:52,133 - root - INFO - Inference: processing output from window 2 of 3.
+2026-10-20 08:07:54,620 - root - INFO - Inference: processing output from window 3 of 3.
+2026-10-20 08:07:54,728 - root - INFO - Starting flush of reduced diagnostics to disk
+2026-10-20 08:07:54,728 - root - INFO - Getting inline inference aggregator summary
+2026-10-20 08:07:54,728 - root - INFO - Getting summary logs for zonal_mean aggregator
+2026-10-20 08:07:55,779 - root - INFO - Getting summary logs for time_mean aggregator
+2026-10-20 08:08:31,610 - root - INFO - Getting summary logs for time_mean_norm aggregator
+2026-10-20 08:08:51,577 - root - INFO - Time taken for epoch 1 is 1005.6115424633026 sec
+2026-10-20 08:08:51,578 - root - INFO - Train loss: 0.6396933794021606
+2026-10-20 08:08:51,578 - root - INFO - Valid loss: 2.451978921890259
+2026-10-20 08:08:51,578 - root - INFO - Inference error: 0.5133607721328736
+2026-10-20 08:08:51,589 - root - INFO - Logging to wandb
+2026-10-20 08:08:54,099 - root - INFO - Saving checkpoints for epoch 1
+2026-10-20 08:08:54,102 - root - INFO - Epoch inference error (0.5133607721328736) is lower than previous best inference error (0.5133607721328736).
+2026-10-20 08:08:54,102 - root - INFO - Saving lowest inference error checkpoint to /pscratch/sd/m/mahf708/hr-runs/smoke-1n-4x1-full-zero-2/training_checkpoints/best_inference_ckpt.tar
+2026-10-20 08:09:05,268 - root - INFO - Saving lowest validation loss checkpoint to /pscratch/sd/m/mahf708/hr-runs/smoke-1n-4x1-full-zero-2/training_checkpoints/best_ckpt.tar
+2026-10-20 08:09:16,523 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 0 additional batches, or 115 total batches, with best_validation_loss 2.451978921890259 and best_inference_error 0.5133607721328736
+2026-10-20 08:09:59,759 - root - INFO - Saving EMA epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/smoke-1n-4x1-full-zero-2/training_checkpoints/ema_ckpt_0001.tar
+2026-10-20 08:10:12,452 - root - INFO - Saving epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/smoke-1n-4x1-full-zero-2/training_checkpoints/ckpt_0001.tar
+2026-10-20 08:10:56,163 - root - INFO - DONE ---- rank 0
+2026-10-20 08:10:56,196 - fme.core.distributed.model_torch_distributed - INFO - Shutting down rank 0
