@@ -8,6 +8,7 @@ from typing import TypeAlias
 import cftime
 import numpy as np
 import numpy.typing as npt
+import torch
 
 from fme.ace.data_loading.batch_data import (
     _RESERVED_PREFIX,
@@ -20,6 +21,8 @@ from fme.core.cloud import to_netcdf_via_inter_filesystem_copy
 from fme.core.dataset.data_typing import VariableMetadata
 from fme.core.distributed import Distributed
 from fme.core.generics.writer import WriterABC
+from fme.core.step.step_diagnostics import StepDiagnostics
+from fme.core.typing_ import TensorMapping
 
 from .dataset_metadata import DatasetMetadata
 from .file_writer import FileWriter, FileWriterConfig, PairedFileWriter
@@ -110,6 +113,21 @@ class DataWriterConfig:
                 "single GPU."
             )
 
+    @property
+    def _has_file_subwriters(self) -> bool:
+        """Whether any sub-writer of prediction (and target) data is enabled."""
+        return self.save_prediction_files or self.save_monthly_files or bool(self.files)
+
+    def _names_to_gather(self) -> frozenset[str] | None:
+        """The variables any sub-writer saves, or None for all of them."""
+        name_lists: list[Sequence[str] | None] = []
+        if self.save_prediction_files or self.save_monthly_files:
+            name_lists.append(self.names)
+        name_lists.extend(file.names for file in self.files or [])
+        if any(names is None for names in name_lists):
+            return None
+        return frozenset(name for names in name_lists for name in names or [])
+
     def _get_all_filenames(self) -> list[str]:
         filenames = []
         for file in self.files or []:
@@ -136,7 +154,10 @@ class DataWriterConfig:
         dist = Distributed.get_instance()
         self._raise_if_unsupported_under_multi_gpu(dist.total_data_parallel_ranks)
         writers: list[PairedSubwriter] = []
-        if self.save_prediction_files:
+        # Spatial co-ranks of the root (the only data-parallel rank when
+        # sub-writers are enabled) send it their tiles and open no files.
+        writes_files = dist.is_root()
+        if self.save_prediction_files and writes_files:
             raw_writer: PairedSubwriter = PairedRawDataWriter(
                 path=experiment_dir,
                 initial_condition_times=initial_condition_times,
@@ -148,7 +169,7 @@ class DataWriterConfig:
             if self.time_coarsen is not None:
                 raw_writer = self.time_coarsen.build_paired(raw_writer)
             writers.append(raw_writer)
-        if self.save_monthly_files:
+        if self.save_monthly_files and writes_files:
             writers.append(
                 PairedMonthlyDataWriter(
                     path=experiment_dir,
@@ -161,7 +182,7 @@ class DataWriterConfig:
                     dataset_metadata=dataset_metadata,
                 )
             )
-        for writer_config in self.files or []:
+        for writer_config in (self.files or []) if writes_files else []:
             writers.append(
                 writer_config.build_paired(
                     experiment_dir=experiment_dir,
@@ -179,6 +200,8 @@ class DataWriterConfig:
             variable_metadata=variable_metadata,
             coords=coords,
             dataset_metadata=dataset_metadata,
+            gather_names=self._names_to_gather(),
+            has_subwriters=self._has_file_subwriters,
             step_diagnostics_writer=self._build_step_diagnostics_writer(
                 experiment_dir=experiment_dir,
                 initial_condition_times=initial_condition_times,
@@ -232,7 +255,9 @@ class DataWriterConfig:
         writers: list[Subwriter] = []
         # TODO: handle writing HEALPix data
         # https://github.com/ai2cm/full-model/issues/1089
-        if "face" not in coords:
+        # Spatial co-ranks of the root (the only data-parallel rank when
+        # sub-writers are enabled) send it their tiles and write nothing.
+        if "face" not in coords and dist.is_root():
             if self.save_prediction_files:
                 raw_writer: Subwriter = RawDataWriter(
                     path=experiment_dir,
@@ -277,6 +302,8 @@ class DataWriterConfig:
             variable_metadata=variable_metadata,
             coords=coords,
             dataset_metadata=dataset_metadata,
+            gather_names=self._names_to_gather(),
+            has_subwriters=self._has_file_subwriters and "face" not in coords,
             step_diagnostics_writer=self._build_step_diagnostics_writer(
                 experiment_dir=experiment_dir,
                 initial_condition_times=initial_condition_times,
@@ -296,11 +323,14 @@ class PairedDataWriter(WriterABC[PrognosticState, PairedData]):
         coords: Mapping[str, np.ndarray],
         dataset_metadata: DatasetMetadata,
         step_diagnostics_writer: StepDiagnosticsWriter | None = None,
+        gather_names: frozenset[str] | None = None,
+        has_subwriters: bool | None = None,
     ):
         """
         Args:
             writers: The sub-writers to dispatch each batch to, already built by
-                `DataWriterConfig.build_paired`.
+                `DataWriterConfig.build_paired`. Empty on the spatial co-ranks
+                of the root, which only send their tiles.
             path: Path to write single-snapshot netCDF file(s) via `write`.
             variable_metadata: Metadata for each variable to be written to the file.
             coords: Coordinate data to be written to the file.
@@ -309,8 +339,17 @@ class PairedDataWriter(WriterABC[PrognosticState, PairedData]):
                 prediction, or None to not write them. Held separately from
                 the paired sub-writers: it consumes only the prediction's
                 diagnostics, not the target/prediction pair.
+            gather_names: Under spatial parallelism, the variables to
+                assemble on the root for the sub-writers, or None for all.
+            has_subwriters: Whether the root has sub-writers, i.e. whether
+                every rank takes part in assembling each batch. Defaults to
+                whether ``writers`` is non-empty.
         """
         self._writers = writers
+        self._gather_names = gather_names
+        self._has_subwriters = (
+            bool(writers) if has_subwriters is None else has_subwriters
+        )
         self._step_diagnostics_writer = step_diagnostics_writer
         self.path = path
         self.coords = coords
@@ -343,19 +382,17 @@ class PairedDataWriter(WriterABC[PrognosticState, PairedData]):
         Args:
             batch: Prediction and target data.
         """
-        for writer in self._writers:
-            writer.append_batch(
-                target=dict(batch.reference),
-                prediction=dict(batch.prediction),
-                batch_time=batch.time,
-            )
-        if (
-            self._step_diagnostics_writer is not None
-            and batch.step_diagnostics is not None
-        ):
-            self._step_diagnostics_writer.append_batch(
-                batch.step_diagnostics.to_datasets(batch.time)
-            )
+        if self._has_subwriters:
+            target = _gather_spatial_to_root(batch.reference, self._gather_names)
+            prediction = _gather_spatial_to_root(batch.prediction, self._gather_names)
+            if target is not None and prediction is not None:
+                for writer in self._writers:
+                    writer.append_batch(
+                        target=target,
+                        prediction=prediction,
+                        batch_time=batch.time,
+                    )
+        _append_step_diagnostics(self._step_diagnostics_writer, batch)
 
     def flush(self):
         """
@@ -412,6 +449,47 @@ def _write(
     to_netcdf_via_inter_filesystem_copy(ds, os.path.join(path, filename))
 
 
+def _gather_spatial_to_root(
+    data: TensorMapping, names: frozenset[str] | None = None
+) -> dict[str, torch.Tensor] | None:
+    """Assemble the global fields of tile-local ``data`` on the spatial root,
+    on CPU and one variable at a time; None on the other spatial ranks.
+
+    Collective over the spatial group (every rank must call it with the same
+    variables); returns the data as it is without spatial parallelism.
+
+    Args:
+        data: Tensors whose last two dimensions are this rank's tile.
+        names: The variables to assemble, or None for all of them.
+    """
+    dist = Distributed.get_instance()
+    if names is not None:
+        data = {name: value for name, value in data.items() if name in names}
+    if not dist.has_spatial_parallelism:
+        return dict(data)
+    gathered: dict[str, torch.Tensor] = {}
+    for name in sorted(data):
+        tensor = dist.gather_spatial_tile_to_root(data[name])
+        if tensor is not None:
+            gathered[name] = tensor.cpu()
+    return gathered if dist.is_spatial_root() else None
+
+
+def _append_step_diagnostics(
+    writer: StepDiagnosticsWriter | None, batch: PairedData
+) -> None:
+    """Append the batch's step diagnostics, assembled on the spatial root,
+    to ``writer``. Collective over the spatial group when there is a writer
+    and diagnostics; the writer is built on every rank but only appended to
+    (and so only creates files) on the root.
+    """
+    if writer is None or batch.step_diagnostics is None:
+        return
+    delta = _gather_spatial_to_root(batch.step_diagnostics.delta)
+    if delta is not None:
+        writer.append_batch(StepDiagnostics(delta=delta).to_datasets(batch.time))
+
+
 def _gather_and_write(
     batch: BatchData,
     path: str,
@@ -423,7 +501,9 @@ def _gather_and_write(
 ) -> None:
     """Gather data-parallel BatchData shards to root and write once.
 
-    Each data-parallel rank holds a contiguous block of samples.  The gather
+    Under spatial parallelism each rank holds a tile of every field: the
+    tiles are first assembled on the root of each spatial group. Each
+    data-parallel rank holds a contiguous block of samples.  The gather
     concatenates them along the sample dimension in rank order so the written
     file has the same layout as a serial run.  Non-root ranks skip the write.
     A barrier at the end ensures all ranks see the file before continuing
@@ -433,7 +513,13 @@ def _gather_and_write(
     if dist is None:
         dist = Distributed.get_instance()
 
-    gathered_batch = batch.data_parallel_gather(dist)
+    spatial_batch = batch.gather_spatial_to_root()
+    if spatial_batch is not None:
+        # every rank of a data-parallel group holds the same tile, so a
+        # group's ranks are all spatial roots or all skip together
+        gathered_batch = spatial_batch.data_parallel_gather(dist)
+    else:
+        gathered_batch = None
 
     try:
         if dist.is_root():
@@ -460,12 +546,15 @@ class DataWriter(WriterABC[PrognosticState, PairedData]):
         coords: Mapping[str, np.ndarray],
         dataset_metadata: DatasetMetadata,
         step_diagnostics_writer: StepDiagnosticsWriter | None = None,
+        gather_names: frozenset[str] | None = None,
+        has_subwriters: bool | None = None,
     ):
         """
         Args:
             writers: The sub-writers to dispatch each batch to, already built by
                 `DataWriterConfig.build`. Empty for HEALPix (`face`)
-                coordinates, which are not yet supported.
+                coordinates, which are not yet supported, and on the spatial
+                co-ranks of the root, which only send their tiles.
             path: Directory within which to write single-snapshot netCDF file(s)
                 via `write`.
             variable_metadata: Metadata for each variable to be written to the file.
@@ -475,8 +564,17 @@ class DataWriter(WriterABC[PrognosticState, PairedData]):
                 prediction, or None to not write them. Held separately from
                 the sub-writers: it consumes only the prediction's
                 diagnostics.
+            gather_names: Under spatial parallelism, the variables to
+                assemble on the root for the sub-writers, or None for all.
+            has_subwriters: Whether the root has sub-writers, i.e. whether
+                every rank takes part in assembling each batch. Defaults to
+                whether ``writers`` is non-empty.
         """
         self._writers = writers
+        self._gather_names = gather_names
+        self._has_subwriters = (
+            bool(writers) if has_subwriters is None else has_subwriters
+        )
         self._step_diagnostics_writer = step_diagnostics_writer
         self.path = path
         self.variable_metadata = variable_metadata
@@ -498,18 +596,17 @@ class DataWriter(WriterABC[PrognosticState, PairedData]):
             labels=batch.labels,
         )
         self._append_batch(unpaired_batch)
-        if (
-            self._step_diagnostics_writer is not None
-            and batch.step_diagnostics is not None
-        ):
-            self._step_diagnostics_writer.append_batch(
-                batch.step_diagnostics.to_datasets(batch.time)
-            )
+        _append_step_diagnostics(self._step_diagnostics_writer, batch)
 
     def _append_batch(self, batch: BatchData):
+        if not self._has_subwriters:
+            return
+        data = _gather_spatial_to_root(batch.data, self._gather_names)
+        if data is None:
+            return
         for writer in self._writers:
             writer.append_batch(
-                data=dict(batch.data),
+                data=data,
                 batch_time=batch.time,
             )
 

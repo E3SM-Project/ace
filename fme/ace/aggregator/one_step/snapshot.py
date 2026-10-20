@@ -5,6 +5,7 @@ import torch
 import xarray as xr
 
 from fme.core.dataset.data_typing import VariableMetadata
+from fme.core.distributed import Distributed
 from fme.core.typing_ import TensorMapping
 from fme.core.wandb import Image
 
@@ -66,24 +67,27 @@ class SnapshotAggregator:
         time_dim = 1
         input_time = 0
         target_time = 1
+        # assemble the global fields from the spatial tiles
+        gather = Distributed.get_instance().gather_spatial_tile
         gen, target, input = {}, {}, {}
-        for name in self._gen_data.keys():
+        for name in sorted(self._gen_data.keys()):
             # use first sample in batch
             gen[name] = (
-                self._gen_data[name]
-                .select(dim=time_dim, index=target_time)[0]
+                gather(self._gen_data[name].select(dim=time_dim, index=target_time)[0])
                 .cpu()
                 .numpy()
             )
             target[name] = (
-                self._target_data[name]
-                .select(dim=time_dim, index=target_time)[0]
+                gather(
+                    self._target_data[name].select(dim=time_dim, index=target_time)[0]
+                )
                 .cpu()
                 .numpy()
             )
             input[name] = (
-                self._target_data[name]
-                .select(dim=time_dim, index=input_time)[0]
+                gather(
+                    self._target_data[name].select(dim=time_dim, index=input_time)[0]
+                )
                 .cpu()
                 .numpy()
             )

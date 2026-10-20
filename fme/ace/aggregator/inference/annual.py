@@ -67,6 +67,11 @@ class PairedGlobalMeanAnnualAggregator:
         gen_data = data.replace(prediction=data.prediction)
         self._target_aggregator.record_batch(target_data)
         self._gen_aggregator.record_batch(gen_data)
+        # Process (and cache) the references here, on every rank: their global
+        # means reduce over the spatial tiles, while get_logs uses them on the
+        # root only.
+        for name in sorted(data.prediction):
+            self._get_reference(name)
 
     def _get_gathered_means(self) -> tuple[xr.Dataset, xr.Dataset] | None:
         """
@@ -287,8 +292,11 @@ def process_monthly_reference(
     area_weighted_mean: Callable[[torch.Tensor], torch.Tensor],
     name: str,
 ) -> VariableReferenceData:
+    values = torch.as_tensor(monthly_reference_data[name].values)
+    # under spatial parallelism the area weights are this rank's tile
+    local_values = values[Distributed.get_instance().get_local_slices(values.shape)]
     ref_global_mean = xr.DataArray(
-        area_weighted_mean(torch.as_tensor(monthly_reference_data[name].values)),
+        area_weighted_mean(local_values.to(get_device())).cpu(),
         dims=monthly_reference_data[name].dims[:-2],
         coords={"time": monthly_reference_data[name].coords["time"]},
     )
@@ -375,8 +383,8 @@ def _gather_sample_datasets(
         dim=0,
     ).to(get_device())
     years = torch.asarray(dataset.year.values).to(get_device())
-    gathered_tensors = dist.gather_irregular(tensor)
-    gathered_years = dist.gather_irregular(years)
+    gathered_tensors = dist.data_parallel_gather_irregular(tensor)
+    gathered_years = dist.data_parallel_gather_irregular(years)
     if gathered_tensors is None or gathered_years is None:
         return None
     datasets = []

@@ -51,6 +51,20 @@ class _TargetGenPair:
         )
 
 
+def _global_map(tensor: torch.Tensor) -> torch.Tensor:
+    """The global map of a tile-local one under spatial parallelism, for
+    plotting and saving. Scalars must be computed from the tile.
+    """
+    return Distributed.get_instance().gather_spatial_tile(tensor)
+
+
+def _local_reference(reference: xr.DataArray, device: torch.device) -> torch.Tensor:
+    """This rank's tile of a global reference map."""
+    values = torch.as_tensor(reference.values, device=device)
+    slices = Distributed.get_instance().get_local_slices(values.shape)
+    return values[slices]
+
+
 def get_gen_shape(gen_data: TensorMapping):
     for name in gen_data:
         return gen_data[name].shape
@@ -189,12 +203,12 @@ class TimeMeanAggregator:
                 if target_maps is not None and name in target_maps:
                     gen_map_caption_key = "gen_target_map"
                     data_panels = [
-                        [pred.cpu().numpy()],
-                        [target_maps[name].cpu().numpy()],
+                        [_global_map(pred).cpu().numpy()],
+                        [_global_map(target_maps[name]).cpu().numpy()],
                     ]
                 else:
                     gen_map_caption_key = gen_map_key
-                    data_panels = [[pred.cpu().numpy()]]
+                    data_panels = [[_global_map(pred).cpu().numpy()]]
                 logs.update(
                     {
                         f"{gen_map_key}/{name}": plot_paneled_data(
@@ -207,8 +221,8 @@ class TimeMeanAggregator:
             if self._reference_means is not None and name in self._reference_means:
                 pair = _TargetGenPair(
                     name=name,
-                    target=torch.as_tensor(
-                        self._reference_means[name].values, device=pred.device
+                    target=_local_reference(
+                        self._reference_means[name], device=pred.device
                     ),
                     gen=pred,
                     ops=self._ops,
@@ -219,7 +233,7 @@ class TimeMeanAggregator:
                     logs.update(
                         {
                             f"ref_bias_map/{name}": plot_paneled_data(
-                                [[pair.bias().cpu().numpy()]],
+                                [[_global_map(pair.bias()).cpu().numpy()]],
                                 diverging=True,
                                 caption=self._get_caption("bias_map", name),
                             )
@@ -266,7 +280,7 @@ class TimeMeanAggregator:
             data.update(
                 {
                     f"gen_map-{name}": xr.DataArray(
-                        pred.cpu(),
+                        _global_map(pred).cpu(),
                         dims=dims,
                         attrs=gen_metadata,
                     ),
@@ -404,7 +418,7 @@ class TimeMeanEvaluatorAggregator:
                         logs.update(
                             {
                                 f"{bias_map_key}/{pred.name}": plot_paneled_data(
-                                    [[pred.bias().cpu().numpy()]],
+                                    [[_global_map(pred.bias()).cpu().numpy()]],
                                     diverging=True,
                                     caption=self._get_caption(bias_map_key, pred.name),
                                 )
@@ -486,12 +500,12 @@ class TimeMeanEvaluatorAggregator:
             data.update(
                 {
                     f"bias_map-{pred.name}": xr.DataArray(
-                        pred.bias().cpu(),
+                        _global_map(pred.bias()).cpu(),
                         dims=self._horizontal_dims,
                         attrs=bias_metadata,
                     ),
                     f"gen_map-{pred.name}": xr.DataArray(
-                        pred.gen.cpu(),
+                        _global_map(pred.gen).cpu(),
                         dims=self._horizontal_dims,
                         attrs=gen_metadata,
                     ),

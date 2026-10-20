@@ -53,8 +53,12 @@ def _nan_aware_regional_mean(data: torch.Tensor, weights: torch.Tensor) -> torch
     valid_mask = ~torch.isnan(data)
     data_filled = torch.where(valid_mask, data, torch.zeros_like(data))
     w = weights.to(data.device).unsqueeze(0).unsqueeze(0)
-    weighted_sum = (data_filled * w * valid_mask).sum(dim=(-2, -1))
-    weight_total = (w * valid_mask).sum(dim=(-2, -1))
+    # under spatial parallelism the data and weights are this rank's tile
+    dist = Distributed.get_instance()
+    weighted_sum = dist.spatial_reduce_sum(
+        (data_filled * w * valid_mask).sum(dim=(-2, -1))
+    )
+    weight_total = dist.spatial_reduce_sum((w * valid_mask).sum(dim=(-2, -1)))
     return weighted_sum / weight_total
 
 
@@ -169,9 +173,9 @@ class _IPORegionalAccumulator:
     ) -> xr.DataArray | None:
         dist = Distributed.get_instance()
         if dist.world_size > 1:
-            gathered_index = dist.gather_irregular(index)
-            gathered_years = dist.gather_irregular(unique_months.years)
-            gathered_months = dist.gather_irregular(unique_months.months)
+            gathered_index = dist.data_parallel_gather_irregular(index)
+            gathered_years = dist.data_parallel_gather_irregular(unique_months.years)
+            gathered_months = dist.data_parallel_gather_irregular(unique_months.months)
             if (
                 gathered_index is None
                 or gathered_years is None

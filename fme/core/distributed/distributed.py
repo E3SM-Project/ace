@@ -7,13 +7,13 @@ from typing import TypeVar
 import torch
 
 from fme.core import metrics
-from fme.core.device import using_gpu
+from fme.core.device import get_device, using_gpu
 
 from .base import DistributedBackend
 from .model_torch_distributed import ModelTorchDistributed
 from .non_distributed import NonDistributed
 from .shutdown import abort_and_exit_on_termination, park_if_terminating
-from .torch_distributed import TorchDistributed
+from .torch_distributed import TorchDistributed, _gather_irregular
 
 logger = logging.getLogger(__name__)
 
@@ -273,6 +273,13 @@ class Distributed:
         """
         return self._distributed.spatial_rank()
 
+    @property
+    def spatial_size(self) -> tuple[int, int]:
+        """The number of (h, w) tiles each field is split into; (1, 1)
+        without spatial parallelism.
+        """
+        return self._distributed.spatial_size()
+
     def require_no_spatial_parallelism(self, msg: str) -> None:
         """Raise if spatial parallelism is active.
 
@@ -523,6 +530,21 @@ class Distributed:
         """
         return self._distributed.gather_irregular(tensor)
 
+    def data_parallel_gather_irregular(
+        self, tensor: torch.Tensor
+    ) -> list[torch.Tensor] | None:
+        """Like ``gather_irregular``, but over the data-parallel ranks only,
+        for per-sample data that every spatial co-rank holds a copy of (e.g. a
+        global or regional mean): each sample is gathered once, not once per
+        spatial tile. Without spatial parallelism this is ``gather_irregular``.
+
+        Returns:
+            A list with the tensor of each data-parallel rank on the root
+            process, None on the others.
+        """
+        gathered = _gather_irregular(tensor, self.reduce_max, self.data_parallel_gather)
+        return gathered if self.is_root() else None
+
     def is_root(self) -> bool:
         """
         Returns True if this process is the root process.
@@ -677,6 +699,78 @@ class Distributed:
         buf = torch.zeros(global_shape, dtype=tensor.dtype, device=tensor.device)
         buf[(..., *slices)] = tensor
         return self.spatial_reduce_sum(buf)
+
+    def is_spatial_root(self) -> bool:
+        """Whether this rank holds the (0, 0) tile of its spatial group, i.e.
+        receives ``gather_spatial_tile_to_root``'s result. Every rank is its
+        own spatial root without spatial parallelism.
+        """
+        return self.spatial_rank == (0, 0)
+
+    def _global_spatial_shape(self, local_hw: tuple[int, int]) -> tuple[int, int]:
+        """The global ``(H, W)`` of a field of which this rank holds the
+        ``local_hw`` tile. Collective over the spatial group.
+        """
+        h_size, w_size = self._distributed.spatial_size()
+        sizes = torch.tensor(local_hw, dtype=torch.int64, device=get_device())
+        # each tile row's height is counted once per w-rank, and each tile
+        # column's width once per h-rank
+        total = self.spatial_reduce_sum(sizes).tolist()
+        img_shape = (total[0] // w_size, total[1] // h_size)
+        local_slices = self.get_local_slices(img_shape)
+        expected = tuple(
+            len(range(*s.indices(n))) for s, n in zip(local_slices, img_shape)
+        )
+        if expected != tuple(local_hw):
+            raise ValueError(
+                f"A tile of shape {tuple(local_hw)} is not this rank's tile of "
+                f"any global field: the tiles add up to {img_shape}, of which "
+                f"this rank's tile is {expected}."
+            )
+        return img_shape
+
+    def gather_spatial_tile(self, tensor: torch.Tensor) -> torch.Tensor:
+        """Reassemble, on every rank, the global field of which this rank
+        holds its spatial tile in the last two dimensions.
+
+        Use it to turn a tile-local map (e.g. a time mean) into the global
+        map for plotting or saving. Area-weighted reductions must still be
+        computed on the tile (``GriddedOperations`` reduces across tiles).
+        The global shape is inferred from the tile sizes. The result is on
+        the input's device. Collective over the spatial group; identity
+        without spatial parallelism.
+        """
+        if not self.has_spatial_parallelism:
+            return tensor
+        img_shape = self._global_spatial_shape((tensor.shape[-2], tensor.shape[-1]))
+        device = tensor.device
+        return self.gather_spatial_tensor(tensor.to(get_device()), img_shape).to(device)
+
+    def gather_spatial_tile_to_root(self, tensor: torch.Tensor) -> torch.Tensor | None:
+        """Like ``gather_spatial_tile``, but the global field is assembled on
+        the spatial root only (see ``is_spatial_root``); other ranks get
+        None. Only the root holds a global-size buffer, so prefer this for
+        large data that only the root uses, e.g. for writing files.
+        """
+        if not self.has_spatial_parallelism:
+            return tensor
+        img_shape = self._global_spatial_shape((tensor.shape[-2], tensor.shape[-1]))
+        device = tensor.device
+        gathered = self._distributed.gather_spatial_to_root(
+            tensor.to(get_device()), img_shape
+        )
+        return None if gathered is None else gathered.to(device)
+
+    def gather_spatial_lat(self, tensor: torch.Tensor) -> torch.Tensor:
+        """Reassemble, on every rank, a profile whose last dimension is this
+        rank's latitude band and which is the same on every rank of a tile
+        row (e.g. a zonal mean). Collective over the spatial group; identity
+        without spatial parallelism.
+        """
+        if not self.has_spatial_parallelism:
+            return tensor
+        # each w-rank contributes a 1-wide column of the same profile
+        return self.gather_spatial_tile(tensor.unsqueeze(-1))[..., 0]
 
     def shutdown(self):
         return self._distributed.shutdown()

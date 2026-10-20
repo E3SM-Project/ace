@@ -37,6 +37,11 @@ class MockDistributed:
     def gather(self, tensor: torch.Tensor) -> list[torch.Tensor]:
         return [tensor for i in range(self.world_size)]
 
+    def data_parallel_gather_irregular(
+        self, tensor: torch.Tensor
+    ) -> list[torch.Tensor] | None:
+        return self.gather_irregular(tensor)
+
     def gather_irregular(self, tensor: torch.Tensor) -> list[torch.Tensor] | None:
         """
         Note this uses the actual implementation but mocks the underlying
@@ -61,6 +66,22 @@ class MockDistributed:
     def gather_spatial_tensor(
         self, tensor: torch.Tensor, img_shape: tuple[int, int]
     ) -> torch.Tensor:
+        return tensor
+
+    @property
+    def has_spatial_parallelism(self) -> bool:
+        return False
+
+    def is_spatial_root(self) -> bool:
+        return True
+
+    def gather_spatial_tile(self, tensor: torch.Tensor) -> torch.Tensor:
+        return tensor
+
+    def gather_spatial_tile_to_root(self, tensor: torch.Tensor) -> torch.Tensor:
+        return tensor
+
+    def gather_spatial_lat(self, tensor: torch.Tensor) -> torch.Tensor:
         return tensor
 
     def gradient_magnitude_percent_diff(

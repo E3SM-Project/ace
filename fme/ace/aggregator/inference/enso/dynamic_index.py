@@ -132,9 +132,9 @@ class RegionalIndexAggregator:
         dist = Distributed.get_instance()
         if dist.world_size > 1:
             gathered_index, gathered_years, gathered_months = (
-                dist.gather_irregular(index),
-                dist.gather_irregular(years),
-                dist.gather_irregular(months),
+                dist.data_parallel_gather_irregular(index),
+                dist.data_parallel_gather_irregular(years),
+                dist.data_parallel_gather_irregular(months),
             )
             if (
                 gathered_index is None

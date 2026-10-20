@@ -52,6 +52,30 @@ def _check_world_size_divisible(world_size: int, spatial_size: int) -> None:
         )
 
 
+def _all_reduce_any_device(
+    tensor: torch.Tensor,
+    op: torch.distributed.ReduceOp.RedOpType = torch.distributed.ReduceOp.SUM,
+    group: torch.distributed.ProcessGroup | None = None,
+) -> torch.Tensor:
+    """In-place all-reduce that also accepts CPU tensors under NCCL.
+
+    Some aggregators (e.g. video) keep their accumulators on the CPU. Under
+    the spatial backend the world always has more than one rank, so their
+    data-group reductions reach NCCL even with a single data replica, and NCCL
+    rejects CPU tensors ("No backend type associated with device type cpu").
+    """
+    if (
+        tensor.device.type == "cpu"
+        and torch.distributed.get_backend(group) == torch.distributed.Backend.NCCL
+    ):
+        on_device = tensor.to(torch.device("cuda", torch.cuda.current_device()))
+        torch.distributed.all_reduce(on_device, op=op, group=group)
+        tensor.copy_(on_device)
+        return tensor
+    torch.distributed.all_reduce(tensor, op=op, group=group)
+    return tensor
+
+
 def _spatial_grad_sync() -> str:
     """How spatially-parallel gradients are summed over tiles.
 
@@ -400,21 +424,21 @@ class ModelTorchDistributed(DistributedBackend):
         return batch_size // self.total_data_parallel_ranks
 
     def reduce_mean(self, tensor: torch.Tensor) -> torch.Tensor | None:
-        torch.distributed.all_reduce(tensor, group=self._data_group)
+        _all_reduce_any_device(tensor, group=self._data_group)
         return tensor / self.total_data_parallel_ranks
 
     def reduce_sum(self, tensor: torch.Tensor) -> torch.Tensor | None:
-        torch.distributed.all_reduce(tensor, group=self._data_group)
+        _all_reduce_any_device(tensor, group=self._data_group)
         return tensor
 
     def reduce_min(self, tensor: torch.Tensor) -> torch.Tensor | None:
-        torch.distributed.all_reduce(
+        _all_reduce_any_device(
             tensor, op=torch.distributed.ReduceOp.MIN, group=self._data_group
         )
         return tensor
 
     def reduce_max(self, tensor: torch.Tensor) -> torch.Tensor | None:
-        torch.distributed.all_reduce(
+        _all_reduce_any_device(
             tensor, op=torch.distributed.ReduceOp.MAX, group=self._data_group
         )
         return tensor
@@ -667,6 +691,60 @@ class ModelTorchDistributed(DistributedBackend):
     def spatial_rank(self) -> tuple[int, int]:
         """This rank's (h, w) coordinates within its spatial group."""
         return (self._h_rank, self._w_rank)
+
+    def spatial_size(self) -> tuple[int, int]:
+        return (self._h_size, self._w_size)
+
+    def _spatial_group_coords(self) -> list[tuple[int, int]]:
+        """The (h, w) coordinates of each rank of the spatial group, indexed
+        by its rank in the group. Collective (once) over the spatial group.
+        """
+        coords = getattr(self, "_cached_spatial_group_coords", None)
+        if coords is None:
+            gathered: list[Any] = [None] * (self._h_size * self._w_size)
+            torch.distributed.all_gather_object(
+                gathered, (self._h_rank, self._w_rank), group=self._spatial_group
+            )
+            coords = [tuple(c) for c in gathered]
+            if coords[0] != (0, 0):
+                raise RuntimeError(
+                    "expected the spatial group's rank 0 to hold tile (0, 0), "
+                    f"got {coords[0]}"
+                )
+            self._cached_spatial_group_coords = coords
+        return coords
+
+    def gather_spatial_to_root(
+        self, tensor: torch.Tensor, img_shape: tuple[int, int]
+    ) -> torch.Tensor | None:
+        if self._h_size == 1 and self._w_size == 1:
+            return tensor
+        from torch_harmonics.distributed import compute_split_shapes
+
+        h_shapes = compute_split_shapes(img_shape[0], self._h_size)
+        w_shapes = compute_split_shapes(img_shape[1], self._w_size)
+        # torch.distributed.gather needs equal shapes: pad every tile to the
+        # largest one, and crop again on the root
+        lead = tuple(tensor.shape[:-2])
+        padded = tensor.new_zeros((*lead, max(h_shapes), max(w_shapes)))
+        padded[..., : tensor.shape[-2], : tensor.shape[-1]] = tensor
+        coords = self._spatial_group_coords()
+        is_root = torch.distributed.get_rank(group=self._spatial_group) == 0
+        gather_list = [torch.empty_like(padded) for _ in coords] if is_root else None
+        torch.distributed.gather(
+            padded,
+            gather_list,
+            dst=torch.distributed.get_global_rank(self._spatial_group, 0),
+            group=self._spatial_group,
+        )
+        if gather_list is None:
+            return None
+        out = tensor.new_empty((*lead, *img_shape))
+        for (h_rank, w_rank), part in zip(coords, gather_list):
+            h0, h = sum(h_shapes[:h_rank]), h_shapes[h_rank]
+            w0, w = sum(w_shapes[:w_rank]), w_shapes[w_rank]
+            out[..., h0 : h0 + h, w0 : w0 + w] = part[..., :h, :w]
+        return out
 
     def barrier(self):
         """Global barrier across all ranks."""

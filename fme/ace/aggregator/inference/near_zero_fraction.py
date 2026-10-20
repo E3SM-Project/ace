@@ -155,7 +155,10 @@ class NearZeroFractionAggregator:
     ) -> None:
         time_dim = 1
         time_slice = slice(1, None) if ignore_initial else slice(None)
-        for name, tensor in data.items():
+        # sorted: under spatial parallelism the area-weighted mean is a
+        # collective
+        for name in sorted(data):
+            tensor = data[name]
             # Drop the initial-condition timestep of the first batch: it is
             # ground-truth-initialized, not predicted, so counting it would
             # pull the generated fraction toward the target (mirrors
@@ -218,10 +221,13 @@ class NearZeroFractionAggregator:
     def _reduced_maps(
         self, sums: dict[str, torch.Tensor], counts: dict[str, int]
     ) -> dict[str, torch.Tensor]:
+        """The global maps, for plotting and saving."""
         maps: dict[str, torch.Tensor] = {}
         for name in sorted(sums):
             local_map = sums[name] / counts[name]
-            maps[name] = self._dist.reduce_mean(local_map)
+            maps[name] = self._dist.gather_spatial_tile(
+                self._dist.reduce_mean(local_map)
+            )
         return maps
 
     def _caption_name_units(self, name: str) -> tuple[str, str]:

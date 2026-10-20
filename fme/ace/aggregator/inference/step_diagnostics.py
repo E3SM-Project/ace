@@ -351,8 +351,11 @@ class CorrectionDeltaTimeMeanAggregator:
                     .numpy()
                 )
             if self._record_maps:
+                global_map = Distributed.get_instance().gather_spatial_tile(
+                    signed[name]
+                )
                 logs[f"correction_map/{name}"] = plot_paneled_data(
-                    [[signed[name].cpu().numpy()]],
+                    [[global_map.cpu().numpy()]],
                     diverging=True,
                     caption=self._caption(self._MAP_CAPTION, name),
                 )
@@ -374,8 +377,11 @@ class CorrectionDeltaTimeMeanAggregator:
         signed, _ = self._get_time_means()
         dims = ("lat", "lon")
         data = {}
+        dist = Distributed.get_instance()
         for name, value in signed.items():
-            data[f"correction_map-{name}"] = xr.DataArray(value.cpu(), dims=dims)
+            data[f"correction_map-{name}"] = xr.DataArray(
+                dist.gather_spatial_tile(value).cpu(), dims=dims
+            )
         return xr.Dataset(data)
 
 

@@ -23,6 +23,22 @@ def _get_gen_shape(gen_data: TensorMapping):
     raise ValueError("No data in gen_data")
 
 
+_GATHER_TIMESTEPS = 16
+
+
+def _global_video(video: torch.Tensor) -> torch.Tensor:
+    """The global frames of a tile-local (time, lat, lon) video under spatial
+    parallelism, assembled a few frames at a time to bound the device memory
+    the assembly needs.
+    """
+    dist = Distributed.get_instance()
+    if not dist.has_spatial_parallelism:
+        return video
+    return torch.cat(
+        [dist.gather_spatial_tile(frames) for frames in video.split(_GATHER_TIMESTEPS)]
+    )
+
+
 @dataclasses.dataclass
 class _ErrorData:
     rmse: TensorDict
@@ -103,11 +119,15 @@ class _ErrorVideoData:
             tensor = self._mse_data[name]
             mse = (tensor / self._n_batches[None, :, None, None]).mean(dim=0)
             mse = self._dist.reduce_mean(mse)
-            rmse_data[name] = torch.sqrt(mse)
+            rmse_data[name] = _global_video(torch.sqrt(mse))
         for name in sorted(self._min_err_data):
-            min_err_data[name] = self._dist.reduce_min(self._min_err_data[name])
+            min_err_data[name] = _global_video(
+                self._dist.reduce_min(self._min_err_data[name])
+            )
         for name in sorted(self._max_err_data):
-            max_err_data[name] = self._dist.reduce_max(self._max_err_data[name])
+            max_err_data[name] = _global_video(
+                self._dist.reduce_max(self._max_err_data[name])
+            )
         return _ErrorData(rmse_data, min_err_data, max_err_data)
 
 
@@ -163,11 +183,11 @@ class _MeanVideoData:
         for name in sorted(self._target_data):
             tensor = self._target_data[name]
             target_data[name] = tensor / self._n_batches[:, None, None]
-            target_data[name] = self._dist.reduce_mean(target_data[name])
+            target_data[name] = _global_video(self._dist.reduce_mean(target_data[name]))
         for name in sorted(self._gen_data):
             tensor = self._gen_data[name]
             gen_data[name] = tensor / self._n_batches[:, None, None]
-            gen_data[name] = self._dist.reduce_mean(gen_data[name])
+            gen_data[name] = _global_video(self._dist.reduce_mean(gen_data[name]))
         return gen_data, target_data
 
 
@@ -244,14 +264,14 @@ class _VarianceVideoData:
             mean = self._dist.reduce_mean(mean)
             square = self._target_squares[name] / self._n_batches[:, None, None]
             square = self._dist.reduce_mean(square)
-            target_data[name] = square - mean**2
+            target_data[name] = _global_video(square - mean**2)
         for name in sorted(self._gen_means):
             tensor = self._gen_means[name]
             mean = tensor / self._n_batches[:, None, None]
             mean = self._dist.reduce_mean(mean)
             square = self._gen_squares[name] / self._n_batches[:, None, None]
             square = self._dist.reduce_mean(square)
-            gen_data[name] = square - mean**2
+            gen_data[name] = _global_video(square - mean**2)
         return gen_data, target_data
 
 

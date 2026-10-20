@@ -277,6 +277,10 @@ class _FakeDistributed:
     def is_root(self) -> bool:
         return True
 
+    def gather_spatial_tile(self, tensor: torch.Tensor) -> torch.Tensor:
+        # not a collective without spatial parallelism
+        return tensor
+
     def reduce_sum(self, tensor: torch.Tensor) -> torch.Tensor:
         self.calls.append(("reduce_sum", tuple(tensor.shape)))
         if self._contributions is None:

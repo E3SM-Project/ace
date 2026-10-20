@@ -405,6 +405,40 @@ class BatchData:
             stepper_state=self.stepper_state,
         )
 
+    def gather_spatial_to_root(self) -> "BatchData | None":
+        """Inverse of ``scatter_spatial``: assemble the global fields of this
+        rank's tiles on the spatial root (see
+        ``Distributed.is_spatial_root``), on CPU and one variable at a time.
+        Returns None on the root's spatial co-ranks, and ``self`` without
+        spatial parallelism.
+
+        The non-spatial members (time, labels, data mask, stepper state) are
+        the same on every tile of a sample and are taken from the root.
+        Collective over the spatial group.
+        """
+        self._raise_if_step_diagnostics("gather_spatial_to_root")
+        dist = Distributed.get_instance()
+        if not dist.has_spatial_parallelism:
+            return self
+        data: dict[str, torch.Tensor] = {}
+        # sorted: every rank must issue the collectives in the same order
+        for name in sorted(self.data):
+            gathered = dist.gather_spatial_tile_to_root(self.data[name])
+            if gathered is not None:
+                data[name] = gathered.cpu()
+        if not dist.is_spatial_root():
+            return None
+        return self.__class__(
+            data=data,
+            time=self.time,
+            horizontal_dims=self.horizontal_dims,
+            epoch=self.epoch,
+            labels=self.labels,
+            n_ensemble=self.n_ensemble,
+            data_mask=self.data_mask,
+            stepper_state=self.stepper_state,
+        )
+
     def to_cpu(self) -> "BatchData":
         return self.__class__(
             data={k: v.cpu() for k, v in self.data.items()},

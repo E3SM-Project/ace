@@ -79,10 +79,8 @@ class SeasonalAggregator:
         else:
             target = self._target_dataset
             gen = self._gen_dataset
-        if not dist.is_root():
-            return {}
         if target is None or gen is None:
-            raise RuntimeError("we are on root but no data was collected")
+            raise RuntimeError("no data was collected")
 
         if len(gen.season) < 4 or len(target.season) < 4:
             return {}  # seasonal metrics undefined when not all seasons are recorded
@@ -90,13 +88,27 @@ class SeasonalAggregator:
         target = cast(xr.Dataset, target / target["counts"])  # type: ignore
         gen = cast(xr.Dataset, gen / gen["counts"])  # type: ignore
         bias = gen - target
+        # Collectives on every rank, in the same order: the area-weighted
+        # means reduce over the spatial tiles, and the maps for the images
+        # and the R2 are assembled from them.
+        names = sorted(str(name) for name in gen.data_vars if name != "counts")
+        mse = {
+            name: self._area_weighted_mean(
+                torch.as_tensor(bias[name].values ** 2).to(get_device()),
+                name=name,
+            ).cpu()
+            for name in names
+        }
+        if dist.has_spatial_parallelism:
+            target = _gather_spatial_dataset(dist, target, names)
+            gen = _gather_spatial_dataset(dist, gen, names)
+            bias = gen - target
+        if not dist.is_root():
+            return {}
         plots: dict[str, Image] = {}
         metric_logs: dict[str, float] = {}
 
-        for name in gen.data_vars.keys():
-            if name == "counts":
-                continue
-
+        for name in names:
             if self._variable_metadata is not None and name in self._variable_metadata:
                 long_name = self._variable_metadata[name].display_long_name(name)
                 units = self._variable_metadata[name].display_units()
@@ -153,10 +165,7 @@ class SeasonalAggregator:
             )
             plots[f"bias/{name}"] = image_err
 
-            mse_tensor = self._area_weighted_mean(
-                torch.as_tensor(bias[name].values ** 2),
-                name=name,
-            )
+            mse_tensor = mse[name]
             for i, season in enumerate(bias[name].season.values):
                 rmse = float(mse_tensor[i].sqrt().numpy())
                 metric_logs[f"time-mean-rmse/{name}-{season}"] = rmse
@@ -202,6 +211,26 @@ def get_r2(da: xr.DataArray, target: xr.DataArray) -> float:
     SS_ref = np.sum((target.values - np.mean(target.values)) ** 2)
     SS_pred = np.sum((da - target).values ** 2)
     return float(1 - SS_pred / SS_ref)
+
+
+def _gather_spatial_dataset(
+    dist: Distributed, dataset: xr.Dataset, names: list[str]
+) -> xr.Dataset:
+    """Assemble the global (season, lat, lon) maps of the spatial tiles."""
+    return xr.Dataset(
+        {
+            name: (
+                ["season", "lat", "lon"],
+                dist.gather_spatial_tile(
+                    torch.as_tensor(dataset[name].values).to(get_device())
+                )
+                .cpu()
+                .numpy(),
+            )
+            for name in names
+        },
+        coords={"season": dataset["season"]},
+    )
 
 
 def _reduce_datasets(dist: Distributed, dataset: xr.Dataset) -> xr.Dataset | None:
