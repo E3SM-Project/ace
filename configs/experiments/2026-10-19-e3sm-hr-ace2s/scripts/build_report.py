@@ -19,15 +19,21 @@ def load(stem: str) -> list[dict]:
     path = os.path.join(HERE, "logs", f"{stem}.jsonl")
     if not os.path.exists(path):
         return []
-    text = open(path).read().replace("RESULT ", "").replace("}{", "}\n{")
+    text = open(path).read().replace("RESULT ", "")
     out, seen = [], set()
-    for line in text.splitlines():
-        if line.strip():
-            d = json.loads(line)
-            if d["tag"] in seen:  # failed ranks each print; keep one
-                continue
-            seen.add(d["tag"])
-            out.append(d)
+    # concurrent writers can interleave records; every record starts with
+    # the same key, so split on it and keep only the pieces that parse
+    for piece in text.split('{"nlat"')[1:]:
+        piece = '{"nlat"' + piece.strip()
+        piece = piece[: piece.rfind("}") + 1]
+        try:
+            d = json.loads(piece)
+        except json.JSONDecodeError:
+            continue
+        if d["tag"] in seen:  # failed ranks each print; keep one
+            continue
+        seen.add(d["tag"])
+        out.append(d)
     return out
 
 

@@ -195,6 +195,9 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
     <li><time>23:15</time>Resume works under spatial parallelism: the smoke run continued from epoch 1 into epoch 2.</li>
     <li><time>23:20</time>Committed tile-only loading. In the end-to-end A/B, losses match the old path exactly and node RAM use is ~3&times; lower.</li>
     <li><time>23:30</time>The hist 1&deg; model is 12% slower on TCP NCCL than with OFI across 2 nodes.</li>
+    <li><time>10-20</time>New allocation. Pushed the branch to E3SM-Project/ace. Split step time into compute, transposes and gradient sync for every layout; ran the transpose microbenchmark and the per-GPU memory budget.</li>
+    <li><time>10-20</time>Committed SHT dedup, <code>gradient_as_bucket_view</code> and <code>shard_optimizer_state</code> (ZeRO over each spatial group). The full-harmonics 2.1&nbsp;B model trains a full epoch on one node at 4&times;1.</li>
+    <li><time>10-20</time>The parameter-sharding prototype reaches 35&nbsp;GB peak and is 4% faster. A real implementation is in progress.</li>
   </ul>
 </section>
 </main>
