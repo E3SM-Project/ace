@@ -260,3 +260,29 @@ nvidia-smi includes allocator cache, so the true need may be lower, but this
 is untested. To settle it, run the smoke config on real 40 GB nodes
 (`-C gpu&a100`), or fix the cap by adding the memcap dir to PYTHONPATH inside
 scripts/env.sh.
+
+### 12b. Measured on real 40 GB A100s (allocation 60038940, 2026-10-20)
+
+Smoke config (`runs/smoke-1n-4x1-full-zero.yaml`), `shard_spatial_parameters`
++ `shard_optimizer_state`, one full epoch each (train, validation, inline
+inference, best/EMA/epoch checkpoints). nvidia-smi sampled every 3 s, of
+40,960 MiB:
+
+| setup | outcome | max / p99 MiB | samples/s per replica | samples/s per GPU |
+|---|---|---|---|---|
+| full harmonics, 4x1, 1 node | CUDA OOM in the first steps (tried to allocate 1.48 GiB) | 38,989 | - | - |
+| modes x0.5, 4x1, 1 node | full epoch OK | 39,559 / 39,325 | 0.387 | 0.097 |
+| modes x0.5, 4x1, + `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` | full epoch OK | 38,031 / 38,023 | 0.387 | 0.097 |
+| full harmonics, 8x1 over 2 nodes | full epoch OK | 28,591 / 28,449 | 0.310 | 0.039 |
+
+For comparison on 80 GB: full harmonics 4x1 at 0.255 per replica (0.064 per
+GPU); modes x0.5 4x1 at 0.42-0.44 per replica (~0.105 per GPU).
+
+- **40 GB, modes x0.5:** fits on one node per replica, with
+  expandable_segments for ~2.9 GB of headroom (1.4 GB without).
+- **40 GB, full harmonics:** needs 8 GPUs (2 nodes) per replica. It fits
+  comfortably (28.6 GB) but costs ~39% per GPU against 80 GB nodes, because
+  the tiles are split across nodes.
+- The smoke config uses short validation/inference windows. Production adds
+  a 360-step inline inference (forward only, lower memory than training) and
+  a 1-year validation, which doesn't change the per-step peak.
