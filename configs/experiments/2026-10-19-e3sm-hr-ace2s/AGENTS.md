@@ -224,3 +224,10 @@ Newest last. Times are PDT on 2026-10-19 unless noted.
   replica (restart.nc holds rank_0/rank_1 generator states), so the
   stochastic model draws different noise. Not yet confirmed; a 2x1 x 1
   replica run (`tiles2x1-dp1`) was launched to separate it from 2x1 tiling.
+- Resolved: `tiles2x1-dp1` (2x1 x 1 replica) predictions are bitwise
+  identical to 4x1 x 1 replica (TF32 off), and differ from 2x1 x 2
+  replicas by the same ~10% of field std. So tiling is exact and the
+  difference is the replica count: each replica draws its own noise for
+  its samples, so a stochastic rollout depends on the number of replicas
+  (not a writer or tiling bug). Pick one replica count for runs that
+  must be reproducible against each other.
