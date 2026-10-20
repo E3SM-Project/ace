@@ -71,6 +71,14 @@ class XarrayConcat(DatasetABC):
     def validate_inference_length(self, max_start_index: int, max_window_len: int):
         raise ValueError("Concat datasets do not support inference.")
 
+    @property
+    def supports_spatial_tile(self) -> bool:
+        return all(d.supports_spatial_tile for d in self._wrapped_datasets)
+
+    def set_spatial_tile(self, tile: tuple[slice, slice]) -> None:
+        for dataset in self._wrapped_datasets:
+            dataset.set_spatial_tile(tile)
+
     def enable_shared_memory(self):
         shared_epoch = torch.tensor(-1).share_memory_()
         for dataset in self._wrapped_datasets:

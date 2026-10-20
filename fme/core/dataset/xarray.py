@@ -893,6 +893,9 @@ class XarrayDataset(DatasetABC):
             for dim in (self._nonspacetime_dims + _loaded_horizontal_dims)
         ]
         self._loaded_dims = ["time"] + self._nonspacetime_dims + _loaded_horizontal_dims
+        self._horizontal_dims = list(_loaded_horizontal_dims)
+        # (dim name -> slice) of the spatial tile; empty means the global grid
+        self._tile_isel: dict[str, slice] = {}
         self.isel = {
             dim: v if isinstance(v, int) else v.slice for dim, v in config.isel.items()
         }
@@ -928,7 +931,7 @@ class XarrayDataset(DatasetABC):
         # _time_invariant_names are post-rename names, so the rename has to be
         # applied before they are looked up.
         ds = self._apply_rename(ds)
-        ds = ds.isel(**self.isel)
+        ds = ds.isel(**self.isel, **self._tile_isel)
         tensors = {}
         for name in self._time_invariant_names:
             variable = ds[name].variable
@@ -985,9 +988,20 @@ class XarrayDataset(DatasetABC):
                 )
 
     @property
+    def _selection_tuple(self) -> tuple[slice | int, ...]:
+        """The non-time selection of each loaded dimension: ``isel`` on the
+        non-spacetime dimensions and the spatial tile, if any, on the
+        horizontal ones.
+        """
+        return tuple(
+            self._tile_isel.get(dim, sel)
+            for dim, sel in zip(self._loaded_dims[1:], self._isel_tuple)
+        )
+
+    @property
     def _shape_excluding_time_after_selection(self):
         final_shape = []
-        for orig_size, sel in zip(self._shape_excluding_time, self._isel_tuple):
+        for orig_size, sel in zip(self._shape_excluding_time, self._selection_tuple):
             # if selecting a single index, dimension is squeezed
             # so it is not included in the final shape
             if isinstance(sel, slice):
@@ -996,6 +1010,36 @@ class XarrayDataset(DatasetABC):
                 else:
                     final_shape.append(len(range(*sel.indices(orig_size))))
         return final_shape
+
+    @property
+    def supports_spatial_tile(self) -> bool:
+        return True
+
+    def set_spatial_tile(self, tile: tuple[slice, slice]) -> None:
+        """Restrict every sample to ``tile`` of the last two horizontal
+        dimensions.
+
+        The selection is applied lazily before any values are loaded, so the
+        file backend reads only what it needs: the netCDF4 and zarr engines
+        read the hyperslab, and the cdf5 engine reads the tile's latitude band
+        with a single pread. Time-invariant fields are re-read for the tile.
+        """
+        dims = self._horizontal_dims[-2:]
+        sizes = self._shape_excluding_time[-2:]
+        if len(tile) != 2:
+            raise ValueError(f"Expected a (lat, lon) pair of slices, got {tile}.")
+        for dim, sel, size in zip(dims, tile, sizes):
+            start, stop, step = sel.indices(size)
+            if step != 1 or start >= stop:
+                raise ValueError(
+                    f"Spatial tile {sel} of dimension {dim} (size {size}) must be "
+                    "a non-empty contiguous slice."
+                )
+        self._tile_isel = {
+            dim: slice(*sel.indices(size)[:2])
+            for dim, sel, size in zip(dims, tile, sizes)
+        }
+        self._time_invariant_tensors = self._load_time_invariant_tensors()
 
     @property
     def dims(self) -> list[str]:
@@ -1281,7 +1325,7 @@ class XarrayDataset(DatasetABC):
                     final_dims=self.dims,
                     final_shape=shape,
                     fill_nans=self.fill_nans,
-                    nontime_selection=self._isel_tuple,
+                    nontime_selection=self._selection_tuple,
                 )
                 tensor_dict = {
                     name: loaded[on_disk_name]
@@ -1291,7 +1335,7 @@ class XarrayDataset(DatasetABC):
                 }
             else:
                 ds = self._open_file(file_idx)
-                ds = ds.isel(**self.isel)
+                ds = ds.isel(**self.isel, **self._tile_isel)
                 tensor_dict = load_series_data(
                     idx=start,
                     n_steps=n_steps,
@@ -1319,6 +1363,8 @@ class XarrayDataset(DatasetABC):
         # load static derived variables
         for name in self._static_derived_names:
             tensor = self._static_derived_data[name]
+            if self._tile_isel:
+                tensor = tensor[(..., *self._tile_isel.values())]
             horizontal_dims = [1] * tensor.ndim
             tensors[name] = tensor.repeat((total_steps, *horizontal_dims))
 
@@ -1469,6 +1515,13 @@ class XarraySubset(DatasetABC):
     @property
     def properties(self) -> DatasetProperties:
         return self._wrapped_dataset.properties
+
+    @property
+    def supports_spatial_tile(self) -> bool:
+        return self._wrapped_dataset.supports_spatial_tile
+
+    def set_spatial_tile(self, tile: tuple[slice, slice]) -> None:
+        self._wrapped_dataset.set_spatial_tile(tile)
 
     def enable_shared_memory(self):
         self._wrapped_dataset.enable_shared_memory()

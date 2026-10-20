@@ -6,14 +6,16 @@ import torch.utils.data
 from fme.ace.data_loading.batch_data import BatchData
 from fme.ace.data_loading.dataloader import get_data_loader
 from fme.ace.requirements import DataRequirements, PrognosticStateDataRequirements
-from fme.core.dataset.dataset import DatasetItem
+from fme.core.dataset.dataset import DatasetABC, DatasetItem
 from fme.core.dataset.merged import MergeNoConcatDatasetConfig
+from fme.core.dataset.properties import DatasetProperties
 from fme.core.dataset.subset import SubsetDataset
 from fme.core.dataset.xarray import XarrayDataConfig, XarrayDataset
 from fme.core.device import using_gpu
 from fme.core.distributed import Distributed
 from fme.core.labels import LabelEncoding
 
+from .augmentation import BatchModifierABC
 from .batch_data import PrognosticState
 from .config import DataLoaderConfig
 from .gridded_data import GriddedData, InferenceGriddedData
@@ -72,6 +74,43 @@ def _get_sampler(
     return sampler
 
 
+def get_spatial_tile(properties: DatasetProperties) -> tuple[slice, slice] | None:
+    """This rank's tile of the dataset's global horizontal grid, or None
+    without a spatial split.
+
+    Computed in the main process, where the distributed backend knows the
+    rank's (h, w) position, and handed to the dataset as plain slices so that
+    DataLoader workers load the same tile without consulting the backend.
+    """
+    shape = properties.horizontal_coordinates.shape
+    return Distributed.get_instance().get_spatial_tile((shape[-2], shape[-1]))
+
+
+def _restrict_to_spatial_tile(
+    dataset: DatasetABC, properties: DatasetProperties, modifier: BatchModifierABC
+) -> None:
+    """Make ``dataset`` load only this rank's spatial tile, when that gives
+    the same local tensors as loading the global fields and slicing them.
+    """
+    tile = get_spatial_tile(properties)
+    if tile is None:
+        return
+    if not modifier.spatially_local:
+        logger.info(
+            "Loading global fields on every spatial rank: the batch modifier "
+            "needs the whole grid."
+        )
+        return
+    if not dataset.supports_spatial_tile:
+        logger.info(
+            f"Loading global fields on every spatial rank: "
+            f"{type(dataset).__name__} cannot load a spatial tile."
+        )
+        return
+    logger.info(f"Loading only this rank's spatial tile {tile} of the data.")
+    dataset.set_spatial_tile(tile)
+
+
 def get_gridded_data(
     config: DataLoaderConfig,
     train: bool,
@@ -94,6 +133,8 @@ def get_gridded_data(
         n_timesteps_preloaded,
         allow_missing_variables=requirements.allow_missing_variables,
     )
+    modifier = config.augmentation.build_modifier()
+    _restrict_to_spatial_tile(dataset, properties, modifier)
 
     if config.time_buffer > 0:
         # include requirements.n_timesteps - 1 steps of overlap so that no samples are
@@ -148,7 +189,7 @@ def get_gridded_data(
     return GriddedData(
         loader=dataloader,
         properties=properties,
-        modifier=config.augmentation.build_modifier(),
+        modifier=modifier,
     )
 
 
@@ -202,6 +243,7 @@ def get_inference_data(
         surface_temperature_name=surface_temperature_name,
         ocean_fraction_name=ocean_fraction_name,
         label_override=label_override,
+        load_spatial_tile=True,
     )
     properties = dataset.properties
 

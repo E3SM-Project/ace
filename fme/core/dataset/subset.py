@@ -52,6 +52,13 @@ class SubsetDataset(DatasetABC):
     def validate_inference_length(self, max_start_index: int, max_window_len: int):
         raise ValueError("SubsetDataset does not support inference.")
 
+    @property
+    def supports_spatial_tile(self) -> bool:
+        return self._dataset.supports_spatial_tile
+
+    def set_spatial_tile(self, tile: tuple[slice, slice]) -> None:
+        self._dataset.set_spatial_tile(tile)
+
     def enable_shared_memory(self):
         self._dataset.enable_shared_memory()
 

@@ -81,6 +81,28 @@ class DatasetABC(GenericDataset[DatasetItem], abc.ABC):
         """
         pass
 
+    @property
+    def supports_spatial_tile(self) -> bool:
+        """Whether ``set_spatial_tile`` can restrict this dataset's samples to a
+        tile of the horizontal grid. A dataset that cannot keeps returning
+        global fields, which its callers then slice themselves.
+        """
+        return False
+
+    def set_spatial_tile(self, tile: tuple[slice, slice]) -> None:
+        """Return only the ``(tile[0], tile[1])`` slab of the last two
+        horizontal dimensions in every sample from now on, reading no more of
+        the data than the backend requires to produce it.
+
+        ``properties`` (coordinates, masks, metadata) stay global: only the
+        sample tensors are restricted. The tile is plain data, so it reaches
+        DataLoader workers with the dataset and needs no distributed state
+        there.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support spatial tiles."
+        )
+
     @abc.abstractmethod
     def enable_shared_memory(self):
         pass

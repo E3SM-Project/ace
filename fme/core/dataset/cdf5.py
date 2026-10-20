@@ -378,6 +378,13 @@ class _CDF5Array(BackendArray):
         )
 
     def _getitem(self, key: tuple) -> np.ndarray:
+        # Only the rows [lo, hi) of the leading slab axis that the key touches
+        # are read, with one pread per record: a latitude band (the tile of a
+        # spatial H split) costs a proportionally smaller read. The other axes
+        # are cut from those rows in memory. Reading each row's segment of a
+        # longitude band separately instead was ~4x slower on Lustre for the
+        # 720x1440 EAM files (notes/tile-loading.md), so a W split reads full
+        # rows.
         var = self._file.header.variables[self._name]
         if var.is_record:
             records = np.arange(var.shape[0])[key[0]]

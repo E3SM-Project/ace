@@ -387,7 +387,11 @@ class BatchData:
             )
 
     def scatter_spatial(self, global_img_shape: tuple[int, int]) -> "BatchData":
-        """Slice data tensors to the local spatial chunk."""
+        """Slice data tensors to the local spatial chunk.
+
+        Tensors the loader already delivered as this rank's tile are kept as
+        they are (see ``Distributed.scatter_spatial``).
+        """
         self._raise_if_step_diagnostics("scatter_spatial")
         dist = Distributed.get_instance()
         return self.__class__(

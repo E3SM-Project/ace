@@ -39,6 +39,11 @@ class AugmentationConfig:
 
 
 class BatchModifierABC(abc.ABC):
+    # Whether the modifier can be applied to each spatial tile of a batch on
+    # its own. If not, the loader must deliver global fields under spatial
+    # parallelism so the modifier sees the whole grid before slicing.
+    spatially_local: bool = False
+
     @abc.abstractmethod
     def __call__(self, batch: BatchData) -> BatchData: ...
 
@@ -62,6 +67,9 @@ class RotateModifier(BatchModifierABC):
     variable, but time is not modified. This means monthly or seasonal averages
     using this data will be affected by the rotation.
     """
+
+    # flips the whole sphere, so it needs the global fields
+    spatially_local = False
 
     # names of variables whose sign is flipped when the poles are reversed
     FLIP_NAMES = [
@@ -115,5 +123,7 @@ class RotateModifier(BatchModifierABC):
 
 
 class NullModifier(BatchModifierABC):
+    spatially_local = True
+
     def __call__(self, batch: BatchData) -> BatchData:
         return batch
