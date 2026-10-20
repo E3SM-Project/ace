@@ -58,7 +58,13 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
 
 <section class="answer">
   <span class="eyebrow">Current answer (2026-10-20)</span>
-  <p><b>Cutting the spherical harmonics is not needed.</b> The full-harmonics model (2.1&nbsp;B params, all 720 modes) now trains end to end on one node with 4&times;1 tiles at 0.245 samples/s (~4.1&nbsp;s/step). Before, it ran out of memory. The memory went to things that were <em>replicated on every tile</em>: weights, gradients, DDP buckets, EMA and Adam state, plus duplicate SHT tables. Three committed fixes (sharded Adam via <code>shard_optimizer_state</code>, <code>gradient_as_bucket_view</code>, shared SHTs) bring the steady-state peak from 71.7 to 57&nbsp;GB in the benchmark. A prototype that also shards the spectral weights by l and <code>pos_embed</code> by tile reaches 35&nbsp;GB, runs 4% faster, and fits a wider embed-512 model at 44&nbsp;GB.</p>
+  <p><b>Cutting the spherical harmonics is not needed.</b> The full-harmonics model (2.1&nbsp;B params, all 720 modes) trains end to end on one node with 4&times;1 tiles. The memory problem was that every parameter-sized buffer was replicated on every tile. Now committed:</p>
+  <ul>
+    <li><b><code>shard_spatial_parameters</code></b> (builder flag): each rank stores only its l-slice of the spectral weights and its tile of the positional embeddings.</li>
+    <li><b><code>shard_optimizer_state</code></b>: ZeRO over the tiles.</li>
+    <li>Shared SHTs and <code>gradient_as_bucket_view</code>.</li>
+  </ul>
+  <p>Validated on GPU: peak <b>45.5&nbsp;GB, down from 66.7</b>, with 0.53&nbsp;B instead of 2.10&nbsp;B params per GPU, and <b>4% faster</b> (0.255 vs 0.245 samples/s). Losses match the unsharded run (identical through step 25, 0.6957 vs 0.6954 at step 115). Checkpoints keep the plain format, and an unsharded run resumed from a sharded checkpoint got the same loss.</p>
   <p><b>Communication within a node is cheap; across nodes it is not.</b> At 4&times;1 tiles on one node, transposes and gradient sync are 9% of the step for the 0.5-modes model (14% at full modes); the split compute itself is at ideal. 1&times;4 costs 16% and 2&times;2 37%, because they pay the azimuth transposes too. Across nodes, all-to-all runs at ~31&nbsp;GB/s per GPU against ~200 on NVLink, so splitting one sample over 2&ndash;4 nodes spends 35&ndash;48% of the step communicating. Data-parallel replicas across nodes cost nothing (2.53&ndash;2.54&nbsp;s/step on 1, 2 and 4 nodes).</p>
   <p><b>Recommended layout: 4&times;1 tiles per node, data parallelism across nodes.</b> 4&times;1 also beats 2-GPU tile groups per node by 4&ndash;14% in throughput. Exact per-GPU memory is in the &ldquo;Memory budget&rdquo; section, for node planning.</p>
   <p>Earlier results still hold: end-to-end training, validation, inference and resume work; 8 nodes are about 37&nbsp;h for 20 epochs at 0.5 modes. At full modes it is ~1.7&times; that until the weight sharding lands.</p>
@@ -210,7 +216,9 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
     <li><time>23:30</time>The hist 1&deg; model is 12% slower on TCP NCCL than with OFI across 2 nodes.</li>
     <li><time>10-20</time>New allocation. Pushed the branch to E3SM-Project/ace. Split step time into compute, transposes and gradient sync for every layout; ran the transpose microbenchmark and the per-GPU memory budget.</li>
     <li><time>10-20</time>Committed SHT dedup, <code>gradient_as_bucket_view</code> and <code>shard_optimizer_state</code> (ZeRO over each spatial group). The full-harmonics 2.1&nbsp;B model trains a full epoch on one node at 4&times;1.</li>
-    <li><time>10-20</time>The parameter-sharding prototype reaches 35&nbsp;GB peak and is 4% faster. A real implementation is in progress.</li>
+    <li><time>10-20</time>The parameter-sharding prototype reaches 35&nbsp;GB peak and is 4% faster.</li>
+    <li><time>10-20</time>Serial vs spatial: fp32 forward is bitwise identical; fp64 agrees to 1e-15.</li>
+    <li><time>10-20</time>Committed <code>shard_spatial_parameters</code> and validated it on GPU: 45.5&nbsp;GB vs 66.7, +4% speed, same losses, interchangeable checkpoints.</li>
   </ul>
 </section>
 </main>

@@ -204,3 +204,31 @@ The fp64 run needed a test-only copy of the code
 (`hr-bench-snap/45030b9be-f64`): `SpectralConvS2`, the conditional layer
 and `fme/sht_fix.py` hard-cast the spectral path to float32, so the shipped
 model cannot run in float64.
+
+## 11. Parameter sharding, GPU validation (commit 02d312cfa)
+
+`stepper.step.config.builder.config.shard_spatial_parameters=true`, full
+harmonics, 4x1 tiles, one node, real `fme.ace.train`, same smoke config as
+the unsharded run (`runs/smoke-1n-4x1-full-zero.yaml`, which also sets
+`shard_optimizer_state: true`):
+
+| | unsharded | sharded |
+|---|---|---|
+| params per GPU | 2.10 B | 0.53 B |
+| nvidia-smi peak | 66.7 GB | 45.5 GB |
+| samples/s | 0.245 | 0.255 |
+| loss at steps 5/10/15/20/25 | 4.1949/2.6561/2.0228/1.6589/1.4734 | identical |
+| loss at step 115 | 0.6954 | 0.6957 |
+| epoch inference error | 0.51337 | 0.51330 |
+
+Checkpoints:
+- The epoch checkpoints have the same 681 tensors and shapes.
+- Weights differ by at most 2.7% relative (in a conditioning-norm weight
+  initialized at zero) after 115 Adam steps; see the noise-floor comparison
+  below.
+- The sharded run resumed into epoch 2 (step 200, loss 0.5433).
+- An **unsharded** run resumed from the **sharded** checkpoint and got the
+  same loss at step 200 (0.5433), so the checkpoints are interchangeable.
+
+The CPU parallel suite (102 tests, incl. 20 for sharding) passes at (2,1),
+(1,2), (2,2), DP2x(2,1) and serial.
