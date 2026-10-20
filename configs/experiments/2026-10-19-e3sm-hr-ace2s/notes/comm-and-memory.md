@@ -169,3 +169,38 @@ weight sharding removes). The 4x1 path is close to its floor.
 samples/s (~4.1 s/step); the loss fell from 4.19 to 1.08 by step 45.
 nvidia-smi peaks at 66.7 GB. The checkpoint is 33.7 GB (weights + Adam + EMA,
 saved in the plain format) and takes ~60 s with consolidation.
+
+## 10. Serial vs spatial reproducibility (scripts/repro_check.py)
+
+The same NoiseConditionedSFNO (embed 256, 8 blocks, modes x0.5; it fits on
+one GPU) gets the same seed, weights, global input and isotropic noise, run
+serially and under 4x1, 1x4 and 2x2 tiles. Loss = spatially reduced
+sum(pred * w) / numel; SGD for 3 steps. Max relative error vs serial, worst
+rank:
+
+| run | fwd step 0 | outputs steps 1-3 | grads | params |
+|---|---|---|---|---|
+| fp64 360x720, all 3 layouts | 0 | 1.5e-15 | 4-5e-14 | 3e-14 |
+| fp32 720x1440, all 3 layouts | **0 (bitwise)** | ~9e-7 | ~3.5e-6 | ~2.7e-6 |
+| fp32, deterministic algorithms, 4x1 | 0 | ~9e-7 | 2.0e-6 | 2.7e-6 |
+| serial vs serial, fp32, default kernels | 0 | ~4.5e-6 (loss) | | |
+
+- **The decomposition is exact in exact arithmetic.** In fp64 serial and
+  spatial agree to machine precision.
+- **In fp32 the forward pass is bitwise identical.** Every op is either
+  pointwise per grid cell, or (the SHT) sees the full lat/lon extent after
+  the transposes, so it reduces the same operands in the same order.
+- **Differences start at the first reduction over the grid.** That is the
+  loss scalar, and the gradient of every replicated weight (a sum over all
+  grid cells: one GEMM reduction serially, per-tile partial sums plus an
+  all-reduce spatially). A different summation order rounds differently by
+  ~1e-6 relative in fp32, the same size as serial's own run-to-run GPU
+  nondeterminism.
+- **Bitwise identity would need serial to sum in the same tile-partitioned
+  order** (or fp64 accumulation). Deterministic mode does not help, because
+  the orders really differ. fp64 agreement is the right correctness check.
+
+The fp64 run needed a test-only copy of the code
+(`hr-bench-snap/45030b9be-f64`): `SpectralConvS2`, the conditional layer
+and `fme/sht_fix.py` hard-cast the spectral path to float32, so the shipped
+model cannot run in float64.

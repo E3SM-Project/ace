@@ -95,6 +95,19 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
 </section>
 
 <section>
+  <h2>Does spatial parallelism change the answers?</h2>
+  <p>Same model (embed 256, 0.5 modes, fits on one GPU), seed, weights, input and isotropic noise, run serially and with 4&times;1, 1&times;4 and 2&times;2 tiles, then 3 SGD steps (<code>scripts/repro_check.py</code>). Values are max relative error against serial, worst rank.</p>
+  <div class="tw"><table>
+    <tr><th>run</th><th class=n>forward, step 0</th><th class=n>outputs, steps 1&ndash;3</th><th class=n>gradients</th><th class=n>parameters</th></tr>
+    <tr><td>fp64, 360&times;720, all three layouts</td><td class=n>0</td><td class=n>1.5e-15</td><td class=n>4&ndash;5e-14</td><td class=n>3e-14</td></tr>
+    <tr><td>fp32, 720&times;1440, all three layouts</td><td class=n>0 (bitwise)</td><td class=n>~9e-7</td><td class=n>~3.5e-6</td><td class=n>~2.7e-6</td></tr>
+    <tr><td>fp32, deterministic algorithms, 4&times;1</td><td class=n>0</td><td class=n>~9e-7</td><td class=n>2.0e-6</td><td class=n>2.7e-6</td></tr>
+    <tr><td>serial vs serial, fp32, default GPU kernels</td><td class=n>0</td><td class=n>~4.5e-6 (loss)</td><td class=n></td><td class=n></td></tr>
+  </table></div>
+  <p><b>The decomposition is exact:</b> in fp64 it matches serial to machine precision. In fp32 the forward pass is bitwise identical. Differences start at the first reduction over the whole grid, either the loss or the gradient of a replicated weight. There, serial does one large reduction while spatial sums per-tile partials and then all-reduces, and the different order rounds differently by ~1e-6. That is the same size as serial&rsquo;s own run-to-run GPU nondeterminism. Bitwise equality would require serial to sum in the tiled order, so fp64 agreement is the correctness check to use.</p>
+</section>
+
+<section>
   <h2>Communication overhead</h2>
   <p>Method: each layout runs four ways. &ldquo;compute&rdquo; replaces every distributed transpose with a free reshape to the same local shape (wrong numbers, identical compute) and skips gradient sync. Then come real transposes without gradient sync, and the production path. The differences give the transpose cost and the gradient-sync cost. Embed 384; &ldquo;h05&rdquo; is 0.5 modes and &ldquo;base&rdquo; is full modes. &ldquo;comm %&rdquo; is the share of the step.</p>
   {{decomp:c1-decomp,c2-decomp,c3-multinode}}
