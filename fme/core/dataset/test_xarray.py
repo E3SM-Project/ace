@@ -21,6 +21,7 @@ from fme.core.coordinates import (
     LatLonCoordinates,
     NullVerticalCoordinate,
 )
+from fme.core.dataset.cdf5 import CDF5BackendEntrypoint
 from fme.core.dataset.concat import XarrayConcat, get_dataset
 from fme.core.dataset.merged import MergedXarrayDataset
 from fme.core.dataset.schedule import IntSchedule
@@ -93,6 +94,7 @@ def _get_data(
     var_names=["foo", "bar"],
     write_extra_vars=True,
     add_ensemble_dim=False,
+    nc_format="NETCDF4",
 ) -> MockData:
     """Constructs an xarray dataset and saves to disk in netcdf format."""
     obs_times = xr.date_range(
@@ -188,7 +190,8 @@ def _get_data(
         ds.to_netcdf(
             filename,
             unlimited_dims=["time"],
-            format="NETCDF4",
+            format=nc_format,
+            engine="netcdf4",
         )
         filenames.append(filename)
 
@@ -217,6 +220,7 @@ def get_mock_monthly_netcdfs(
     var_names=["foo", "bar"],
     write_extra_vars=True,
     add_ensemble_dim=False,
+    nc_format="NETCDF4",
 ) -> MockData:
     return _get_data(
         tmp_path_factory,
@@ -230,6 +234,7 @@ def get_mock_monthly_netcdfs(
         var_names=var_names,
         write_extra_vars=write_extra_vars,
         add_ensemble_dim=add_ensemble_dim,
+        nc_format=nc_format,
     )
 
 
@@ -1752,6 +1757,77 @@ def test_xarray_dataset_isel(mock_data_fixture, engine, file_pattern, request):
     assert data["constant_var"].shape == (2, 4, 8)
     assert "sample" not in dataset.dims
     assert torch.all(data["var_matches_sample_index"] == 1.0)
+
+
+@pytest.mark.parametrize("mask_and_scale", [False, True])
+def test_cdf5_engine_samples_match_netcdf4_engine(
+    tmp_path_factory, monkeypatch, mask_and_scale
+):
+    """On a CDF-5 file the cdf5 engine must load the same samples as netcdf4.
+
+    The mock data covers record variables with a leading non-spatial dim that
+    isel subsets, a 1-d record variable, time-invariant variables with and
+    without dims, NaN fill values and samples that span two files.
+    """
+    mock_data = get_mock_monthly_netcdfs(
+        tmp_path_factory,
+        "cdf5",
+        with_nans=True,
+        add_ensemble_dim=True,
+        var_names=["foo", "bar", "var_matches_sample_index"],
+        nc_format="NETCDF3_64BIT_DATA",
+    )
+    for path in mock_data.tmpdir.glob("*.nc"):
+        assert path.read_bytes()[:4] == b"CDF\x05"
+    cdf5_opened = []
+    open_cdf5 = CDF5BackendEntrypoint.open_dataset
+
+    def spy(self, filename_or_obj, **kwargs):
+        cdf5_opened.append(filename_or_obj)
+        return open_cdf5(self, filename_or_obj, **kwargs)
+
+    monkeypatch.setattr(CDF5BackendEntrypoint, "open_dataset", spy)
+    names = mock_data.var_names.all_names
+    netcdf4_config = XarrayDataConfig(
+        data_path=str(mock_data.tmpdir),
+        engine="netcdf4",
+        mask_and_scale=mask_and_scale,
+        isel={"sample": 1},
+    )
+    cdf5_config = dataclasses.replace(netcdf4_config, engine="cdf5")
+    expected = xarray_dataset_constructor(netcdf4_config, names, 3)
+    actual = xarray_dataset_constructor(cdf5_config, names, 3)
+    assert len(actual) == len(expected)
+    actual_properties, expected_properties = actual.properties, expected.properties
+    assert actual_properties.variable_metadata == expected_properties.variable_metadata
+    assert actual_properties.timestep == expected_properties.timestep
+    assert (
+        actual_properties.horizontal_coordinates
+        == expected_properties.horizontal_coordinates
+    )
+    assert (
+        actual_properties.vertical_coordinate == expected_properties.vertical_coordinate
+    )
+    spans_two_files = int(mock_data.start_indices[1]) - 1
+    for idx in [0, spans_two_files, len(expected) - 1]:
+        actual_data, actual_time, *_ = actual[idx]
+        expected_data, expected_time, *_ = expected[idx]
+        assert set(actual_data) == set(names)
+        for name in names:
+            torch.testing.assert_close(
+                actual_data[name],
+                expected_data[name],
+                rtol=0,
+                atol=0,
+                equal_nan=True,
+            )
+        xr.testing.assert_identical(actual_time, expected_time)
+    assert len(cdf5_opened) > 0
+
+
+def test_cdf5_engine_rejects_remote_paths():
+    with pytest.raises(ValueError, match="local files only"):
+        XarrayDataConfig(data_path="gs://bucket/data", engine="cdf5")
 
 
 @pytest.mark.parametrize(

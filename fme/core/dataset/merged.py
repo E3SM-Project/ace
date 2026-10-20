@@ -4,6 +4,7 @@ from collections.abc import Sequence
 import torch
 import xarray as xr
 
+from fme.core.dataset.cdf5 import get_xarray_engine
 from fme.core.dataset.concat import ConcatDatasetConfig
 from fme.core.dataset.config import DatasetConfigABC
 from fme.core.dataset.dataset import DatasetABC, DatasetItem
@@ -444,7 +445,7 @@ def _infer_available_variables(config: XarrayDataConfig):
         raw_paths[0],
         decode_times=False,
         decode_timedelta=False,
-        engine=config.engine,
+        engine=get_xarray_engine(config.engine),
         chunks=None,
     )
     if config.rename:
