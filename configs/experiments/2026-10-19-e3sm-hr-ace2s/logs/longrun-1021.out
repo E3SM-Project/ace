@@ -281,3 +281,133 @@ Could not import pad from earth2grid.healpix.
 2026-10-20 14:46:31,195 - root - INFO - Saving checkpoints for epoch 3
 2026-10-20 14:46:31,229 - root - INFO - Saving lowest validation loss checkpoint to /pscratch/sd/m/mahf708/hr-runs/longrun-1021/training_checkpoints/best_ckpt.tar
 2026-10-20 14:46:47,149 - root - INFO - Saving latest checkpoint model trained for 3 complete epochs and 0 additional batches, or 360 total batches, with best_validation_loss 2.1373910903930664 and best_inference_error 0.3601859648525715
+2026-10-20 14:47:40,661 - root - INFO - Saving EMA epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/longrun-1021/training_checkpoints/ema_ckpt_0003.tar
+2026-10-20 14:47:53,603 - root - INFO - Saving epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/longrun-1021/training_checkpoints/ckpt_0003.tar
+2026-10-20 14:49:03,188 - root - INFO - Beginning epoch after 3 complete epochs
+2026-10-20 14:49:03,189 - root - INFO - Starting training step for model trained for 3 complete epochs
+2026-10-20 14:49:03,323 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 14:49:03,327 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 14:52:06,428 - root - INFO - Step 400: {'batch_loss': tensor(0.4006, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.21834715605826996, 'lr': 0.0001}
+2026-10-20 14:52:12,546 - root - INFO - Saving latest checkpoint model trained for 3 complete epochs and 40 additional batches, or 400 total batches, with best_validation_loss 2.1373910903930664 and best_inference_error 0.3601859648525715
+2026-10-20 14:59:11,757 - root - WARNING - Power spectrum aggregator not implemented for this grid type, omitting.
+2026-10-20 14:59:11,852 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 14:59:11,870 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 15:01:45,976 - root - INFO - Saving latest checkpoint model trained for 3 complete epochs and 120 additional batches, or 480 total batches, with best_validation_loss 2.1373910903930664 and best_inference_error 0.3601859648525715
+2026-10-20 15:02:43,716 - root - INFO - Starting validation step for model trained for 4 epochs
+2026-10-20 15:02:43,758 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 15:02:43,758 - root - INFO - Starting validation loop
+2026-10-20 15:02:43,853 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 15:02:43,865 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 15:07:06,377 - root - INFO - Flushing validation diagnostics
+2026-10-20 15:07:06,378 - root - INFO - Getting validation aggregator summary
+2026-10-20 15:07:06,378 - root - INFO - Getting logs for mean aggregator
+2026-10-20 15:07:16,551 - root - INFO - Getting logs for mean_norm aggregator
+2026-10-20 15:07:16,706 - root - INFO - Validation complete
+2026-10-20 15:07:16,707 - root - INFO - Starting inference step for model trained for 4 epochs
+2026-10-20 15:07:16,718 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 15:07:16,718 - root - WARNING - Zonal mean max size 4096 is greater than the number of timesteps 361. Setting zonal mean max size to the number of timesteps.
+2026-10-20 15:07:16,718 - root - WARNING - annual metric not supported for this configuration, omitting: annual metric requires > ~2 years of data, got 90 days
+2026-10-20 15:07:16,719 - root - WARNING - enso_index metric not supported for this configuration, omitting: enso_index metric requires > ~2 years of data, got 90 days
+2026-10-20 15:07:16,719 - root - WARNING - enso_coefficient metric not supported for this configuration, omitting: enso_coefficient metric requires > ~5 years of data, got 90 days
+2026-10-20 15:07:16,719 - root - WARNING - ipo_index metric not supported for this configuration, omitting: ipo_index metric requires > ~80 years of data, got 90 days
+2026-10-20 15:07:36,465 - root - INFO - Inference: processing output from window 1 of 18.
+2026-10-20 15:07:48,934 - root - INFO - Inference: processing output from window 2 of 18.
+2026-10-20 15:08:01,219 - root - INFO - Inference: processing output from window 3 of 18.
+2026-10-20 15:08:13,495 - root - INFO - Inference: processing output from window 4 of 18.
+2026-10-20 15:08:25,771 - root - INFO - Inference: processing output from window 5 of 18.
+2026-10-20 15:08:38,054 - root - INFO - Inference: processing output from window 6 of 18.
+2026-10-20 15:08:50,335 - root - INFO - Inference: processing output from window 7 of 18.
+2026-10-20 15:09:02,613 - root - INFO - Inference: processing output from window 8 of 18.
+2026-10-20 15:09:14,894 - root - INFO - Inference: processing output from window 9 of 18.
+2026-10-20 15:09:27,179 - root - INFO - Inference: processing output from window 10 of 18.
+2026-10-20 15:09:39,466 - root - INFO - Inference: processing output from window 11 of 18.
+2026-10-20 15:09:51,745 - root - INFO - Inference: processing output from window 12 of 18.
+2026-10-20 15:10:04,025 - root - INFO - Inference: processing output from window 13 of 18.
+2026-10-20 15:10:16,308 - root - INFO - Inference: processing output from window 14 of 18.
+2026-10-20 15:10:28,588 - root - INFO - Inference: processing output from window 15 of 18.
+2026-10-20 15:10:40,865 - root - INFO - Inference: processing output from window 16 of 18.
+2026-10-20 15:10:53,144 - root - INFO - Inference: processing output from window 17 of 18.
+2026-10-20 15:11:05,420 - root - INFO - Inference: processing output from window 18 of 18.
+2026-10-20 15:11:05,745 - root - INFO - Starting flush of reduced diagnostics to disk
+2026-10-20 15:11:05,746 - root - INFO - Getting inline inference aggregator summary
+2026-10-20 15:11:05,746 - root - INFO - Getting summary logs for mean_step_20 aggregator
+2026-10-20 15:11:10,684 - root - INFO - Getting summary logs for mean_step_20_norm aggregator
+2026-10-20 15:11:10,690 - root - INFO - Getting summary logs for zonal_mean aggregator
+2026-10-20 15:11:20,408 - root - INFO - Getting summary logs for time_mean aggregator
+2026-10-20 15:11:55,257 - root - INFO - Getting summary logs for time_mean_norm aggregator
+2026-10-20 15:12:13,639 - root - INFO - Time taken for epoch 4 is 1390.4500241279602 sec
+2026-10-20 15:12:13,640 - root - INFO - Train loss: 0.3630303740501404
+2026-10-20 15:12:13,640 - root - INFO - Valid loss: 2.071666717529297
+2026-10-20 15:12:13,640 - root - INFO - Inference error: 0.37847887225449084
+2026-10-20 15:12:13,646 - root - INFO - Logging to wandb
+2026-10-20 15:12:20,859 - root - INFO - Saving checkpoints for epoch 4
+2026-10-20 15:12:21,389 - root - INFO - Saving lowest validation loss checkpoint to /pscratch/sd/m/mahf708/hr-runs/longrun-1021/training_checkpoints/best_ckpt.tar
+2026-10-20 15:12:37,685 - root - INFO - Saving latest checkpoint model trained for 4 complete epochs and 0 additional batches, or 480 total batches, with best_validation_loss 2.071666717529297 and best_inference_error 0.3601859648525715
+2026-10-20 15:13:32,534 - root - INFO - Saving EMA epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/longrun-1021/training_checkpoints/ema_ckpt_0004.tar
+2026-10-20 15:13:49,831 - root - INFO - Saving epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/longrun-1021/training_checkpoints/ckpt_0004.tar
+2026-10-20 15:15:08,480 - root - INFO - Beginning epoch after 4 complete epochs
+2026-10-20 15:15:08,481 - root - INFO - Starting training step for model trained for 4 complete epochs
+2026-10-20 15:15:08,618 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 15:15:08,622 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 15:16:41,949 - root - INFO - Step 500: {'batch_loss': tensor(0.3571, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.21406762454781333, 'lr': 0.0001}
+2026-10-20 15:24:13,992 - root - INFO - Step 600: {'batch_loss': tensor(0.3546, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2212088302289013, 'lr': 0.0001}
+2026-10-20 15:24:20,092 - root - INFO - Saving latest checkpoint model trained for 4 complete epochs and 120 additional batches, or 600 total batches, with best_validation_loss 2.071666717529297 and best_inference_error 0.3601859648525715
+2026-10-20 15:25:17,694 - root - WARNING - Power spectrum aggregator not implemented for this grid type, omitting.
+2026-10-20 15:25:17,834 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 15:25:17,834 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 15:27:47,008 - root - INFO - Starting validation step for model trained for 5 epochs
+2026-10-20 15:27:47,020 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 15:27:47,020 - root - INFO - Starting validation loop
+2026-10-20 15:27:47,101 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 15:27:47,112 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 15:32:09,346 - root - INFO - Flushing validation diagnostics
+2026-10-20 15:32:09,347 - root - INFO - Getting validation aggregator summary
+2026-10-20 15:32:09,347 - root - INFO - Getting logs for mean aggregator
+2026-10-20 15:32:15,630 - root - INFO - Getting logs for mean_norm aggregator
+2026-10-20 15:32:15,834 - root - INFO - Validation complete
+2026-10-20 15:32:15,835 - root - INFO - Starting inference step for model trained for 5 epochs
+2026-10-20 15:32:15,846 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 15:32:15,846 - root - WARNING - Zonal mean max size 4096 is greater than the number of timesteps 361. Setting zonal mean max size to the number of timesteps.
+2026-10-20 15:32:15,846 - root - WARNING - annual metric not supported for this configuration, omitting: annual metric requires > ~2 years of data, got 90 days
+2026-10-20 15:32:15,846 - root - WARNING - enso_index metric not supported for this configuration, omitting: enso_index metric requires > ~2 years of data, got 90 days
+2026-10-20 15:32:15,846 - root - WARNING - enso_coefficient metric not supported for this configuration, omitting: enso_coefficient metric requires > ~5 years of data, got 90 days
+2026-10-20 15:32:15,847 - root - WARNING - ipo_index metric not supported for this configuration, omitting: ipo_index metric requires > ~80 years of data, got 90 days
+2026-10-20 15:32:36,440 - root - INFO - Inference: processing output from window 1 of 18.
+2026-10-20 15:32:48,882 - root - INFO - Inference: processing output from window 2 of 18.
+2026-10-20 15:33:01,163 - root - INFO - Inference: processing output from window 3 of 18.
+2026-10-20 15:33:14,324 - root - INFO - Inference: processing output from window 4 of 18.
+2026-10-20 15:33:26,611 - root - INFO - Inference: processing output from window 5 of 18.
+2026-10-20 15:33:38,893 - root - INFO - Inference: processing output from window 6 of 18.
+2026-10-20 15:33:51,170 - root - INFO - Inference: processing output from window 7 of 18.
+2026-10-20 15:34:03,449 - root - INFO - Inference: processing output from window 8 of 18.
+2026-10-20 15:34:15,733 - root - INFO - Inference: processing output from window 9 of 18.
+2026-10-20 15:34:28,015 - root - INFO - Inference: processing output from window 10 of 18.
+2026-10-20 15:34:40,295 - root - INFO - Inference: processing output from window 11 of 18.
+2026-10-20 15:34:52,574 - root - INFO - Inference: processing output from window 12 of 18.
+2026-10-20 15:35:04,858 - root - INFO - Inference: processing output from window 13 of 18.
+2026-10-20 15:35:17,140 - root - INFO - Inference: processing output from window 14 of 18.
+2026-10-20 15:35:29,417 - root - INFO - Inference: processing output from window 15 of 18.
+2026-10-20 15:35:41,692 - root - INFO - Inference: processing output from window 16 of 18.
+2026-10-20 15:35:53,972 - root - INFO - Inference: processing output from window 17 of 18.
+2026-10-20 15:36:06,245 - root - INFO - Inference: processing output from window 18 of 18.
+2026-10-20 15:36:06,587 - root - INFO - Starting flush of reduced diagnostics to disk
+2026-10-20 15:36:06,587 - root - INFO - Getting inline inference aggregator summary
+2026-10-20 15:36:06,587 - root - INFO - Getting summary logs for mean_step_20 aggregator
+2026-10-20 15:36:07,039 - root - INFO - Getting summary logs for mean_step_20_norm aggregator
+2026-10-20 15:36:07,046 - root - INFO - Getting summary logs for zonal_mean aggregator
+2026-10-20 15:36:16,671 - root - INFO - Getting summary logs for time_mean aggregator
+2026-10-20 15:36:52,909 - root - INFO - Getting summary logs for time_mean_norm aggregator
+2026-10-20 15:37:11,952 - root - INFO - Time taken for epoch 5 is 1323.470846414566 sec
+2026-10-20 15:37:11,952 - root - INFO - Train loss: 0.33593320846557617
+2026-10-20 15:37:11,952 - root - INFO - Valid loss: 2.0489957332611084
+2026-10-20 15:37:11,952 - root - INFO - Inference error: 0.3795973288267851
+2026-10-20 15:37:11,957 - root - INFO - Logging to wandb
+2026-10-20 15:37:17,876 - root - INFO - Saving checkpoints for epoch 5
+2026-10-20 15:37:17,947 - root - INFO - Saving lowest validation loss checkpoint to /pscratch/sd/m/mahf708/hr-runs/longrun-1021/training_checkpoints/best_ckpt.tar
+2026-10-20 15:37:34,622 - root - INFO - Saving latest checkpoint model trained for 5 complete epochs and 0 additional batches, or 600 total batches, with best_validation_loss 2.0489957332611084 and best_inference_error 0.3601859648525715
+2026-10-20 15:38:32,011 - root - INFO - Saving EMA epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/longrun-1021/training_checkpoints/ema_ckpt_0005.tar
+2026-10-20 15:38:49,088 - root - INFO - Saving epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/longrun-1021/training_checkpoints/ckpt_0005.tar
+2026-10-20 15:40:06,542 - root - INFO - Beginning epoch after 5 complete epochs
+2026-10-20 15:40:06,543 - root - INFO - Starting training step for model trained for 5 complete epochs
+2026-10-20 15:40:06,681 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 15:40:06,684 - root - INFO - Dataset now has 23355 samples of length 6.

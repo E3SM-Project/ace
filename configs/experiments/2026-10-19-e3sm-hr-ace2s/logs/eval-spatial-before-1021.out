@@ -1,0 +1,275 @@
+W1020 14:49:08.333000 708778 torch/distributed/run.py:852] 
+W1020 14:49:08.333000 708778 torch/distributed/run.py:852] *****************************************
+W1020 14:49:08.333000 708778 torch/distributed/run.py:852] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W1020 14:49:08.333000 708778 torch/distributed/run.py:852] *****************************************
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+2026-10-20 14:49:38,031 - root - INFO - --------------- Versions ---------------
+2026-10-20 14:49:38,032 - root - INFO - Torch: 2.10.0+cu128
+2026-10-20 14:49:38,032 - root - INFO - ----------------------------------------
+2026-10-20 14:49:38,032 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 14:49:38,032 - root - INFO - Beaker ID: None
+2026-10-20 14:49:38,032 - root - INFO - Beaker URL: No beaker URL.
+2026-10-20 14:49:38,032 - root - WARNING - Environmental variable BEAKER_EXPERIMENT_ID not found.
+2026-10-20 14:49:38,033 - root - INFO - Environmental variable SLURM_JOB_ID=60048637.
+2026-10-20 14:49:38,033 - root - INFO - Environmental variable SLURM_JOB_USER=mahf708.
+2026-10-20 14:49:38,033 - root - WARNING - Environmental variable FME_TRAIN_DIR not found.
+2026-10-20 14:49:38,033 - root - WARNING - Environmental variable FME_VALID_DIR not found.
+2026-10-20 14:49:38,033 - root - WARNING - Environmental variable FME_STATS_DIR not found.
+2026-10-20 14:49:38,033 - root - WARNING - Environmental variable FME_CHECKPOINT_DIR not found.
+2026-10-20 14:49:38,033 - root - WARNING - Environmental variable FME_OUTPUT_DIR not found.
+2026-10-20 14:49:38,034 - root - WARNING - Environmental variable FME_IMAGE not found.
+2026-10-20 14:49:38,034 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 14:49:38,034 - root - INFO - Current device is cuda:0
+2026-10-20 14:49:38,034 - root - INFO - Loading trained model checkpoint from /pscratch/sd/m/mahf708/hr-runs/prodtest-4n-emafix/training_checkpoints/best_inference_ckpt.tar
+2026-10-20 14:49:43,384 - root - INFO - Initializing data loader
+2026-10-20 14:49:43,387 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 14:49:48,201 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 14:49:48,204 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 14:49:48,223 - root - INFO - The required variables have been found in the dataset: ['V_1', 'V_2', 'STW_4', 'V_4', 'STW_5', 'U_2', 'PS', 'T_5', 'LANDFRAC', 'FLUT', 'FLDS', 'STW_2', 'OCNFRAC', 'T_3', 'V_3', 'FSUTOA', 'TAUX', 'T_6', 'T_7', 'surface_precipitation_rate', 'frozen_precipitation_rate', 'U_3', 'U_1', 'U_6', 'STW_0', 'U_0', 'Uat10m', 'STW_3', 'V_0', 'V_5', 'V_6', 'TS', 'STW_7', 'T_0', 'T_1', 'Qat2m', 'Tat2m', 'T_4', 'PHIS', 'LHFLX', 'V_7', 'STW_1', 'U_5', 'STW_6', 'U_4', 'U_7', 'SHFLX', 'ICEFRAC', 'T_2', 'FLUS', 'FSNS', 'SOLIN', 'TAUY', 'DTENDTTW', 'Vat10m'].
+2026-10-20 14:49:48,237 - root - INFO - Dataset now has 23340 samples of length 21.
+2026-10-20 14:49:48,237 - root - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 14:49:48,254 - root - INFO - Multiprocessing inference context: fork
+2026-10-20 14:49:58,675 - root - INFO - Loading trained model checkpoint from /pscratch/sd/m/mahf708/hr-runs/prodtest-4n-emafix/training_checkpoints/best_inference_ckpt.tar
+2026-10-20 14:50:00,136 - root - INFO - Initializing stepper from provided config
+2026-10-20 14:50:00,137 - root - INFO - Initializing stepper from provided config
+2026-10-20 14:50:27,723 - root - INFO - Checkpoint /pscratch/sd/m/mahf708/hr-runs/prodtest-4n-emafix/training_checkpoints/best_inference_ckpt.tar does not contain EMA weights, using the stepper weights.
+2026-10-20 14:50:34,574 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 14:50:34,575 - root - WARNING - Zonal mean max size 4096 is greater than the number of timesteps 121. Setting zonal mean max size to the number of timesteps.
+2026-10-20 14:50:34,575 - root - WARNING - annual metric not supported for this configuration, omitting: annual metric requires > ~2 years of data, got 30 days
+2026-10-20 14:50:34,575 - root - WARNING - enso_index metric not supported for this configuration, omitting: enso_index metric requires > ~2 years of data, got 30 days
+2026-10-20 14:50:34,575 - root - WARNING - enso_coefficient metric not supported for this configuration, omitting: enso_coefficient metric requires > ~5 years of data, got 30 days
+2026-10-20 14:50:34,575 - root - WARNING - ipo_index metric not supported for this configuration, omitting: ipo_index metric requires > ~80 years of data, got 30 days
+2026-10-20 14:50:34,608 - root - INFO - Starting inference
+2026-10-20 14:50:56,908 - root - INFO - Inference: processing output from window 1 of 6.
+2026-10-20 14:51:06,511 - root - INFO - Inference: processing output from window 2 of 6.
+2026-10-20 14:51:15,854 - root - INFO - Inference: processing output from window 3 of 6.
+2026-10-20 14:51:25,245 - root - INFO - Inference: processing output from window 4 of 6.
+2026-10-20 14:51:34,448 - root - INFO - Inference: processing output from window 5 of 6.
+2026-10-20 14:51:43,757 - root - INFO - Inference: processing output from window 6 of 6.
+2026-10-20 14:51:45,785 - root - INFO - Starting final flush of data writer
+2026-10-20 14:51:45,787 - root - INFO - Writing reduced metrics to disk in netcdf format.
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank0]:   File "<frozen runpy>", line 88, in _run_code
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/evaluator.py", line 9, in <module>
+[rank0]:     main(args.yaml_config, override_dotlist=args.override)
+[rank0]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/inference/evaluator.py", line 309, in main
+[rank0]:     return run_evaluator_from_config(config)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/inference/evaluator.py", line 501, in run_evaluator_from_config
+[rank0]:     aggregator.flush_diagnostics()
+[rank0]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+[rank0]:     return func(*args, **kwargs)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/aggregator/inference/main.py", line 717, in flush_diagnostics
+[rank0]:     get_reduced_diagnostics(
+[rank0]:     ~~~~~~~~~~~~~~~~~~~~~~~^
+[rank0]:         sub_aggregators=self._aggregators,
+[rank0]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:         coords=self._coords,
+[rank0]:         ^^^^^^^^^^^^^^^^^^^^
+[rank0]:     ),
+[rank0]:     ^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/diagnostics.py", line 35, in get_reduced_diagnostics
+[rank0]:     datasets[name] = ds.assign_coords(ds_coords)
+[rank0]:                      ~~~~~~~~~~~~~~~~^^^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/xarray/core/common.py", line 664, in assign_coords
+[rank0]:     data.coords.update(results)
+[rank0]:     ~~~~~~~~~~~~~~~~~~^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/xarray/core/coordinates.py", line 654, in update
+[rank0]:     self._update_coords(coords, indexes)
+[rank0]:     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/xarray/core/coordinates.py", line 942, in _update_coords
+[rank0]:     dims = calculate_dimensions(variables)
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/xarray/core/variable.py", line 3143, in calculate_dimensions
+[rank0]:     raise ValueError(
+[rank0]:     ...<2 lines>...
+[rank0]:     )
+[rank0]: ValueError: conflicting sizes for dimension 'lat': length 720 on 'lat' and length 180 on {'forecast_step': 'gen-DTENDTTW', 'lat': 'gen-DTENDTTW'}
+[rank2]: Traceback (most recent call last):
+[rank2]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank2]:   File "<frozen runpy>", line 88, in _run_code
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/evaluator.py", line 9, in <module>
+[rank2]:     main(args.yaml_config, override_dotlist=args.override)
+[rank2]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/inference/evaluator.py", line 309, in main
+[rank2]:     return run_evaluator_from_config(config)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/inference/evaluator.py", line 501, in run_evaluator_from_config
+[rank2]:     aggregator.flush_diagnostics()
+[rank2]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+[rank2]:     return func(*args, **kwargs)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/aggregator/inference/main.py", line 717, in flush_diagnostics
+[rank2]:     get_reduced_diagnostics(
+[rank2]:     ~~~~~~~~~~~~~~~~~~~~~~~^
+[rank2]:         sub_aggregators=self._aggregators,
+[rank2]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank2]:         coords=self._coords,
+[rank2]:         ^^^^^^^^^^^^^^^^^^^^
+[rank2]:     ),
+[rank2]:     ^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/diagnostics.py", line 35, in get_reduced_diagnostics
+[rank2]:     datasets[name] = ds.assign_coords(ds_coords)
+[rank2]:                      ~~~~~~~~~~~~~~~~^^^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/xarray/core/common.py", line 664, in assign_coords
+[rank2]:     data.coords.update(results)
+[rank2]:     ~~~~~~~~~~~~~~~~~~^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/xarray/core/coordinates.py", line 654, in update
+[rank2]:     self._update_coords(coords, indexes)
+[rank2]:     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/xarray/core/coordinates.py", line 942, in _update_coords
+[rank2]:     dims = calculate_dimensions(variables)
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/xarray/core/variable.py", line 3143, in calculate_dimensions
+[rank2]:     raise ValueError(
+[rank2]:     ...<2 lines>...
+[rank2]:     )
+[rank2]: ValueError: conflicting sizes for dimension 'lat': length 720 on 'lat' and length 180 on {'forecast_step': 'gen-DTENDTTW', 'lat': 'gen-DTENDTTW'}
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank1]:   File "<frozen runpy>", line 88, in _run_code
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/evaluator.py", line 9, in <module>
+[rank1]:     main(args.yaml_config, override_dotlist=args.override)
+[rank1]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/inference/evaluator.py", line 309, in main
+[rank1]:     return run_evaluator_from_config(config)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/inference/evaluator.py", line 501, in run_evaluator_from_config
+[rank1]:     aggregator.flush_diagnostics()
+[rank1]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+[rank1]:     return func(*args, **kwargs)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/aggregator/inference/main.py", line 717, in flush_diagnostics
+[rank1]:     get_reduced_diagnostics(
+[rank1]:     ~~~~~~~~~~~~~~~~~~~~~~~^
+[rank1]:         sub_aggregators=self._aggregators,
+[rank1]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank1]:         coords=self._coords,
+[rank1]:         ^^^^^^^^^^^^^^^^^^^^
+[rank1]:     ),
+[rank1]:     ^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/diagnostics.py", line 35, in get_reduced_diagnostics
+[rank1]:     datasets[name] = ds.assign_coords(ds_coords)
+[rank1]:                      ~~~~~~~~~~~~~~~~^^^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/xarray/core/common.py", line 664, in assign_coords
+[rank1]:     data.coords.update(results)
+[rank1]:     ~~~~~~~~~~~~~~~~~~^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/xarray/core/coordinates.py", line 654, in update
+[rank1]:     self._update_coords(coords, indexes)
+[rank1]:     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/xarray/core/coordinates.py", line 942, in _update_coords
+[rank1]:     dims = calculate_dimensions(variables)
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/xarray/core/variable.py", line 3143, in calculate_dimensions
+[rank1]:     raise ValueError(
+[rank1]:     ...<2 lines>...
+[rank1]:     )
+[rank1]: ValueError: conflicting sizes for dimension 'lat': length 720 on 'lat' and length 180 on {'forecast_step': 'gen-DTENDTTW', 'lat': 'gen-DTENDTTW'}
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank3]:   File "<frozen runpy>", line 88, in _run_code
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/evaluator.py", line 9, in <module>
+[rank3]:     main(args.yaml_config, override_dotlist=args.override)
+[rank3]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/inference/evaluator.py", line 309, in main
+[rank3]:     return run_evaluator_from_config(config)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/inference/evaluator.py", line 501, in run_evaluator_from_config
+[rank3]:     aggregator.flush_diagnostics()
+[rank3]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+[rank3]:     return func(*args, **kwargs)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/aggregator/inference/main.py", line 717, in flush_diagnostics
+[rank3]:     get_reduced_diagnostics(
+[rank3]:     ~~~~~~~~~~~~~~~~~~~~~~~^
+[rank3]:         sub_aggregators=self._aggregators,
+[rank3]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank3]:         coords=self._coords,
+[rank3]:         ^^^^^^^^^^^^^^^^^^^^
+[rank3]:     ),
+[rank3]:     ^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/diagnostics.py", line 35, in get_reduced_diagnostics
+[rank3]:     datasets[name] = ds.assign_coords(ds_coords)
+[rank3]:                      ~~~~~~~~~~~~~~~~^^^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/xarray/core/common.py", line 664, in assign_coords
+[rank3]:     data.coords.update(results)
+[rank3]:     ~~~~~~~~~~~~~~~~~~^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/xarray/core/coordinates.py", line 654, in update
+[rank3]:     self._update_coords(coords, indexes)
+[rank3]:     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/xarray/core/coordinates.py", line 942, in _update_coords
+[rank3]:     dims = calculate_dimensions(variables)
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/xarray/core/variable.py", line 3143, in calculate_dimensions
+[rank3]:     raise ValueError(
+[rank3]:     ...<2 lines>...
+[rank3]:     )
+[rank3]: ValueError: conflicting sizes for dimension 'lat': length 720 on 'lat' and length 180 on {'forecast_step': 'gen-DTENDTTW', 'lat': 'gen-DTENDTTW'}
+W1020 14:51:51.840000 708778 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 709446 closing signal SIGTERM
+W1020 14:51:51.841000 708778 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 709447 closing signal SIGTERM
+W1020 14:51:51.841000 708778 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 709449 closing signal SIGTERM
+E1020 14:51:54.460000 708778 torch/distributed/elastic/multiprocessing/api.py:984] failed (exitcode: 1) local_rank: 0 (pid: 709445) of binary: /pscratch/sd/m/mahf708/ace/.venv/bin/python3
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+    ~~~^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 317, in launch_agent
+    raise ChildFailedError(
+    ...<2 lines>...
+    )
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+fme.ace.evaluator FAILED
+------------------------------------------------------------
+Failures:
+[1]:
+  time      : 2026-10-20_14:51:54
+  host      : nid001869-hsn0
+  rank      : 1 (local_rank: 1)
+  exitcode  : 1 (pid: 709446)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[2]:
+  time      : 2026-10-20_14:51:54
+  host      : nid001869-hsn0
+  rank      : 2 (local_rank: 2)
+  exitcode  : 1 (pid: 709447)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[3]:
+  time      : 2026-10-20_14:51:54
+  host      : nid001869-hsn0
+  rank      : 3 (local_rank: 3)
+  exitcode  : 1 (pid: 709449)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-10-20_14:51:51
+  host      : nid001869-hsn0
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 709445)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
+srun: error: nid001869: task 0: Exited with exit code 1
+srun: Terminating StepId=60048637.21

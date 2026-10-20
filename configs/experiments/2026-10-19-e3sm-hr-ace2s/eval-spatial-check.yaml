@@ -1,0 +1,47 @@
+# Serial-vs-spatial check of the standalone evaluator at 0.25 deg
+# (notes/spatial-eval-and-diagnostics.md). Run it twice, once on 1 GPU and once
+# on 4 GPUs with 4x1 tiles, then compare the two experiment_dirs with
+# scripts/compare_eval_runs.py. One initial condition: the per-timestep
+# writers do not support data parallelism, and 4x1 tiles on 4 GPUs leave one
+# data-parallel rank.
+experiment_dir: OVERRIDE_ME
+checkpoint_path: /pscratch/sd/m/mahf708/hr-runs/prodtest-4n-emafix/training_checkpoints/best_inference_ckpt.tar
+n_forward_steps: 20  # 5 days
+forward_steps_in_memory: 10
+# the same noise on both tilings: isotropic noise is drawn globally, then each
+# tile takes its slice of the coefficients
+seed: 0
+logging:
+  log_to_screen: true
+  log_to_file: true
+  log_to_wandb: false
+  metrics_log_dir: OVERRIDE_ME  # <experiment_dir>/metrics
+loader:
+  start_indices:
+    times:
+    - '0015-01-01T00:00:00'  # test period
+  num_data_workers: 2
+  dataset:
+    data_path: /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0
+    file_pattern: v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+    engine: cdf5
+    rename:
+      PRECT: surface_precipitation_rate
+      PRECST: frozen_precipitation_rate
+    reference_pressure_name: P0
+    overwrite:
+      multiply_scalar:
+        surface_precipitation_rate: 1000.0
+        frozen_precipitation_rate: 1000.0
+data_writer:
+  save_prediction_files: true
+  save_monthly_files: true
+  save_step_diagnostics: true
+  names: [PS, TS, T_7, U_7, surface_precipitation_rate, FLUT]
+aggregator:
+  # every map-type metric that can run on 5 days, so all of them are compared
+  video:
+    enabled: true
+    variables: [PS, TS]
+  step_diagnostics:
+    correction_maps: true

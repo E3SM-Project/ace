@@ -1,0 +1,72 @@
+W1020 15:22:30.668000 728496 torch/distributed/run.py:852] 
+W1020 15:22:30.668000 728496 torch/distributed/run.py:852] *****************************************
+W1020 15:22:30.668000 728496 torch/distributed/run.py:852] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W1020 15:22:30.668000 728496 torch/distributed/run.py:852] *****************************************
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+2026-10-20 15:22:44,736 - root - INFO - --------------- Versions ---------------
+2026-10-20 15:22:44,737 - root - INFO - Torch: 2.10.0+cu128
+2026-10-20 15:22:44,737 - root - INFO - ----------------------------------------
+2026-10-20 15:22:44,737 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 15:22:44,737 - root - INFO - Beaker ID: None
+2026-10-20 15:22:44,737 - root - INFO - Beaker URL: No beaker URL.
+2026-10-20 15:22:44,737 - root - WARNING - Environmental variable BEAKER_EXPERIMENT_ID not found.
+2026-10-20 15:22:44,737 - root - INFO - Environmental variable SLURM_JOB_ID=60048637.
+2026-10-20 15:22:44,737 - root - INFO - Environmental variable SLURM_JOB_USER=mahf708.
+2026-10-20 15:22:44,737 - root - WARNING - Environmental variable FME_TRAIN_DIR not found.
+2026-10-20 15:22:44,737 - root - WARNING - Environmental variable FME_VALID_DIR not found.
+2026-10-20 15:22:44,737 - root - WARNING - Environmental variable FME_STATS_DIR not found.
+2026-10-20 15:22:44,737 - root - WARNING - Environmental variable FME_CHECKPOINT_DIR not found.
+2026-10-20 15:22:44,738 - root - WARNING - Environmental variable FME_OUTPUT_DIR not found.
+2026-10-20 15:22:44,738 - root - WARNING - Environmental variable FME_IMAGE not found.
+2026-10-20 15:22:44,739 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 15:22:44,739 - root - INFO - Current device is cuda:0
+2026-10-20 15:22:44,739 - root - INFO - Loading trained model checkpoint from /pscratch/sd/m/mahf708/hr-runs/prodtest-4n-emafix/training_checkpoints/best_inference_ckpt.tar
+2026-10-20 15:22:49,416 - root - INFO - Initializing data loader
+2026-10-20 15:22:49,418 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 15:22:52,431 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 15:22:52,437 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 15:22:52,454 - root - INFO - The required variables have been found in the dataset: ['U_6', 'T_7', 'STW_0', 'V_1', 'V_7', 'FSUTOA', 'T_0', 'SOLIN', 'STW_2', 'surface_precipitation_rate', 'Tat2m', 'STW_5', 'OCNFRAC', 'STW_7', 'U_3', 'U_4', 'DTENDTTW', 'STW_1', 'TS', 'FLUT', 'U_5', 'TAUX', 'STW_3', 'ICEFRAC', 'STW_4', 'U_7', 'T_3', 'SHFLX', 'T_4', 'T_5', 'U_2', 'V_6', 'V_0', 'T_1', 'FLDS', 'T_2', 'FLUS', 'Uat10m', 'LHFLX', 'V_4', 'T_6', 'Vat10m', 'FSNS', 'LANDFRAC', 'STW_6', 'U_1', 'PHIS', 'TAUY', 'PS', 'U_0', 'frozen_precipitation_rate', 'V_3', 'V_5', 'V_2', 'Qat2m'].
+2026-10-20 15:22:52,470 - root - INFO - Dataset now has 23350 samples of length 11.
+2026-10-20 15:22:52,470 - root - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 15:22:52,489 - root - INFO - Multiprocessing inference context: fork
+2026-10-20 15:22:54,978 - root - INFO - Loading trained model checkpoint from /pscratch/sd/m/mahf708/hr-runs/prodtest-4n-emafix/training_checkpoints/best_inference_ckpt.tar
+2026-10-20 15:22:55,803 - root - INFO - Initializing stepper from provided config
+2026-10-20 15:22:55,803 - root - INFO - Initializing stepper from provided config
+2026-10-20 15:23:07,201 - root - INFO - Checkpoint /pscratch/sd/m/mahf708/hr-runs/prodtest-4n-emafix/training_checkpoints/best_inference_ckpt.tar does not contain EMA weights, using the stepper weights.
+2026-10-20 15:23:22,006 - root - WARNING - Zonal mean max size 4096 is greater than the number of timesteps 21. Setting zonal mean max size to the number of timesteps.
+2026-10-20 15:23:22,007 - root - WARNING - annual metric not supported for this configuration, omitting: annual metric requires > ~2 years of data, got 5 days
+2026-10-20 15:23:22,007 - root - WARNING - enso_index metric not supported for this configuration, omitting: enso_index metric requires > ~2 years of data, got 5 days
+2026-10-20 15:23:22,007 - root - WARNING - enso_coefficient metric not supported for this configuration, omitting: enso_coefficient metric requires > ~5 years of data, got 5 days
+2026-10-20 15:23:22,007 - root - WARNING - ipo_index metric not supported for this configuration, omitting: ipo_index metric requires > ~80 years of data, got 5 days
+2026-10-20 15:23:22,059 - root - INFO - Starting inference
+2026-10-20 15:23:35,958 - root - INFO - Inference: processing output from window 1 of 2.
+/pscratch/sd/m/mahf708/hr-bench-snap/575ea8249-dirty151109/fme/ace/inference/data_writer/utils.py:24: UserWarning: Requested variable(s) not present in data: ['T_7', 'U_7', 'TS']
+  warnings.warn(
+2026-10-20 15:23:43,724 - root - INFO - Inference: processing output from window 2 of 2.
+2026-10-20 15:23:46,443 - root - INFO - Starting final flush of data writer
+2026-10-20 15:23:46,447 - root - INFO - Writing reduced metrics to disk in netcdf format.
+2026-10-20 15:23:49,406 - root - INFO - inference duration: 64.67s
+2026-10-20 15:23:49,406 - root - INFO - inference/initialization duration: 37.32s
+2026-10-20 15:23:49,406 - root - INFO - inference/aggregator duration: 3.97s
+2026-10-20 15:23:49,406 - root - INFO - inference/wandb_logging duration: 0.04s
+2026-10-20 15:23:49,406 - root - INFO - inference/data_writer duration: 3.96s
+2026-10-20 15:23:49,406 - root - INFO - inference/data_loading duration: 0.09s
+2026-10-20 15:23:49,407 - root - INFO - inference/forward_prediction duration: 15.11s
+2026-10-20 15:23:49,407 - root - INFO - inference/compute_derived_variables duration: 1.18s
+2026-10-20 15:23:49,407 - root - INFO - inference/data_writer_io duration: 1.78s
+2026-10-20 15:23:49,407 - root - INFO - inference/final_writer_flush duration: 2.96s
+2026-10-20 15:23:49,407 - root - INFO - Total steps per second (ignoring wandb logging): 0.31 steps/second
+2026-10-20 15:23:49,407 - root - INFO - Getting summary logs for mean_step_20 aggregator
+2026-10-20 15:23:49,425 - root - INFO - Getting summary logs for mean_step_20_norm aggregator
+2026-10-20 15:23:49,430 - root - INFO - Getting summary logs for power_spectrum aggregator
+2026-10-20 15:23:55,692 - root - INFO - Getting summary logs for zonal_mean aggregator
+2026-10-20 15:23:58,408 - root - INFO - Getting summary logs for time_mean aggregator
+2026-10-20 15:26:11,538 - root - INFO - Getting summary logs for time_mean_norm aggregator
+2026-10-20 15:27:30,675 - fme.core.distributed.model_torch_distributed - INFO - Shutting down rank 0

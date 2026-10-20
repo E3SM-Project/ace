@@ -435,3 +435,32 @@ per replica), real 40 GB node + capped 80 GB node. Inline inference peaks at
 peak; run max 36.4 allocated / 37.1 reserved. Each extra IC per replica adds
 ~10 GiB, so on 40 GB keep **at most 2 ICs per replica** (n_ICs <= 2 x
 replicas).
+
+### Long run at the 40 GB budget (2 replicas x 4x1, 80 GB cards capped to 38.5 GiB)
+
+`runs/longrun-2n-full.yaml` (full harmonics, production validation and
+inference) ran ~1 h 45 min through 4 complete epochs. The training peak
+was 37.88 GiB allocated in every epoch, reserved 38.3-38.5, and the
+epoch-end phases stayed below it. Host RAM fluctuated between 97 and 131
+GB with no upward trend. No drift.
+
+### Standalone evaluator under spatial parallelism (0d68ed82f)
+
+Before: the 0.25 deg evaluator at 4x1 crashed in flush_diagnostics
+("conflicting sizes for dimension 'lat': length 720 ... length 180"). After
+the fix, `eval-spatial-check.yaml` (20 steps, seed 0, checkpoint
+prodtest-4n-emafix best_inference) completes at 4x1 and writes the same 21
+files as a serial run on one 80 GB GPU; initial_condition.nc is identical.
+Prediction max|diff| / max|field|, serial vs 4x1:
+
+| | step 0 | step 10 | step 19 |
+|---|---|---|---|
+| TF32 on (default), PS / U_7 | 7e-5 / 3e-4 | 2e-4 / 6e-4 | 2e-4 / 7e-4 |
+| TF32 off (`NVIDIA_TF32_OVERRIDE=0`), PS / U_7 | 3e-7 / 6e-7 | 4e-7 / 1e-6 | 3e-7 / 1e-6 |
+
+With TF32 off, the spatial evaluator agrees with serial to fp32 round-off,
+which stays flat over the rollout. The default difference comes from TF32
+convolutions, whose rounding depends on the tile shape. It is not a
+decomposition error. The evaluator writes at most 2-3 GB of predictions per
+IC-year per variable at 0.25 deg; the video aggregator is impractical at
+this resolution (disable it).

@@ -1,0 +1,65 @@
+Could not import pad from earth2grid.healpix.
+2026-10-20 14:49:13,918 - root - INFO - --------------- Versions ---------------
+2026-10-20 14:49:13,918 - root - INFO - Torch: 2.10.0+cu128
+2026-10-20 14:49:13,918 - root - INFO - ----------------------------------------
+2026-10-20 14:49:13,918 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 14:49:13,918 - root - INFO - Beaker ID: None
+2026-10-20 14:49:13,918 - root - INFO - Beaker URL: No beaker URL.
+2026-10-20 14:49:13,919 - root - WARNING - Environmental variable BEAKER_EXPERIMENT_ID not found.
+2026-10-20 14:49:13,919 - root - INFO - Environmental variable SLURM_JOB_ID=60048637.
+2026-10-20 14:49:13,919 - root - INFO - Environmental variable SLURM_JOB_USER=mahf708.
+2026-10-20 14:49:13,919 - root - WARNING - Environmental variable FME_TRAIN_DIR not found.
+2026-10-20 14:49:13,919 - root - WARNING - Environmental variable FME_VALID_DIR not found.
+2026-10-20 14:49:13,919 - root - WARNING - Environmental variable FME_STATS_DIR not found.
+2026-10-20 14:49:13,919 - root - WARNING - Environmental variable FME_CHECKPOINT_DIR not found.
+2026-10-20 14:49:13,919 - root - WARNING - Environmental variable FME_OUTPUT_DIR not found.
+2026-10-20 14:49:13,919 - root - WARNING - Environmental variable FME_IMAGE not found.
+2026-10-20 14:49:13,919 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 14:49:14,023 - root - INFO - Current device is cuda:0
+2026-10-20 14:49:14,023 - root - INFO - Loading trained model checkpoint from /pscratch/sd/m/mahf708/hr-runs/prodtest-4n-emafix/training_checkpoints/best_inference_ckpt.tar
+2026-10-20 14:49:18,819 - root - INFO - Initializing data loader
+2026-10-20 14:49:18,821 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 14:49:22,911 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 14:49:22,922 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 14:49:22,939 - root - INFO - The required variables have been found in the dataset: ['STW_1', 'Qat2m', 'LHFLX', 'V_4', 'LANDFRAC', 'TS', 'STW_2', 'V_2', 'T_4', 'T_3', 'T_0', 'Vat10m', 'T_2', 'V_5', 'FSUTOA', 'Tat2m', 'SOLIN', 'STW_5', 'U_2', 'U_1', 'Uat10m', 'V_0', 'V_7', 'OCNFRAC', 'STW_7', 'PS', 'FLUT', 'ICEFRAC', 'V_3', 'U_3', 'U_5', 'T_1', 'STW_4', 'PHIS', 'STW_3', 'frozen_precipitation_rate', 'T_6', 'SHFLX', 'STW_0', 'surface_precipitation_rate', 'U_0', 'V_1', 'T_5', 'T_7', 'U_6', 'FLDS', 'TAUY', 'STW_6', 'V_6', 'U_7', 'TAUX', 'FLUS', 'FSNS', 'U_4', 'DTENDTTW'].
+2026-10-20 14:49:22,954 - root - INFO - Dataset now has 23340 samples of length 21.
+2026-10-20 14:49:22,973 - root - INFO - Multiprocessing inference context: fork
+2026-10-20 14:49:45,742 - root - INFO - Loading trained model checkpoint from /pscratch/sd/m/mahf708/hr-runs/prodtest-4n-emafix/training_checkpoints/best_inference_ckpt.tar
+2026-10-20 14:49:46,736 - root - INFO - Initializing stepper from provided config
+2026-10-20 14:49:46,736 - root - INFO - Initializing stepper from provided config
+2026-10-20 14:49:57,381 - root - INFO - Checkpoint /pscratch/sd/m/mahf708/hr-runs/prodtest-4n-emafix/training_checkpoints/best_inference_ckpt.tar does not contain EMA weights, using the stepper weights.
+2026-10-20 14:50:29,158 - root - WARNING - Zonal mean max size 4096 is greater than the number of timesteps 121. Setting zonal mean max size to the number of timesteps.
+2026-10-20 14:50:29,159 - root - WARNING - annual metric not supported for this configuration, omitting: annual metric requires > ~2 years of data, got 30 days
+2026-10-20 14:50:29,160 - root - WARNING - enso_index metric not supported for this configuration, omitting: enso_index metric requires > ~2 years of data, got 30 days
+2026-10-20 14:50:29,160 - root - WARNING - enso_coefficient metric not supported for this configuration, omitting: enso_coefficient metric requires > ~5 years of data, got 30 days
+2026-10-20 14:50:29,160 - root - WARNING - ipo_index metric not supported for this configuration, omitting: ipo_index metric requires > ~80 years of data, got 30 days
+2026-10-20 14:50:29,281 - root - INFO - Starting inference
+2026-10-20 14:51:21,247 - root - INFO - Inference: processing output from window 1 of 6.
+2026-10-20 14:51:49,510 - root - INFO - Inference: processing output from window 2 of 6.
+2026-10-20 14:52:17,623 - root - INFO - Inference: processing output from window 3 of 6.
+2026-10-20 14:52:45,731 - root - INFO - Inference: processing output from window 4 of 6.
+2026-10-20 14:53:13,838 - root - INFO - Inference: processing output from window 5 of 6.
+2026-10-20 14:53:41,949 - root - INFO - Inference: processing output from window 6 of 6.
+2026-10-20 14:53:46,455 - root - INFO - Starting final flush of data writer
+2026-10-20 14:53:46,457 - root - INFO - Writing reduced metrics to disk in netcdf format.
+2026-10-20 14:53:48,973 - root - INFO - inference duration: 275.06s
+2026-10-20 14:53:48,973 - root - INFO - inference/initialization duration: 75.36s
+2026-10-20 14:53:48,973 - root - INFO - inference/aggregator duration: 13.70s
+2026-10-20 14:53:48,974 - root - INFO - inference/wandb_logging duration: 0.01s
+2026-10-20 14:53:48,974 - root - INFO - inference/data_writer duration: 12.05s
+2026-10-20 14:53:48,974 - root - INFO - inference/data_loading duration: 10.69s
+2026-10-20 14:53:48,974 - root - INFO - inference/forward_prediction duration: 147.98s
+2026-10-20 14:53:48,974 - root - INFO - inference/compute_derived_variables duration: 12.68s
+2026-10-20 14:53:48,974 - root - INFO - inference/data_writer_io duration: 4.91s
+2026-10-20 14:53:48,974 - root - INFO - inference/final_writer_flush duration: 2.52s
+2026-10-20 14:53:48,974 - root - INFO - Total steps per second (ignoring wandb logging): 0.44 steps/second
+2026-10-20 14:53:48,974 - root - INFO - Getting summary logs for mean_step_20 aggregator
+2026-10-20 14:53:48,979 - root - INFO - Getting summary logs for mean_step_20_norm aggregator
+2026-10-20 14:53:48,980 - root - INFO - Getting summary logs for power_spectrum aggregator
+2026-10-20 14:53:55,341 - root - INFO - Getting summary logs for zonal_mean aggregator
+2026-10-20 14:54:06,501 - root - INFO - Getting summary logs for time_mean aggregator
+2026-10-20 14:56:10,250 - root - INFO - Getting summary logs for time_mean_norm aggregator
