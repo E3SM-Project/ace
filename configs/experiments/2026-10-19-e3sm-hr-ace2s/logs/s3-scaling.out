@@ -1,0 +1,22 @@
+srun: forcing job termination
+srun: forcing job termination
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+srun: got SIGCONT
+[2026-10-20T04:23:53.118] error: *** STEP 60022811.21 ON nid008597 CANCELLED AT 2026-10-20T04:23:53 DUE to SIGNAL Killed ***
+[2026-10-20T04:23:53.167] error: Failed to destroy CXI Service ID 7 (cxi0): Device or resource busy
+[2026-10-20T04:23:53.169] error: Failed to destroy CXI Service ID 7 (cxi0): Device or resource busy
+[2026-10-20T04:23:54.167] error: Failed to destroy CXI Service ID 7 (cxi0): Device or resource busy
+[2026-10-20T04:23:54.169] error: Failed to destroy CXI Service ID 7 (cxi0): Device or resource busy
+[2026-10-20T04:23:55.167] error: Failed to destroy CXI Service ID 7 (cxi0): Device or resource busy
+[2026-10-20T04:23:55.169] error: Failed to destroy CXI Service ID 7 (cxi0): Device or resource busy
+[2026-10-20T04:23:56.167] error: Failed to destroy CXI Service ID 7 (cxi2): Device or resource busy
+srun: error: nid008600: task 1: Killed
+srun: Terminating StepId=60022811.21
+srun: error: nid008597: task 0: Killed
+[2026-10-20T04:26:36.291] error: *** STEP 60022811.37 ON nid008593 CANCELLED AT 2026-10-20T04:26:36 DUE to SIGNAL Killed ***
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+srun: error: nid008600: task 3: Killed
+srun: Terminating StepId=60022811.37
+srun: error: nid008596: task 1: Killed
+srun: error: nid008597: task 2: Killed
+srun: error: nid008593: task 0: Killed

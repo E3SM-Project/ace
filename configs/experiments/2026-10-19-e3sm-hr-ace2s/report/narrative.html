@@ -1,0 +1,144 @@
+<title>HR ACE2S Bring-up</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a single lab-notebook column; answer and status up top, evidence tables below, log last. */
+:root {
+  --bg: #f6f8f9; --surface: #ffffff; --fg: #17232b; --muted: #5a6b75;
+  --rule: #d5dee3; --accent: #0b6e78; --good: #1f7a3a; --warn: #9a6200; --bad: #b3261e;
+  --oom-bg: #fbeeed;
+  --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Source Sans 3", "Segoe UI", Roboto, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f171c; --surface: #152027; --fg: #dbe5ea; --muted: #8fa3ae;
+  --rule: #26363f; --accent: #4fc1cc; --good: #5ccf7d; --warn: #e3a744; --bad: #f2867e;
+  --oom-bg: #2a1a1a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f171c; --surface: #152027; --fg: #dbe5ea; --muted: #8fa3ae;
+  --rule: #26363f; --accent: #4fc1cc; --good: #5ccf7d; --warn: #e3a744; --bad: #f2867e;
+  --oom-bg: #2a1a1a; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 16px; line-height: 1.55; }
+main { max-width: 980px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 34px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: 2rem; } h2 { font-size: 1.35rem; } h3 { font-size: 1.05rem; }
+section { display: grid; gap: 12px; min-width: 0; }
+p { margin: 0; max-width: 70ch; }
+.eyebrow { font-family: var(--f-mono); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+code, .mono { font-family: var(--f-mono); font-size: .86em; }
+a { color: var(--accent); }
+.answer { background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--accent); padding: 16px 18px; display: grid; gap: 10px; }
+.board { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.item { background: var(--surface); border: 1px solid var(--rule); padding: 12px 14px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.item b { font-family: var(--f-display); font-weight: 500; }
+.pill { display: inline-block; justify-self: start; font-family: var(--f-mono); font-size: .72rem; padding: 1px 7px; border-radius: 3px; border: 1px solid currentColor; letter-spacing: .03em; }
+.good { color: var(--good); } .warn { color: var(--warn); } .bad { color: var(--bad); } .run { color: var(--accent); }
+.tw { overflow-x: auto; border: 1px solid var(--rule); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+th { font-family: var(--f-mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--f-mono); }
+tr.oom td { background: var(--oom-bg); }
+.pending { color: var(--muted); font-style: italic; }
+ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74ch; }
+.log { font-size: .92rem; }
+.log li { list-style: none; margin-left: -1.2em; }
+.log time { font-family: var(--f-mono); font-size: .8rem; color: var(--muted); margin-right: 8px; }
+</style>
+
+<main>
+<header style="display:grid;gap:6px">
+  <span class="eyebrow">e3sm/exps/hr-2026.10.0 &middot; v3.HR.F2010.aigo.PD.y1 &middot; 720&times;1440 Gaussian &middot; atmosphere only</span>
+  <h1>HR ACE2S Bring-up</h1>
+  <p class="mono" style="color:var(--muted);font-size:.85rem">Updated {{updated}} &middot; allocations 60022811 + 60023253 (8 nodes, 32 A100-80GB, end ~00:40 PDT)</p>
+</header>
+
+<section class="answer">
+  <span class="eyebrow">Current answer</span>
+  <p><b>Spatial parallelism is required.</b> The LR baseline network (embed 384, 8 blocks) has 2.1&nbsp;B parameters at 0.25&deg;: the spectral weights scale with lmax&nbsp;=&nbsp;720. It runs out of memory on one A100-80GB at every batch size.</p>
+  <p><b>Best one-node layout: 4&times;1 tiles</b> (latitude split). The baseline runs 4.26&nbsp;s/step at 63&nbsp;GB, against 4.51&nbsp;s for 1&times;4 and 5.55&nbsp;s for 2&times;2. Training memory adds an 8.4&nbsp;GB EMA copy, so the full baseline is tight on 80&nbsp;GB.</p>
+  <p><b>Recommended production model: spectral modes truncated to half</b> (<code>hard_thresholding_fraction: 0.5</code>, now exposed on the builder). It runs 2.54&nbsp;s/step at 45&nbsp;GB with 1.25&nbsp;B parameters, on 4&times;1 tiles with one data-parallel replica per node. That is the user&rsquo;s modeling call. The full baseline also fits, at 1.7&times; the cost.</p>
+  <p><b>Five fixes to the spatial path are committed.</b> Two more fixes are infrastructure: NCCL ran inter-node collectives over TCP (30&times; slow), and netCDF read these files 8&nbsp;KB at a time (10&ndash;20&times; slow). Details below.</p>
+</section>
+
+<section>
+  <h2>Status</h2>
+  <div class="board">
+    <div class="item"><b>Data to scratch</b><span class="pill good">done</span><span>193 files, 14&nbsp;TB, about 50 minutes over 4 nodes</span></div>
+    <div class="item"><b>Normalization stats</b><span class="pill run">running</span><span>39 training months, 72 variables. The first two attempts were I/O-starved.</span></div>
+    <div class="item"><b>Memory and layout sweeps</b><span class="pill good">done</span><span>Single GPU, 1-node spatial, and A/B reruns from a frozen code snapshot</span></div>
+    <div class="item"><b>Multi-node scaling</b><span class="pill warn">partial</span><span>2-node data parallelism verified with the OFI plugin; the 4-node series is not rerun yet</span></div>
+    <div class="item"><b>Spatial-path fixes</b><span class="pill good">5 committed</span><span>Gradient sync, loss, corrector, inline-inference ICs, builder knob</span></div>
+    <div class="item"><b>Loader speed</b><span class="pill good">committed</span><span>New <code>engine: cdf5</code>, about 7&times; faster per sample</span></div>
+    <div class="item"><b>End-to-end training</b><span class="pill run">smoke test</span><span>1 node, 4&times;1, real data, temporary LR stats</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>What was wrong, and what changed</h2>
+  <ol>
+    <li><b>Inter-node NCCL used TCP.</b> The uv venv&rsquo;s torch ships its own NCCL with no Slingshot plugin. An 8.4&nbsp;GB all-reduce over 2 nodes measured 2.2&nbsp;GB/s bus bandwidth; with NERSC&rsquo;s aws-ofi-nccl plugin it measured <b>67.8&nbsp;GB/s</b>. A 2-node step of the baseline took 18.2&nbsp;s against 5.6&nbsp;s on one node. <code>scripts/nccl-ofi.sh</code> fixes this. The hist campaign&rsquo;s scripts set no plugin either, so its multi-node runs may have paid this too (unmeasured).</li>
+    <li><b>netCDF-C reads CDF-5 files 8&nbsp;KB at a time.</b> strace showed 1,018 <code>read()</code> calls of 8,192 bytes for two 4&nbsp;MB fields. Reads ran at 30&ndash;105&nbsp;MB/s per reader against 1.2&nbsp;GB/s raw. The new <code>engine: cdf5</code> issues one <code>pread</code> per field and is bit-identical to netcdf4. A loader sample reads at a median ~750&nbsp;MB/s. Commit <code>b9cb5a08c</code>.</li>
+    <li><b>Spatial gradient sync was unbucketed.</b> Each parameter had a hook that cloned its gradient and ran a blocking all-reduce. It is now one DDP over the world with a sum-over-tiles, mean-over-replicas comm hook. This makes no difference on one node (NVLink); it is for multi-node runs. Commit <code>dabfe58a9</code>.</li>
+    <li><b>EnsembleLoss was tile-local.</b> CRPS gradients were H&middot;W&times; serial. The energy score was mis-scaled by about &radic;(H&middot;W), so at 2&times;2 the 0.9/0.1 mix trained as roughly 0.9/0.05. The logged loss, and the best-checkpoint selection that uses it, came from rank 0&rsquo;s tile only. The corrector&rsquo;s in-graph global means also dropped cross-tile gradient terms. All now match serial on every rank. Commit <code>88d85d5fb</code>.</li>
+    <li><b>Inline inference rejected valid runs.</b> The number of initial conditions had to divide the world size instead of the data-parallel size. Commit <code>1b1f7391d</code>.</li>
+    <li><b>The spatial backend ignored the collective timeout</b> and used torch&rsquo;s 10-minute default. Ported from the hist branch and extended to that backend. Commit <code>8e41193f0</code>.</li>
+  </ol>
+  <p>Six loader and logging commits were also ported from the hist branch. They provide <code>rename</code>, <code>reference_pressure_name</code>, frozen-precipitation naming, the time-mean <code>plot_variables</code>, the val <code>mean_map</code> N&times; fix and the logging basicConfig.</p>
+</section>
+
+<section>
+  <h2>Single GPU: what fits at 0.25&deg;</h2>
+  <p>An isolated forward + backward + AdamW step on synthetic data (<code>scripts/bench_model.py</code>), one configuration per process. Batch&nbsp;2 is one sample with its <code>n_ensemble: 2</code> members. &ldquo;modes &times;0.5&rdquo; is <code>hard_thresholding_fraction</code>.</p>
+  {{table:s1-memory}}
+</section>
+
+<section>
+  <h2>Spatial parallel, one node (frozen-code reruns)</h2>
+  <p>Parameters are replicated on every tile, so tiling cuts activation memory but not weight or optimizer memory. The rows marked &ldquo;-hooks&rdquo; and &ldquo;-ddp&rdquo; are the gradient-sync A/B. The &ldquo;eff-&rdquo; rows use a model that also fits on one GPU (5.51&nbsp;s/step there): 4&times;1 gives a 3.7&times; speedup (92% efficiency), 1&times;4 gives 83% and 2&times;2 gives 69%. The 2&times;1 and 1&times;2 &ldquo;eff&rdquo; rows ran with two data replicas, at local batch 1.</p>
+  {{table:s5-rerun,s4-efficiency}}
+  <p>The first spatial sweep below came before the reruns. Its 2&times;2 and 1&times;4 rows used the original gradient hooks, so they are valid.</p>
+  {{table:s2-spatial}}
+</section>
+
+<section>
+  <h2>Where a 4&times;1 step goes</h2>
+  <p>Top CUDA time in one profiled baseline step (<code>logs/prof-sp4x1-base.txt</code>): spectral-contraction <code>bmm</code> 1.31&nbsp;s, conv/1&times;1 GEMMs about 1.2&nbsp;s, <code>aten::copy_</code> 0.73&nbsp;s, distributed-transpose <code>all_to_all</code> 0.30&nbsp;s, gradient comms 0.38&nbsp;s. The 0.73&nbsp;s of copies (<code>contiguous</code> around the SHT transposes) is the next optimization target. bf16 autocast was 15% slower on 1&times;4, because the spectral path upcasts.</p>
+</section>
+
+<section>
+  <h2>Multi-node scaling</h2>
+  <p>Data-parallel replicas of a 4-GPU tile group across nodes. With TCP NCCL, 2 nodes took 18.2&nbsp;s/step. With the OFI plugin, the small model runs 2.0&ndash;2.4&nbsp;s on 2 nodes against 1.99&nbsp;s on one. A 2.1&nbsp;B-parameter run first looked like a hang: it was the model build. torch-harmonics precomputes Legendre weights on CPU, and on nodes busy with the copy and stats jobs that took over 5 minutes against 40&nbsp;s on an idle node.</p>
+  {{table:s3-scaling-tcp,s3-scaling}}
+</section>
+
+<section>
+  <h2>Open issues</h2>
+  <ul>
+    <li><b>Redundant reads under spatial parallelism.</b> Every tile rank reads the full global sample and then slices it: 4&times; the I/O and host memory with 4 tiles. With the cdf5 engine, a sample is 456&nbsp;MB per rank at ~750&nbsp;MB/s, so this costs about 0.6&nbsp;s per rank per step, hidden behind a 2.5&ndash;4&nbsp;s step by the DataLoader workers. Worth fixing (read only the tile), but not urgent.</li>
+    <li><b>No restart checkpoint on SIGTERM under spatial parallelism.</b> A walltime requeue resumes from the last <code>checkpoint_every_n_batches</code> save, so set that interval to fit the walltime.</li>
+    <li><b>Writers and map aggregators</b> have no spatial gather and may save only the root tile. The power spectrum is skipped under spatial parallelism.</li>
+    <li><b>Slow SHT setup.</b> The Legendre precompute takes about 40&nbsp;s per model build at lmax&nbsp;720 on one CPU thread, and much longer on a busy node. It runs on every start and requeue.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Log</h2>
+  <ul class="log">
+    <li><time>20:40</time>Created branch <code>e3sm/exps/hr-2026.10.0</code> at 8935f50 (Release v2026.10.0) as worktree <code>/pscratch/sd/m/mahf708/ace-hr</code>.</li>
+    <li><time>20:45</time>Single GPU: the baseline OOMs at batch 1 (2.1&nbsp;B params).</li>
+    <li><time>20:48</time>2&times;2 tiles fit: 61&nbsp;GB, 5.58&nbsp;s/step.</li>
+    <li><time>21:00</time>The 2-node data-parallel step was 3.3&times; slower than 1 node. Traced to TCP NCCL; the OFI plugin gives 30&times; the bandwidth.</li>
+    <li><time>21:05</time>Ported 6 hist-branch commits (rename, reference_pressure_name and others) after an agent triage.</li>
+    <li><time>21:15</time>Replaced the per-parameter spatial gradient hooks with one DDP comm hook.</li>
+    <li><time>21:25</time>Live code edits had contaminated running sweeps. Benchmarks now run from frozen snapshots (<code>scripts/snapshot.sh</code>).</li>
+    <li><time>21:50</time>Found netCDF-C&rsquo;s 8&nbsp;KB reads. A pread reader is bit-identical and 10&ndash;20&times; faster.</li>
+    <li><time>22:05</time>Committed the loss and corrector spatial fixes. 64/64 parallel tests pass in 5 layouts.</li>
+    <li><time>22:15</time>Committed the cdf5 loader engine (37 new tests).</li>
+    <li><time>22:25</time>Fixed the inline-inference IC check and exposed <code>hard_thresholding_fraction</code>. Launched a 1-node end-to-end smoke run.</li>
+  </ul>
+</section>
+</main>

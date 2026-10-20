@@ -1,0 +1,279 @@
+# ACE2S atmosphere on the E3SMv3 HR (ne120 -> 0.25 deg Gaussian, 720x1440)
+# F2010 present-day run, v3.HR.F2010.aigo.PD.y1. Atmosphere only.
+#
+# Model: the LR historical campaign baseline (E01 in
+# configs/experiments/e3sm_hist_v20260812 on e3sm/exps/hist-v2026.8.0), same
+# channels, same loss, same corrector. At 0.25 deg that network has 2.1 B
+# parameters (1.7 B in the per-mode spectral weights, which scale with lmax=720,
+# and 0.4 B in the positional embedding) and DOES NOT FIT on one A100-80GB at
+# any batch size -- see README.md "Memory". It is trained with the spatial
+# backend:
+#
+#   FME_DISTRIBUTED_BACKEND=model FME_DISTRIBUTED_H=2 FME_DISTRIBUTED_W=2
+#
+# so each sample is split over a 2x2 tile grid of 4 GPUs (one node), and
+# `batch_size` is divided over the DATA-parallel ranks only (world / (H*W)).
+# On N nodes with 2x2 tiles there are N data-parallel ranks, so batch_size
+# must be a multiple of N; this file is written for local batch 1:
+#
+#     batch_size = n_nodes   (2x2 tiles, 4 GPUs/node)
+#
+# Data: the raw EAM history files, one per month, 124 6-hourly snapshots each
+# (73.5 GB), read directly. Same three E3SM-vs-FME fixes as the LR campaign:
+# precip renamed and scaled m/s -> kg/m2/s, ak*P0 via reference_pressure_name.
+#
+# Splits (F2010 is a perpetual-2010 run, so there is no trend to hold out;
+# the splits only need to be disjoint in time):
+#   train      0001-02-01 .. 0014-01-01   (~13 years; January of year 1 is
+#                                          dropped as initialization shock)
+#   validation 0014-01-01 .. 0015-01-01   (1 year)
+#   test       0015-01-01 .. 0017-01-01   (2 years, never trained on). The
+#              source's 0017-01 file has a corrupt header (not CDF, netCDF4
+#              cannot open it either) and is quarantined out of the glob.
+#
+# Stats: computed by scripts/compute_stats.py from every 4th training month
+# (39 files), unweighted, same conventions as the LR campaign's stats.
+experiment_dir: OVERRIDE_ME
+save_checkpoint: true
+save_per_epoch_diagnostics: false
+seed: 1
+validate_using_ema: true
+ema:
+  decay: 0.999
+max_epochs: 20
+checkpoint_save_epochs:
+  step: 1
+ema_checkpoint_save_epochs:
+  step: 1
+inference:
+  # 90 days from 8 initial conditions in the TRAINING period: cheap enough to
+  # run every 2 epochs at 0.25 deg. Year-long rollouts are done offline.
+  - name: inference
+    weight: 1.0
+    epochs:
+      start: 1
+      step: 2
+    n_forward_steps: 360
+    forward_steps_in_memory: 20
+    loader:
+      start_indices:
+        times:
+        - '0002-01-01T00:00:00'
+        - '0003-07-01T00:00:00'
+        - '0005-01-01T00:00:00'
+        - '0006-07-01T00:00:00'
+        - '0008-01-01T00:00:00'
+        - '0009-07-01T00:00:00'
+        - '0011-01-01T00:00:00'
+        - '0012-07-01T00:00:00'
+      dataset: &dataset
+        data_path: /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0
+        file_pattern: &file_pattern v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+        # one pread per field instead of netCDF-C's 8 KiB reads: ~7-10x
+        # faster on these CDF-5 files (notes/cdf5-engine.md)
+        engine: &engine cdf5
+        rename: &rename
+          PRECT: surface_precipitation_rate
+          PRECST: frozen_precipitation_rate
+        reference_pressure_name: &reference_pressure_name P0
+        overwrite: &overwrite
+          multiply_scalar:
+            surface_precipitation_rate: 1000.0
+            frozen_precipitation_rate: 1000.0
+      num_data_workers: 2
+logging:
+  log_to_screen: true
+  log_to_wandb: false
+  log_to_file: true
+  project: ACE2S-E3SMv3-HR
+  entity: e3sm-aig
+train_loader:
+  batch_size: 8
+  num_data_workers: 4
+  prefetch_factor: 2
+  time_buffer: 4
+  time_buffer_pool_size: 1
+  dataset:
+    data_path: /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0
+    file_pattern: *file_pattern
+    engine: *engine
+    rename: *rename
+    reference_pressure_name: *reference_pressure_name
+    overwrite: *overwrite
+    subset:
+      start_time: '0001-02-01T00:00:00'
+      stop_time: '0013-12-31T18:00:00'
+validation:
+  loader:
+    batch_size: 8
+    num_data_workers: 4
+    prefetch_factor: 2
+    dataset:
+      data_path: /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0
+      file_pattern: *file_pattern
+      engine: *engine
+      rename: *rename
+      reference_pressure_name: *reference_pressure_name
+      overwrite: *overwrite
+      subset:
+        start_time: '0014-01-01T00:00:00'
+        stop_time: '0014-12-31T18:00:00'
+        step: 4
+optimization:
+  enable_automatic_mixed_precision: false
+  lr: 0.0001
+  optimizer_type: FusedAdam
+  kwargs:
+    weight_decay: 0.01
+stepper_training:
+  n_ensemble: 2
+  n_forward_steps: 1
+  optimize_last_step_only: true
+  loss:
+    type: EnsembleLoss
+    kwargs:
+      crps_weight: 0.9
+      energy_score_weight: 0.1
+stepper:
+  step:
+    type: single_module
+    config:
+      residual_prediction: false
+      builder:
+        type: NoiseConditionedSFNO
+        config:
+          embed_dim: 384
+          checkpointing: 3
+          noise_embed_dim: 32
+          noise_type: isotropic
+          filter_type: linear
+          use_mlp: true
+          num_layers: 8
+          affine_norms: true
+      normalization:
+        network:
+          global_means_path: /pscratch/sd/m/mahf708/hr-data/stats-2026-10-19/train-stride4/centering.nc
+          global_stds_path: /pscratch/sd/m/mahf708/hr-data/stats-2026-10-19/train-stride4/scaling-full-field.nc
+        residual:
+          global_means_path: /pscratch/sd/m/mahf708/hr-data/stats-2026-10-19/train-stride4/centering.nc
+          global_stds_path: /pscratch/sd/m/mahf708/hr-data/stats-2026-10-19/train-stride4/scaling-residual.nc
+      ocean:
+        surface_temperature_name: TS
+        ocean_fraction_name: OCNFRAC
+        interpolate: true
+      corrector:
+        conserve_dry_air: true
+        moisture_budget_correction: advection_and_precipitation
+        force_positive_names:
+        - STW_0
+        - STW_1
+        - STW_2
+        - STW_3
+        - STW_4
+        - STW_5
+        - STW_6
+        - STW_7
+        - surface_precipitation_rate
+        - frozen_precipitation_rate
+        - FLUS
+        - FLUT
+        - FLDS
+        - FSNS
+        - FSUTOA
+      next_step_forcing_names:
+      - SOLIN
+      in_names: &in_names
+      - LANDFRAC
+      - OCNFRAC
+      - ICEFRAC
+      - PHIS
+      - SOLIN
+      - PS
+      - TS
+      - T_0
+      - T_1
+      - T_2
+      - T_3
+      - T_4
+      - T_5
+      - T_6
+      - T_7
+      - STW_0
+      - STW_1
+      - STW_2
+      - STW_3
+      - STW_4
+      - STW_5
+      - STW_6
+      - STW_7
+      - U_0
+      - U_1
+      - U_2
+      - U_3
+      - U_4
+      - U_5
+      - U_6
+      - U_7
+      - V_0
+      - V_1
+      - V_2
+      - V_3
+      - V_4
+      - V_5
+      - V_6
+      - V_7
+      - Qat2m
+      - Uat10m
+      - Vat10m
+      - Tat2m
+      out_names:
+      - PS
+      - TS
+      - T_0
+      - T_1
+      - T_2
+      - T_3
+      - T_4
+      - T_5
+      - T_6
+      - T_7
+      - STW_0
+      - STW_1
+      - STW_2
+      - STW_3
+      - STW_4
+      - STW_5
+      - STW_6
+      - STW_7
+      - U_0
+      - U_1
+      - U_2
+      - U_3
+      - U_4
+      - U_5
+      - U_6
+      - U_7
+      - V_0
+      - V_1
+      - V_2
+      - V_3
+      - V_4
+      - V_5
+      - V_6
+      - V_7
+      - LHFLX
+      - SHFLX
+      - surface_precipitation_rate
+      - frozen_precipitation_rate
+      - FLUS
+      - FLUT
+      - FLDS
+      - FSNS
+      - FSUTOA
+      - DTENDTTW
+      - TAUX
+      - TAUY
+      - Qat2m
+      - Uat10m
+      - Vat10m
+      - Tat2m

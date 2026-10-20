@@ -1,0 +1,15 @@
+# Sweep 4: spatial parallel efficiency on a model that also fits on 1 GPU
+# (embed 256, modes x0.5; 1 GPU = 5.51 s/step, 71.5 GB), plus reruns of the
+# four s2 runs that produced no output, plus profiles of the baseline.
+2 2 --embed-dim 256 --checkpointing 3 --batch 2 --htf 0.5 --phases --tag eff-e256h-2x2
+1 4 --embed-dim 256 --checkpointing 3 --batch 2 --htf 0.5 --phases --tag eff-e256h-1x4
+4 1 --embed-dim 256 --checkpointing 3 --batch 2 --htf 0.5 --phases --tag eff-e256h-4x1
+2 2 --embed-dim 384 --checkpointing 3 --batch 2 --phases --profile logs/prof-sp2x2-base.txt --tag prof-sp2x2-base
+1 4 --embed-dim 384 --checkpointing 3 --batch 2 --phases --profile logs/prof-sp1x4-base.txt --tag prof-sp1x4-base
+4 1 --embed-dim 384 --checkpointing 3 --batch 2 --phases --tag sp4x1-base
+2 2 --embed-dim 384 --checkpointing 3 --batch 2 --spectral-ratio 0.5 --phases --tag sp2x2-sr0.5
+1 4 --embed-dim 384 --checkpointing 3 --batch 2 --bf16 --phases --tag sp1x4-bf16
+1 4 --embed-dim 384 --checkpointing 3 --batch 2 --filter-num-groups 8 --phases --tag sp1x4-g8
+1 4 --embed-dim 384 --checkpointing 3 --batch 2 --htf 0.5 --phases --tag sp1x4-htf0.5
+1 4 --embed-dim 384 --checkpointing 3 --batch 2 --spectral-ratio 0.5 --htf 0.5 --phases --tag sp1x4-sr0.5-htf0.5
+1 4 --embed-dim 384 --checkpointing 3 --batch 4 --htf 0.5 --phases --tag sp1x4-htf0.5-b4

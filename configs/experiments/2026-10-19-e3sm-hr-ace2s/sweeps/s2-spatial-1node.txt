@@ -1,0 +1,13 @@
+# Sweep 2: one node (4 ranks), spatial backend, batch 2 = local 1 x n_ensemble 2
+4 1 --embed-dim 384 --checkpointing 3 --batch 2 --tag sp4x1-base
+2 2 --embed-dim 384 --checkpointing 3 --batch 2 --spectral-ratio 0.5 --tag sp2x2-sr0.5
+2 2 --embed-dim 384 --checkpointing 3 --batch 2 --bf16 --tag sp2x2-bf16
+2 2 --embed-dim 384 --checkpointing 3 --batch 2 --filter-num-groups 8 --tag sp2x2-g8
+1 4 --embed-dim 384 --checkpointing 3 --batch 2 --tag sp1x4-base
+2 2 --embed-dim 384 --checkpointing 3 --batch 2 --htf 0.5 --tag sp2x2-htf0.5
+2 2 --embed-dim 384 --checkpointing 3 --batch 4 --tag sp2x2-b4
+2 2 --embed-dim 256 --checkpointing 3 --batch 2 --tag sp2x2-e256
+2 2 --embed-dim 384 --checkpointing 2 --batch 2 --tag sp2x2-ck2
+2 2 --embed-dim 384 --checkpointing 3 --batch 2 --no-pos-embed --tag sp2x2-nopos
+2 2 --embed-dim 512 --checkpointing 3 --batch 2 --tag sp2x2-e512
+2 2 --embed-dim 384 --checkpointing 3 --batch 2 --spectral-ratio 0.5 --htf 0.5 --tag sp2x2-sr0.5-htf0.5

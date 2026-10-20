@@ -1,0 +1,8 @@
+RESULT net=default world=8 size=64MB time=0.141s busbw=0.8GB/s
+RESULT net=default world=8 size=1024MB time=0.910s busbw=2.1GB/s
+RESULT net=default world=8 size=8400MB time=6.917s busbw=2.2GB/s
+srun: error: nid008596: task 1: Exited with exit code 1
+RESULT net=AWS Libfabric world=8 size=64MB time=0.031s busbw=3.8GB/s
+RESULT net=AWS Libfabric world=8 size=1024MB time=0.061s busbw=30.9GB/s
+RESULT net=AWS Libfabric world=8 size=8400MB time=0.227s busbw=67.8GB/s
+srun: error: nid008596: task 1: Exited with exit code 1
