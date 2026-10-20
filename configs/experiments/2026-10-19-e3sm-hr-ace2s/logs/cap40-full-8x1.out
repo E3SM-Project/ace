@@ -1,0 +1,94 @@
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+2026-10-20 08:46:23,385 - root - INFO - --------------- Versions ---------------
+2026-10-20 08:46:23,385 - root - INFO - Torch: 2.10.0+cu128
+2026-10-20 08:46:23,385 - root - INFO - ----------------------------------------
+2026-10-20 08:46:23,385 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 08:46:23,385 - root - INFO - Beaker ID: None
+2026-10-20 08:46:23,385 - root - INFO - Beaker URL: No beaker URL.
+2026-10-20 08:46:23,385 - root - WARNING - Environmental variable BEAKER_EXPERIMENT_ID not found.
+2026-10-20 08:46:23,385 - root - INFO - Environmental variable SLURM_JOB_ID=60032495.
+2026-10-20 08:46:23,386 - root - INFO - Environmental variable SLURM_JOB_USER=mahf708.
+2026-10-20 08:46:23,386 - root - WARNING - Environmental variable FME_TRAIN_DIR not found.
+2026-10-20 08:46:23,386 - root - WARNING - Environmental variable FME_VALID_DIR not found.
+2026-10-20 08:46:23,386 - root - WARNING - Environmental variable FME_STATS_DIR not found.
+2026-10-20 08:46:23,386 - root - WARNING - Environmental variable FME_CHECKPOINT_DIR not found.
+2026-10-20 08:46:23,386 - root - WARNING - Environmental variable FME_OUTPUT_DIR not found.
+2026-10-20 08:46:23,386 - root - WARNING - Environmental variable FME_IMAGE not found.
+2026-10-20 08:46:23,386 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 08:46:23,386 - root - INFO - Current device is cuda:0
+2026-10-20 08:46:23,386 - root - INFO - Initializing training data loader
+2026-10-20 08:46:23,387 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 08:46:27,400 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 08:46:27,405 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 08:46:27,422 - root - INFO - The required variables have been found in the dataset: ['V_4', 'T_2', 'U_2', 'V_0', 'PHIS', 'U_7', 'Uat10m', 'U_0', 'OCNFRAC', 'T_3', 'U_6', 'V_6', 'TS', 'STW_4', 'Qat2m', 'TAUX', 'T_1', 'PS', 'STW_2', 'STW_0', 'LANDFRAC', 'V_5', 'T_4', 'SOLIN', 'V_2', 'FSNS', 'Tat2m', 'T_7', 'surface_precipitation_rate', 'U_3', 'V_3', 'T_6', 'FSUTOA', 'STW_3', 'U_5', 'V_7', 'STW_1', 'STW_7', 'TAUY', 'U_1', 'STW_6', 'FLUT', 'DTENDTTW', 'STW_5', 'ICEFRAC', 'FLDS', 'SHFLX', 'T_0', 'T_5', 'FLUS', 'LHFLX', 'V_1', 'U_4', 'Vat10m', 'frozen_precipitation_rate'].
+2026-10-20 08:46:27,438 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 08:46:27,467 - root - INFO - Subsetting dataset samples according to slice(124, np.int64(237), None).
+2026-10-20 08:46:27,467 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 90, None), slice(0, 1440, None)) of the data.
+2026-10-20 08:46:27,471 - root - INFO - Initializing validation data loaders
+2026-10-20 08:46:27,471 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 08:46:27,531 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 08:46:27,533 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 08:46:27,549 - root - INFO - The required variables have been found in the dataset: ['V_4', 'T_2', 'U_2', 'V_0', 'PHIS', 'U_7', 'Uat10m', 'U_0', 'OCNFRAC', 'T_3', 'U_6', 'V_6', 'TS', 'STW_4', 'Qat2m', 'TAUX', 'T_1', 'PS', 'STW_2', 'STW_0', 'LANDFRAC', 'V_5', 'T_4', 'SOLIN', 'V_2', 'FSNS', 'Tat2m', 'T_7', 'surface_precipitation_rate', 'U_3', 'V_3', 'T_6', 'FSUTOA', 'STW_3', 'U_5', 'V_7', 'STW_1', 'STW_7', 'TAUY', 'U_1', 'STW_6', 'FLUT', 'DTENDTTW', 'STW_5', 'ICEFRAC', 'FLDS', 'SHFLX', 'T_0', 'T_5', 'FLUS', 'LHFLX', 'V_1', 'U_4', 'Vat10m', 'frozen_precipitation_rate'].
+2026-10-20 08:46:27,561 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 08:46:27,580 - root - INFO - Subsetting dataset samples according to slice(18980, np.int64(19009), None).
+2026-10-20 08:46:27,580 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 90, None), slice(0, 1440, None)) of the data.
+2026-10-20 08:46:27,580 - root - INFO - train data: 115 samples, 115 batches
+2026-10-20 08:46:27,580 - root - INFO - train data: pool_size=1, 5 sub-batches per window, coming from the following base loader:
+2026-10-20 08:46:27,580 - root - INFO - train (base loader) data: 23 samples, 23 batches
+2026-10-20 08:46:27,580 - root - INFO - train (base loader) data: first sample's initial time: 0001-02-01 00:00:00
+2026-10-20 08:46:27,580 - root - INFO - train (base loader) data: last sample's initial time: 0001-02-28 12:00:00
+2026-10-20 08:46:27,581 - root - INFO - val data: 29 samples, 29 batches
+2026-10-20 08:46:27,581 - root - INFO - val data: first sample's initial time: 0014-01-01 00:00:00
+2026-10-20 08:46:27,581 - root - INFO - val data: last sample's initial time: 0014-01-08 00:00:00
+2026-10-20 08:46:27,581 - root - INFO - Initializing inline inference data loaders
+2026-10-20 08:46:27,582 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 08:46:27,639 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 08:46:27,641 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 08:46:27,657 - root - INFO - The required variables have been found in the dataset: ['V_4', 'T_2', 'U_2', 'V_0', 'PHIS', 'U_7', 'Uat10m', 'U_0', 'OCNFRAC', 'T_3', 'U_6', 'V_6', 'TS', 'STW_4', 'Qat2m', 'TAUX', 'T_1', 'PS', 'STW_2', 'STW_0', 'LANDFRAC', 'V_5', 'T_4', 'SOLIN', 'V_2', 'FSNS', 'Tat2m', 'T_7', 'surface_precipitation_rate', 'U_3', 'V_3', 'T_6', 'FSUTOA', 'STW_3', 'U_5', 'V_7', 'STW_1', 'STW_7', 'TAUY', 'U_1', 'STW_6', 'FLUT', 'DTENDTTW', 'STW_5', 'ICEFRAC', 'FLDS', 'SHFLX', 'T_0', 'T_5', 'FLUS', 'LHFLX', 'V_1', 'U_4', 'Vat10m', 'frozen_precipitation_rate'].
+2026-10-20 08:46:27,669 - root - INFO - Dataset now has 23356 samples of length 5.
+2026-10-20 08:46:27,669 - root - INFO - Loading only this rank's spatial tile (slice(0, 90, None), slice(0, 1440, None)) of the data.
+2026-10-20 08:46:27,683 - root - INFO - Multiprocessing inference context: fork
+2026-10-20 08:46:28,805 - root - INFO - Starting model initialization
+2026-10-20 08:46:28,806 - root - INFO - Initializing stepper from provided config
+2026-10-20 08:46:28,806 - root - INFO - Initializing stepper from provided config
+2026-10-20 08:47:00,464 - root - INFO - Current device is cuda:0
+2026-10-20 08:47:00,502 - root - INFO - Number of trainable model parameters: 268770048
+2026-10-20 08:47:00,502 - root - INFO - Starting Training Loop...
+2026-10-20 08:47:00,801 - root - INFO - Beginning epoch after 0 complete epochs
+2026-10-20 08:47:00,801 - root - INFO - Starting training step for model trained for 0 complete epochs
+2026-10-20 08:47:00,853 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 08:47:00,870 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 08:47:04,589 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 08:47:04,609 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 08:47:22,601 - root - INFO - Step 5: {'batch_loss': tensor(4.1950, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2776890393659308, 'lr': 0.0001}
+2026-10-20 08:47:37,943 - root - INFO - Step 10: {'batch_loss': tensor(2.6561, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.32448516469909894, 'lr': 0.0001}
+2026-10-20 08:47:53,233 - root - INFO - Step 15: {'batch_loss': tensor(2.0228, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.3270092172336305, 'lr': 0.0001}
+2026-10-20 08:48:08,549 - root - INFO - Step 20: {'batch_loss': tensor(1.6587, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.32648584740506775, 'lr': 0.0001}
+[rank2]:[W1020 08:48:08.420518712 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 3 PG GUID bcbbe239f8fffe00044cf0ba90c22005139c7316 Rank 2] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 8.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank1]:[W1020 08:48:08.420529142 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 3 PG GUID bcbbe239f8fffe00044cf0ba90c22005139c7316 Rank 1] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 8.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank4]:[W1020 08:48:08.047213809 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 3 PG GUID bcbbe239f8fffe00044cf0ba90c22005139c7316 Rank 4] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 8.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank7]:[W1020 08:48:08.047591734 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 3 PG GUID bcbbe239f8fffe00044cf0ba90c22005139c7316 Rank 7] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 8.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank5]:[W1020 08:48:08.047622814 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 3 PG GUID bcbbe239f8fffe00044cf0ba90c22005139c7316 Rank 5] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 8.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank6]:[W1020 08:48:08.047623085 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 3 PG GUID bcbbe239f8fffe00044cf0ba90c22005139c7316 Rank 6] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 8.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank3]:[W1020 08:48:08.422044415 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 3 PG GUID bcbbe239f8fffe00044cf0ba90c22005139c7316 Rank 3] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 8.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank0]:[W1020 08:48:08.424159633 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 3 PG GUID bcbbe239f8fffe00044cf0ba90c22005139c7316 Rank 0] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 8.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+2026-10-20 08:48:11,377 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 20 additional batches, or 20 total batches, with best_validation_loss inf and best_inference_error inf

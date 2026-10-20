@@ -245,3 +245,18 @@ Epoch checkpoints after 115 steps:
 Sharding is indistinguishable from run-to-run GPU nondeterminism. The
 per-tensor maxima are in conditioning-norm weights initialized at zero,
 where a tiny absolute difference is a large relative one.
+
+## 12. Do 40 GB A100s suffice? (2026-10-20, last minutes of 60032495)
+
+An attempted 37 GB allocator cap (`scripts/memcap/sitecustomize.py`) did NOT
+apply: the ranks' PYTHONPATH no longer had the memcap dir. Uncapped
+nvidia-smi usage with both sharding flags:
+- full harmonics, 4x1: 45.4 GB per GPU;
+- modes x0.5, 4x1: 38.4-39.4 GB per GPU (0.44 samples/s);
+- full harmonics, 8x1 over 2 nodes: runs (0.32 samples/s per replica),
+  memory not read.
+
+nvidia-smi includes allocator cache, so the true need may be lower, but this
+is untested. To settle it, run the smoke config on real 40 GB nodes
+(`-C gpu&a100`), or fix the cap by adding the memcap dir to PYTHONPATH inside
+scripts/env.sh.
