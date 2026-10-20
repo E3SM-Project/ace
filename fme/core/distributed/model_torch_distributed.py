@@ -481,6 +481,9 @@ class ModelTorchDistributed(DistributedBackend):
                     output_device=output_device,
                     process_group=None,
                     broadcast_buffers=False,
+                    # grads alias the comm buckets instead of being a second
+                    # full-size copy (8.4 GB/GPU for the 2.1 B 0.25 deg SFNO)
+                    gradient_as_bucket_view=True,
                 )
                 wrapped.register_comm_hook(
                     state=None, hook=_sum_spatial_mean_data_hook(self._data_size)
