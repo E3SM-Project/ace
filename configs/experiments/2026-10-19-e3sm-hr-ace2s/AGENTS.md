@@ -153,3 +153,11 @@ Newest last. Times are PDT on 2026-10-19 unless noted.
 - Multi-node (s6): 4x1 per node plus data parallelism scales near-perfectly
   (4.26 s on 1 node, 4.25 on 2 and 3); tiles across nodes do not (4x2 over 2
   nodes 3.88 s, 4x3 over 3 nodes for modes x0.5 2.14 s vs 2.54 s at 4x1).
+- 23:22 Tile-loading A/B, end to end: losses identical to the full-read path
+  at every logged step; 0.42 samples/s on both (GPU-bound); node RAM use
+  peaked at ~41 GB above idle against ~150 GB in use before.
+- 23:25 The pilot is compute-bound (99% GPU util); 0.34-0.37 samples/s per
+  replica, the gap to 0.40 being checkpoint saves every 200 steps.
+- 23:30 Hist 1-deg model (0.46 B), 2 nodes x 4, local batch 2: TCP NCCL
+  0.873 s/step vs OFI 0.782 (+12%, all in backward). Recommend sourcing
+  nccl-ofi.sh in the hist sbatch scripts.

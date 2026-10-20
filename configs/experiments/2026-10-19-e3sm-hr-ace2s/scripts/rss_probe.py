@@ -1,5 +1,6 @@
 """Host RSS of building the HR ACE2S network on CPU, and what the
-torch-harmonics lru caches hold afterwards."""
+torch-harmonics lru caches hold afterwards.
+"""
 
 import gc
 import resource
@@ -32,8 +33,13 @@ def caches():
 htf = float(sys.argv[1]) if len(sys.argv) > 1 else 1.0
 print(f"start rss {rss():.1f} GB")
 m = NoiseConditionedSFNOBuilder(
-    embed_dim=384, noise_embed_dim=32, noise_type="isotropic", num_layers=8,
-    checkpointing=3, affine_norms=True, hard_thresholding_fraction=htf,
+    embed_dim=384,
+    noise_embed_dim=32,
+    noise_type="isotropic",
+    num_layers=8,
+    checkpointing=3,
+    affine_norms=True,
+    hard_thresholding_fraction=htf,
 ).build(43, 50, DatasetInfo(img_shape=(720, 1440)))
 params = sum(p.numel() for p in m.parameters()) * 4 / 1e9
 bufs = sum(b.numel() * b.element_size() for b in m.buffers()) / 1e9

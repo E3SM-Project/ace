@@ -80,3 +80,15 @@ Could not import pad from earth2grid.healpix.
 2026-10-19 23:20:35,378 - root - INFO - Step 15: {'batch_loss': tensor(1.9602, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4253568631456594, 'lr': 0.0001}
 2026-10-19 23:20:47,204 - root - INFO - Step 20: {'batch_loss': tensor(1.6330, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4227719727618306, 'lr': 0.0001}
 2026-10-19 23:20:47,205 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 20 additional batches, or 20 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-19 23:21:26,106 - root - INFO - Step 25: {'batch_loss': tensor(1.4454, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.1285271810934273, 'lr': 0.0001}
+2026-10-19 23:21:37,896 - root - INFO - Step 30: {'batch_loss': tensor(1.3186, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4241100986865229, 'lr': 0.0001}
+2026-10-19 23:21:49,652 - root - INFO - Step 35: {'batch_loss': tensor(1.1290, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4253514021087179, 'lr': 0.0001}
+2026-10-19 23:22:01,536 - root - INFO - Step 40: {'batch_loss': tensor(1.1738, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.42068636756408995, 'lr': 0.0001}
+2026-10-19 23:22:01,538 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 40 additional batches, or 40 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-19 23:22:40,198 - root - INFO - Step 45: {'batch_loss': tensor(1.0748, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.12932549715034933, 'lr': 0.0001}
+2026-10-19 23:22:51,958 - root - INFO - Step 50: {'batch_loss': tensor(1.0130, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.42519422232737203, 'lr': 0.0001}
+2026-10-19 23:23:03,713 - root - INFO - Step 55: {'batch_loss': tensor(0.9341, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.42531158305174455, 'lr': 0.0001}
+2026-10-19 23:23:15,509 - root - INFO - Step 60: {'batch_loss': tensor(0.8941, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4238876721277107, 'lr': 0.0001}
+2026-10-19 23:23:15,509 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 60 additional batches, or 60 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-19 23:23:54,268 - root - INFO - Step 65: {'batch_loss': tensor(0.8362, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.12900117557257007, 'lr': 0.0001}
+2026-10-19 23:24:06,027 - root - INFO - Step 70: {'batch_loss': tensor(0.8868, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4252233279547934, 'lr': 0.0001}

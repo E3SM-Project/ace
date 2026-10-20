@@ -74,23 +74,24 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
     <div class="item"><b>Normalization stats</b><span class="pill good">done</span><span>39 training months, 74 variables. Means match LR; residual std is 10&ndash;55% higher</span></div>
     <div class="item"><b>Memory and layout sweeps</b><span class="pill good">done</span><span>Single GPU, 1-node spatial, and A/B reruns from a frozen code snapshot</span></div>
     <div class="item"><b>Multi-node scaling</b><span class="pill good">done</span><span>Data-parallel replicas scale near-perfectly; tiles split across nodes do not</span></div>
-    <div class="item"><b>fme fixes</b><span class="pill good">7 committed</span><span>Gradient sync, loss/corrector, cdf5 engine, IC check, SHT cache leak, builder knob, timeout</span></div>
+    <div class="item"><b>fme fixes</b><span class="pill good">8 committed</span><span>Gradient sync, loss/corrector, cdf5 engine, tile-only loading, IC check, SHT cache leak, builder knob, timeout</span></div>
     <div class="item"><b>Data defect</b><span class="pill bad">source file</span><span><code>eam.h0.0017-01.nc</code> on CFS has a corrupt header; quarantined from the scratch glob</span></div>
     <div class="item"><b>Loader speed</b><span class="pill good">committed</span><span>New <code>engine: cdf5</code>, about 7&times; faster per sample</span></div>
     <div class="item"><b>End-to-end training</b><span class="pill good">1 and 4 nodes</span><span>A full epoch each, with validation, inference and checkpoints</span></div>
-    <div class="item"><b>Pilot run</b><span class="pill run">running</span><span>4 nodes, production config at 0.5 modes, until the allocation ends</span></div>
+    <div class="item"><b>Pilot run</b><span class="pill run">running</span><span>4 nodes, production config, Step 300, loss 0.5229. GPUs at 99% (compute-bound). It ends with the allocation; its checkpoint can be resumed</span></div>
   </div>
 </section>
 
 <section>
   <h2>What was wrong, and what changed</h2>
   <ol>
-    <li><b>Inter-node NCCL used TCP.</b> The uv venv&rsquo;s torch ships its own NCCL with no Slingshot plugin. An 8.4&nbsp;GB all-reduce over 2 nodes measured 2.2&nbsp;GB/s bus bandwidth; with NERSC&rsquo;s aws-ofi-nccl plugin it measured <b>67.8&nbsp;GB/s</b>. A 2-node step of the baseline took 18.2&nbsp;s against 5.6&nbsp;s on one node. <code>scripts/nccl-ofi.sh</code> fixes this. The hist campaign&rsquo;s scripts set no plugin either, so its multi-node runs may have paid this too (unmeasured).</li>
+    <li><b>Inter-node NCCL used TCP.</b> The uv venv&rsquo;s torch ships its own NCCL with no Slingshot plugin. An 8.4&nbsp;GB all-reduce over 2 nodes measured 2.2&nbsp;GB/s bus bandwidth; with NERSC&rsquo;s aws-ofi-nccl plugin it measured <b>67.8&nbsp;GB/s</b>. A 2-node step of the baseline took 18.2&nbsp;s against 5.6&nbsp;s on one node. <code>scripts/nccl-ofi.sh</code> fixes this. <b>The hist campaign pays this too:</b> its 1&deg; model (0.46&nbsp;B params) across 2 nodes runs 0.873&nbsp;s/step on TCP against 0.782 with OFI, 12% slower, all of it in backward. Adding the plugin to the hist sbatch scripts should speed those runs by about 10%.</li>
     <li><b>netCDF-C reads CDF-5 files 8&nbsp;KB at a time.</b> strace showed 1,018 <code>read()</code> calls of 8,192 bytes for two 4&nbsp;MB fields. Reads ran at 30&ndash;105&nbsp;MB/s per reader against 1.2&nbsp;GB/s raw. The new <code>engine: cdf5</code> issues one <code>pread</code> per field and is bit-identical to netcdf4. A loader sample reads at a median ~750&nbsp;MB/s. Commit <code>b9cb5a08c</code>.</li>
     <li><b>Spatial gradient sync was unbucketed.</b> Each parameter had a hook that cloned its gradient and ran a blocking all-reduce. It is now one DDP over the world with a sum-over-tiles, mean-over-replicas comm hook. This makes no difference on one node (NVLink); it is for multi-node runs. Commit <code>dabfe58a9</code>.</li>
     <li><b>EnsembleLoss was tile-local.</b> CRPS gradients were H&middot;W&times; serial. The energy score was mis-scaled by about &radic;(H&middot;W), so at 2&times;2 the 0.9/0.1 mix trained as roughly 0.9/0.05. The logged loss, and the best-checkpoint selection that uses it, came from rank 0&rsquo;s tile only. The corrector&rsquo;s in-graph global means also dropped cross-tile gradient terms. All now match serial on every rank. Commit <code>88d85d5fb</code>.</li>
     <li><b>Inline inference rejected valid runs.</b> The number of initial conditions had to divide the world size instead of the data-parallel size. Commit <code>1b1f7391d</code>.</li>
     <li><b>The spatial backend ignored the collective timeout</b> and used torch&rsquo;s 10-minute default. Ported from the hist branch and extended to that backend. Commit <code>8e41193f0</code>.</li>
+    <li><b>Every spatial rank read the full sample.</b> Each rank now loads only its own tile, bit-identical to the old path. A 4&times;1 latitude band reads 2.6&times; faster, with 4&times; less host memory, pinned memory and H2D traffic. In an end-to-end A/B, the training losses matched the old path exactly at every logged step, and node RAM in use peaked at about 41&nbsp;GB above idle against ~150&nbsp;GB in use before. Commit <code>88a70581d</code>.</li>
     <li><b>torch-harmonics leaked about 12&nbsp;GB of host RAM per rank.</b> Its <code>lru_cache</code> keeps every fp64 Legendre table (~3&nbsp;GB each at lmax 720) for the life of the process. With 4 ranks per node, the first training start was OOM-killed during model build. fme now clears that cache after building each SHT. A CPU build drops from 21.3 to 9.4&nbsp;GB RSS. Commit <code>b14fe7a4d</code>.</li>
   </ol>
   <p>Six loader and logging commits were also ported from the hist branch. They provide <code>rename</code>, <code>reference_pressure_name</code>, frozen-precipitation naming, the time-mean <code>plot_variables</code>, the val <code>mean_map</code> N&times; fix and the logging basicConfig.</p>
@@ -137,7 +138,7 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
 <section>
   <h2>Open issues</h2>
   <ul>
-    <li><b>Redundant reads under spatial parallelism.</b> Every tile rank reads the full global sample and then slices it: 4&times; the I/O and host memory with 4 tiles. With the cdf5 engine, a sample is 456&nbsp;MB per rank at ~750&nbsp;MB/s, so this costs about 0.6&nbsp;s per rank per step, hidden behind a 2.5&ndash;4&nbsp;s step by the DataLoader workers. Worth fixing (read only the tile), but not urgent.</li>
+    <li><b>Production is not submitted.</b> <code>scripts/sbatch-train-hr.sh</code> is ready (8 nodes, 48&nbsp;h, self-requeue) but has only passed <code>sbatch --test-only</code>. The choice of 0.5 modes is set in the config and is yours to confirm.</li>
     <li><b>No restart checkpoint on SIGTERM under spatial parallelism.</b> A walltime requeue resumes from the last <code>checkpoint_every_n_batches</code> save, so set that interval to fit the walltime.</li>
     <li><b>Writers and map aggregators</b> have no spatial gather and may save only the root tile. The power spectrum is skipped under spatial parallelism.</li>
     <li><b>Slow SHT setup.</b> The Legendre precompute takes about 40&nbsp;s per model build at lmax&nbsp;720 on one CPU thread, and much longer on a busy node. It runs on every start and requeue.</li>
@@ -163,6 +164,9 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
     <li><time>22:39</time>The full baseline hit CUDA OOM in training at 4&times;1. Switched the smoke run to 0.5 modes with the real HR stats.</li>
     <li><time>22:55</time>1-node and 4-node smoke runs each completed a full epoch, at 0.42 and 0.40 samples/s per replica.</li>
     <li><time>23:04</time>Launched the 4-node pilot and a 1-node checkpoint-resume test.</li>
+    <li><time>23:15</time>Resume works under spatial parallelism: the smoke run continued from epoch 1 into epoch 2.</li>
+    <li><time>23:20</time>Committed tile-only loading. In the end-to-end A/B, losses match the old path exactly and node RAM use is ~3&times; lower.</li>
+    <li><time>23:30</time>The hist 1&deg; model is 12% slower on TCP NCCL than with OFI across 2 nodes.</li>
   </ul>
 </section>
 </main>
