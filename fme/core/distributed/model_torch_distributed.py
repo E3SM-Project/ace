@@ -51,6 +51,38 @@ def _check_world_size_divisible(world_size: int, spatial_size: int) -> None:
         )
 
 
+def _spatial_grad_sync() -> str:
+    """How spatially-parallel gradients are summed over tiles.
+
+    ``ddp`` (default): DDP over the whole world with a comm hook, bucketed and
+    overlapped with backward. ``hooks``: the original per-parameter
+    all-reduce over the spatial group, kept for A/B comparison.
+    """
+    mode = os.environ.get("FME_SPATIAL_GRAD_SYNC", "ddp")
+    if mode not in ("ddp", "hooks"):
+        raise ValueError(f"FME_SPATIAL_GRAD_SYNC must be ddp or hooks, got {mode}")
+    return mode
+
+
+def _sum_spatial_mean_data_hook(data_size: int):
+    """DDP comm hook: all-reduce SUM over the world, divided by ``data_size``.
+
+    DDP's default hook divides by the size of its process group (the whole
+    world here), which would average over tiles as well; tiles hold disjoint
+    pieces of the same sample, so their gradients must be summed instead.
+    """
+
+    # no annotation on `bucket`: under `from __future__ import annotations` it
+    # is a string, which DDP's signature check rejects
+    def hook(state, bucket):
+        buffer = bucket.buffer()
+        buffer.div_(data_size)
+        fut = torch.distributed.all_reduce(buffer, async_op=True).get_future()
+        return fut.then(lambda f: f.value()[0])
+
+    return hook
+
+
 class _AutogradAllReduce(torch.autograd.Function):
     """Autograd-aware all-reduce (sum) for spatial parallelism.
     Forward: all-reduce (sum) the input across the given process group.
@@ -410,6 +442,24 @@ class ModelTorchDistributed(DistributedBackend):
                 output_device = [self._device_id]
             else:
                 output_device = None
+            has_spatial = self._h_size > 1 or self._w_size > 1
+            if has_spatial and _spatial_grad_sync() == "ddp":
+                # One bucketed, backward-overlapped all-reduce over the whole
+                # world replaces the per-parameter spatial hooks: parameters
+                # are replicated on every rank, so summing over (data, h, w)
+                # and dividing by the data size is exactly "sum over tiles,
+                # mean over data", the same gradient the hooks produce.
+                wrapped = DistributedDataParallel(
+                    SyncBatchNorm.convert_sync_batchnorm(module),
+                    device_ids=self._device_ids,
+                    output_device=output_device,
+                    process_group=None,
+                    broadcast_buffers=False,
+                )
+                wrapped.register_comm_hook(
+                    state=None, hook=_sum_spatial_mean_data_hook(self._data_size)
+                )
+                return wrapped
             wrapped = DistributedDataParallel(
                 SyncBatchNorm.convert_sync_batchnorm(module),
                 device_ids=self._device_ids,
