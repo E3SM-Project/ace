@@ -88,3 +88,1172 @@ Could not import pad from earth2grid.healpix.
 2026-10-19 23:15:40,461 - root - INFO - Step 200: {'batch_loss': tensor(0.6364, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.34337167427304643, 'lr': 0.0001}
 2026-10-19 23:15:40,463 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 200 additional batches, or 200 total batches, with best_validation_loss inf and best_inference_error inf
 2026-10-19 23:20:55,127 - root - INFO - Step 300: {'batch_loss': tensor(0.5229, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.3177919795224054, 'lr': 0.0001}
+2026-10-19 23:25:16,833 - root - INFO - Step 400: {'batch_loss': tensor(0.4568, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.382114433077532, 'lr': 0.0001}
+2026-10-19 23:25:16,834 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 400 additional batches, or 400 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-19 23:30:21,794 - root - INFO - Step 500: {'batch_loss': tensor(0.4257, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.32790970535983477, 'lr': 0.0001}
+2026-10-19 23:34:48,683 - root - INFO - Step 600: {'batch_loss': tensor(0.4042, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.37468417045772473, 'lr': 0.0001}
+2026-10-19 23:34:48,684 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 600 additional batches, or 600 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-19 23:39:46,270 - root - INFO - Step 700: {'batch_loss': tensor(0.3854, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.33603458693516364, 'lr': 0.0001}
+2026-10-19 23:44:12,681 - root - INFO - Step 800: {'batch_loss': tensor(0.3740, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.37535729607921525, 'lr': 0.0001}
+2026-10-19 23:44:12,682 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 800 additional batches, or 800 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-19 23:49:18,515 - root - INFO - Step 900: {'batch_loss': tensor(0.3592, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.3269766063916275, 'lr': 0.0001}
+2026-10-19 23:53:41,330 - root - INFO - Step 1000: {'batch_loss': tensor(0.3462, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.3805006153362122, 'lr': 0.0001}
+2026-10-19 23:53:41,331 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 1000 additional batches, or 1000 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-19 23:59:06,212 - root - INFO - Step 1100: {'batch_loss': tensor(0.3402, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.30780060103273604, 'lr': 0.0001}
+2026-10-20 00:03:58,154 - root - INFO - Step 1200: {'batch_loss': tensor(0.3359, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.34253280276022163, 'lr': 0.0001}
+2026-10-20 00:03:58,155 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 1200 additional batches, or 1200 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-20 00:09:27,783 - root - INFO - Step 1300: {'batch_loss': tensor(0.3331, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.3033717594700461, 'lr': 0.0001}
+2026-10-20 00:14:21,790 - root - INFO - Step 1400: {'batch_loss': tensor(0.3237, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.34013380226432427, 'lr': 0.0001}
+2026-10-20 00:14:21,791 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 1400 additional batches, or 1400 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-20 00:20:06,400 - root - INFO - Step 1500: {'batch_loss': tensor(0.3182, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.29018301407989155, 'lr': 0.0001}
+2026-10-20 00:24:54,414 - root - INFO - Step 1600: {'batch_loss': tensor(0.3162, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.34720282477650966, 'lr': 0.0001}
+2026-10-20 00:24:54,415 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 1600 additional batches, or 1600 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-20 00:30:40,839 - root - INFO - Step 1700: {'batch_loss': tensor(0.3132, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.28866251427587836, 'lr': 0.0001}
+[2026-10-20T07:33:23.127] error: *** STEP 60022811.53 ON nid008593 CANCELLED AT 2026-10-20T07:33:23 DUE TO TIME LIMIT ***
+--- Logging error ---
+--- Logging error ---
+--- Logging error ---
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 731, in run
+    result = self._invoke_run(role)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 908, in _invoke_run
+    time.sleep(monitor_interval)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 775727 got signal: 15
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/logging/__init__.py", line 1151, in emit
+    msg = self.format(record)
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/logging/__init__.py", line 999, in format
+    return fmt.format(record)
+           ~~~~~~~~~~^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_logging/_internal.py", line 889, in format
+    record.asctime = self.formatTime(record, "%m%d %H:%M:%S")
+                     ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/logging/__init__.py", line 649, in formatTime
+    ct = self.converter(record.created)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 775727 got signal: 15
+Call stack:
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 308, in launch_agent
+    result = agent.run()
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/metrics/api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 739, in run
+    logger.warning("Received %s death signal, shutting down workers", e.sigval)
+Message: 'Received %s death signal, shutting down workers'
+Arguments: (<Signals.SIGTERM: 15>,)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 731, in run
+    result = self._invoke_run(role)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 908, in _invoke_run
+    time.sleep(monitor_interval)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 553152 got signal: 15
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/pathlib/_local.py", line 178, in _str_normcase
+    return self._str_normcase_cached
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'pathlib._local.PosixPath' object has no attribute '_str_normcase_cached'. Did you mean: '_parts_normcase_cached'?
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/logging/__init__.py", line 1151, in emit
+    msg = self.format(record)
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/logging/__init__.py", line 999, in format
+    return fmt.format(record)
+           ~~~~~~~~~~^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_logging/_internal.py", line 937, in format
+    filepath = make_module_path_relative(record.pathname)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_logging/_internal.py", line 861, in make_module_path_relative
+    rel_path = abs_path.relative_to(path)
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/pathlib/_local.py", line 382, in relative_to
+    if path == self or path in self.parents:
+                       ^^^^^^^^^^^^^^^^^^^^
+  File "<frozen _collections_abc>", line 1039, in __contains__
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/pathlib/_local.py", line 196, in __eq__
+    return self._str_normcase == other._str_normcase and self.parser is other.parser
+           ^^^^^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/pathlib/_local.py", line 181, in _str_normcase
+    self._str_normcase_cached = str(self)
+                                ~~~^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/pathlib/_local.py", line 227, in __str__
+    def __str__(self):
+    
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 553152 got signal: 15
+Call stack:
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 308, in launch_agent
+    result = agent.run()
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/metrics/api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 739, in run
+    logger.warning("Received %s death signal, shutting down workers", e.sigval)
+Message: 'Received %s death signal, shutting down workers'
+Arguments: (<Signals.SIGTERM: 15>,)
+W1020 00:33:23.172000 775727 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 775925 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 00:33:23.176000 553152 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 553204 closing signal SIGTERM
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 731, in run
+    result = self._invoke_run(role)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 908, in _invoke_run
+    time.sleep(monitor_interval)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+W1020 00:33:23.176000 775727 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 775926 closing signal SIGTERM
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 558267 got signal: 15
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+W1020 00:33:23.177000 553152 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 553205 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/logging/__init__.py", line 1151, in emit
+    msg = self.format(record)
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/logging/__init__.py", line 999, in format
+    return fmt.format(record)
+           ~~~~~~~~~~^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_logging/_internal.py", line 937, in format
+    filepath = make_module_path_relative(record.pathname)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_logging/_internal.py", line 857, in make_module_path_relative
+    abs_path = pathlib.Path(abs_path).resolve()
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/pathlib/_local.py", line 670, in resolve
+    return self.with_segments(os.path.realpath(self, strict=strict))
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/pathlib/_abc.py", line 135, in with_segments
+    return type(self)(*pathsegments)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/pathlib/_local.py", line 503, in __init__
+    super().__init__(*args)
+    ~~~~~~~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 558267 got signal: 15
+Call stack:
+W1020 00:33:23.177000 775727 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 775927 closing signal SIGTERM
+W1020 00:33:23.177000 553152 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 553206 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 00:33:23.178000 775727 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 775928 closing signal SIGTERM
+W1020 00:33:23.178000 553152 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 553207 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 308, in launch_agent
+    result = agent.run()
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/metrics/api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 739, in run
+    logger.warning("Received %s death signal, shutting down workers", e.sigval)
+Message: 'Received %s death signal, shutting down workers'
+Arguments: (<Signals.SIGTERM: 15>,)
+W1020 00:33:23.180000 558267 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 558321 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 00:33:23.181000 558267 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 558322 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 00:33:23.182000 558267 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 558323 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 00:33:23.183000 558267 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 558324 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+[rank5]: Traceback (most recent call last):
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+[rank5]:     yield
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/distributed.py", line 126, in context
+[rank5]:     yield
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/__main__.py", line 9, in <module>
+[rank5]:     main(args.yaml_config, override_dotlist=args.override)
+[rank5]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/train.py", line 107, in main
+[rank5]:     run_train(config)
+[rank5]:     ~~~~~~~~~^^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/train.py", line 91, in run_train
+[rank5]:     trainer.train()
+[rank5]:     ~~~~~~~~~~~~~^^
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/generics/trainer.py", line 458, in train
+[rank5]:     train_summary = self.train_one_epoch()
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/generics/trainer.py", line 585, in train_one_epoch
+[rank5]:     stepped = self.stepper.train_on_batch(batch, self.optimization)
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1724, in train_on_batch
+[rank5]:     output_list, per_channel_losses = self._accumulate_loss(
+[rank5]:                                       ~~~~~~~~~~~~~~~~~~~~~^
+[rank5]:         data,
+[rank5]:         ^^^^^
+[rank5]:     ...<4 lines>...
+[rank5]:         n_loss_steps=n_loss_steps,
+[rank5]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank5]:     )
+[rank5]:     ^
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1800, in _accumulate_loss
+[rank5]:     step_output = next(output_iterator)
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1200, in predict_generator
+[rank5]:     result = self.step(
+[rank5]:         StepArgs(
+[rank5]:     ...<6 lines>...
+[rank5]:         wrapper=checkpoint,
+[rank5]:     )
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1114, in step
+[rank5]:     result = self._step_obj.step(args=args, wrapper=wrapper)
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/step/single_module.py", line 555, in step
+[rank5]:     return step_with_adjustments(
+[rank5]:         input=args.input,
+[rank5]:     ...<10 lines>...
+[rank5]:         stepper_state=args.stepper_state,
+[rank5]:     )
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/step/single_module.py", line 792, in step_with_adjustments
+[rank5]:     output_norm = network_calls(input_norm)
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/step/single_module.py", line 536, in network_call
+[rank5]:     output_tensor = self.module.wrap_module(wrapper)(
+[rank5]:         input_tensor,
+[rank5]:         labels=args.labels,
+[rank5]:     )
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/registry/module.py", line 97, in __call__
+[rank5]:     return self._module(input)
+[rank5]:            ~~~~~~~~~~~~^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank5]:     return self._call_impl(*args, **kwargs)
+[rank5]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank5]:     return forward_call(*args, **kwargs)
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/parallel/distributed.py", line 1666, in forward
+[rank5]:     else self._run_ddp_forward(*inputs, **kwargs)
+[rank5]:          ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/parallel/distributed.py", line 1492, in _run_ddp_forward
+[rank5]:     return self.module(*inputs, **kwargs)  # type: ignore[index]
+[rank5]:            ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank5]:     return self._call_impl(*args, **kwargs)
+[rank5]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank5]:     return forward_call(*args, **kwargs)
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/registry/stochastic_sfno.py", line 164, in forward
+[rank5]:     return self.conditional_model(
+[rank5]:            ~~~~~~~~~~~~~~~~~~~~~~^
+[rank5]:         x,
+[rank5]:         ^^
+[rank5]:     ...<5 lines>...
+[rank5]:         ),
+[rank5]:         ^^
+[rank5]:     )
+[rank5]:     ^
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank5]:     return self._call_impl(*args, **kwargs)
+[rank5]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank5]:     return forward_call(*args, **kwargs)
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/models/conditional_sfno/sfnonet.py", line 812, in forward
+[rank5]:     x = self._forward_features(x, context)
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/models/conditional_sfno/sfnonet.py", line 764, in _forward_features
+[rank5]:     x = checkpoint(blk, x, context, use_reentrant=False)
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_compile.py", line 54, in inner
+[rank5]:     return disable_fn(*args, **kwargs)
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_dynamo/eval_frame.py", line 1181, in _fn
+[rank5]:     return fn(*args, **kwargs)
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/checkpoint.py", line 512, in checkpoint
+[rank5]:     ret = function(*args, **kwargs)
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank5]:     return self._call_impl(*args, **kwargs)
+[rank5]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank5]:     return forward_call(*args, **kwargs)
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/models/conditional_sfno/sfnonet.py", line 399, in forward
+[rank5]:     x, residual = self.filter(x_norm, timer=filter_timer)
+[rank5]:                   ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank5]:     return self._call_impl(*args, **kwargs)
+[rank5]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank5]:     return forward_call(*args, **kwargs)
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/models/conditional_sfno/sfnonet.py", line 263, in forward
+[rank5]:     return self.filter(x, timer=timer)
+[rank5]:            ~~~~~~~~~~~^^^^^^^^^^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank5]:     return self._call_impl(*args, **kwargs)
+[rank5]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank5]:     return forward_call(*args, **kwargs)
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/models/conditional_sfno/s2convolutions.py", line 422, in forward
+[rank5]:     x = self.inverse_transform(x)
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank5]:     return self._call_impl(*args, **kwargs)
+[rank5]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank5]:     return forward_call(*args, **kwargs)
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch_harmonics/distributed/distributed_sht.py", line 301, in forward
+[rank5]:     x = torch.fft.irfft(x, n=self.nlon, dim=-1, norm="forward")
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank5]:     _error_if_any_worker_fails()
+[rank5]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank5]: RuntimeError: DataLoader worker (pid 553515) is killed by signal: Terminated. 
+
+[rank5]: During handling of the above exception, another exception occurred:
+
+[rank5]: Traceback (most recent call last):
+[rank5]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank5]:   File "<frozen runpy>", line 88, in _run_code
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/__main__.py", line 8, in <module>
+[rank5]:     with Distributed.context():
+[rank5]:          ~~~~~~~~~~~~~~~~~~~^^
+[rank5]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank5]:     self.gen.throw(value)
+[rank5]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/distributed.py", line 118, in context
+[rank5]:     with contextlib.ExitStack() as stack:
+[rank5]:          ~~~~~~~~~~~~~~~~~~~~^^
+[rank5]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 619, in __exit__
+[rank5]:     raise exc
+[rank5]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 604, in __exit__
+[rank5]:     if cb(*exc_details):
+[rank5]:        ~~^^^^^^^^^^^^^^
+[rank5]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank5]:     self.gen.throw(value)
+[rank5]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/shutdown.py", line 487, in abort_and_exit_on_termination
+[rank5]:     listener.block_until_process_exit()
+[rank5]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/_signal_listener.py", line 174, in block_until_process_exit
+[rank5]:     self._thread.join()
+[rank5]:     ~~~~~~~~~~~~~~~~~^^
+[rank5]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 1094, in join
+[rank5]:     self._handle.join(timeout)
+[rank5]:     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank5]:     _error_if_any_worker_fails()
+[rank5]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank5]: RuntimeError: DataLoader worker (pid 553577) is killed by signal: Terminated. 
+[rank7]: Traceback (most recent call last):
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+[rank7]:     yield
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/distributed.py", line 126, in context
+[rank7]:     yield
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/__main__.py", line 9, in <module>
+[rank7]:     main(args.yaml_config, override_dotlist=args.override)
+[rank7]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/train.py", line 107, in main
+[rank7]:     run_train(config)
+[rank7]:     ~~~~~~~~~^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/train.py", line 91, in run_train
+[rank7]:     trainer.train()
+[rank7]:     ~~~~~~~~~~~~~^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/generics/trainer.py", line 458, in train
+[rank7]:     train_summary = self.train_one_epoch()
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/generics/trainer.py", line 585, in train_one_epoch
+[rank7]:     stepped = self.stepper.train_on_batch(batch, self.optimization)
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1724, in train_on_batch
+[rank7]:     output_list, per_channel_losses = self._accumulate_loss(
+[rank7]:                                       ~~~~~~~~~~~~~~~~~~~~~^
+[rank7]:         data,
+[rank7]:         ^^^^^
+[rank7]:     ...<4 lines>...
+[rank7]:         n_loss_steps=n_loss_steps,
+[rank7]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank7]:     )
+[rank7]:     ^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1800, in _accumulate_loss
+[rank7]:     step_output = next(output_iterator)
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1200, in predict_generator
+[rank7]:     result = self.step(
+[rank7]:         StepArgs(
+[rank7]:     ...<6 lines>...
+[rank7]:         wrapper=checkpoint,
+[rank7]:     )
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1114, in step
+[rank7]:     result = self._step_obj.step(args=args, wrapper=wrapper)
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/step/single_module.py", line 555, in step
+[rank7]:     return step_with_adjustments(
+[rank7]:         input=args.input,
+[rank7]:     ...<10 lines>...
+[rank7]:         stepper_state=args.stepper_state,
+[rank7]:     )
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/step/single_module.py", line 792, in step_with_adjustments
+[rank7]:     output_norm = network_calls(input_norm)
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/step/single_module.py", line 536, in network_call
+[rank7]:     output_tensor = self.module.wrap_module(wrapper)(
+[rank7]:         input_tensor,
+[rank7]:         labels=args.labels,
+[rank7]:     )
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/registry/module.py", line 97, in __call__
+[rank7]:     return self._module(input)
+[rank7]:            ~~~~~~~~~~~~^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank7]:     return self._call_impl(*args, **kwargs)
+[rank7]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank7]:     return forward_call(*args, **kwargs)
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/parallel/distributed.py", line 1666, in forward
+[rank7]:     else self._run_ddp_forward(*inputs, **kwargs)
+[rank7]:          ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/parallel/distributed.py", line 1492, in _run_ddp_forward
+[rank7]:     return self.module(*inputs, **kwargs)  # type: ignore[index]
+[rank7]:            ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank7]:     return self._call_impl(*args, **kwargs)
+[rank7]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank7]:     return forward_call(*args, **kwargs)
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/registry/stochastic_sfno.py", line 164, in forward
+[rank7]:     return self.conditional_model(
+[rank7]:            ~~~~~~~~~~~~~~~~~~~~~~^
+[rank7]:         x,
+[rank7]:         ^^
+[rank7]:     ...<5 lines>...
+[rank7]:         ),
+[rank7]:         ^^
+[rank7]:     )
+[rank7]:     ^
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank7]:     return self._call_impl(*args, **kwargs)
+[rank7]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank7]:     return forward_call(*args, **kwargs)
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/models/conditional_sfno/sfnonet.py", line 812, in forward
+[rank7]:     x = self._forward_features(x, context)
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/models/conditional_sfno/sfnonet.py", line 764, in _forward_features
+[rank7]:     x = checkpoint(blk, x, context, use_reentrant=False)
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_compile.py", line 54, in inner
+[rank7]:     return disable_fn(*args, **kwargs)
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_dynamo/eval_frame.py", line 1181, in _fn
+[rank7]:     return fn(*args, **kwargs)
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/checkpoint.py", line 512, in checkpoint
+[rank7]:     ret = function(*args, **kwargs)
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank7]:     return self._call_impl(*args, **kwargs)
+[rank7]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank7]:     return forward_call(*args, **kwargs)
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/models/conditional_sfno/sfnonet.py", line 425, in forward
+[rank7]:     x = self.mlp(x)
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank7]:     return self._call_impl(*args, **kwargs)
+[rank7]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank7]:     return forward_call(*args, **kwargs)
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/models/conditional_sfno/layers.py", line 416, in forward
+[rank7]:     return self.checkpoint_forward(x)
+[rank7]:            ~~~~~~~~~~~~~~~~~~~~~~~^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/models/conditional_sfno/layers.py", line 412, in checkpoint_forward
+[rank7]:     return checkpoint(self.fwd, x, use_reentrant=False)
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_compile.py", line 54, in inner
+[rank7]:     return disable_fn(*args, **kwargs)
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_dynamo/eval_frame.py", line 1181, in _fn
+[rank7]:     return fn(*args, **kwargs)
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/checkpoint.py", line 512, in checkpoint
+[rank7]:     ret = function(*args, **kwargs)
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank7]:     return self._call_impl(*args, **kwargs)
+[rank7]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank7]:     return forward_call(*args, **kwargs)
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/container.py", line 253, in forward
+[rank7]:     input = module(input)
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank7]:     return self._call_impl(*args, **kwargs)
+[rank7]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank7]:     return forward_call(*args, **kwargs)
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/models/conditional_sfno/lora.py", line 135, in forward
+[rank7]:     y = super().forward(x)
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/conv.py", line 553, in forward
+[rank7]:     return self._conv_forward(input, self.weight, self.bias)
+[rank7]:            ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/conv.py", line 548, in _conv_forward
+[rank7]:     return F.conv2d(
+[rank7]:            ~~~~~~~~^
+[rank7]:         input, weight, bias, self.stride, self.padding, self.dilation, self.groups
+[rank7]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank7]:     )
+[rank7]:     ^
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank7]:     _error_if_any_worker_fails()
+[rank7]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank7]: RuntimeError: DataLoader worker (pid 553528) is killed by signal: Terminated. 
+
+[rank7]: During handling of the above exception, another exception occurred:
+
+[rank7]: Traceback (most recent call last):
+[rank7]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank7]:   File "<frozen runpy>", line 88, in _run_code
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/__main__.py", line 8, in <module>
+[rank7]:     with Distributed.context():
+[rank7]:          ~~~~~~~~~~~~~~~~~~~^^
+[rank7]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank7]:     self.gen.throw(value)
+[rank7]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/distributed.py", line 118, in context
+[rank7]:     with contextlib.ExitStack() as stack:
+[rank7]:          ~~~~~~~~~~~~~~~~~~~~^^
+[rank7]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 619, in __exit__
+[rank7]:     raise exc
+[rank7]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 604, in __exit__
+[rank7]:     if cb(*exc_details):
+[rank7]:        ~~^^^^^^^^^^^^^^
+[rank7]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank7]:     self.gen.throw(value)
+[rank7]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/shutdown.py", line 487, in abort_and_exit_on_termination
+[rank7]:     listener.block_until_process_exit()
+[rank7]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/_signal_listener.py", line 174, in block_until_process_exit
+[rank7]:     self._thread.join()
+[rank7]:     ~~~~~~~~~~~~~~~~~^^
+[rank7]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 1094, in join
+[rank7]:     self._handle.join(timeout)
+[rank7]:     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank7]:     _error_if_any_worker_fails()
+[rank7]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank7]: RuntimeError: DataLoader worker (pid 553567) is killed by signal: Terminated. 
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+Draining local device work failed:
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/distributed.py", line 126, in context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/__main__.py", line 9, in <module>
+    main(args.yaml_config, override_dotlist=args.override)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/train.py", line 107, in main
+    run_train(config)
+    ~~~~~~~~~^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/train.py", line 91, in run_train
+    trainer.train()
+    ~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/generics/trainer.py", line 458, in train
+    train_summary = self.train_one_epoch()
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/generics/trainer.py", line 585, in train_one_epoch
+    stepped = self.stepper.train_on_batch(batch, self.optimization)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1724, in train_on_batch
+    output_list, per_channel_losses = self._accumulate_loss(
+                                      ~~~~~~~~~~~~~~~~~~~~~^
+        data,
+        ^^^^^
+    ...<4 lines>...
+        n_loss_steps=n_loss_steps,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1816, in _accumulate_loss
+    step_total_loss = self._accumulate_step_loss(
+        gen_step=gen_step,
+    ...<7 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1843, in _accumulate_step_loss
+    step_loss = self._loss_obj(
+        gen_step,
+    ...<3 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/loss.py", line 1304, in forward
+    main=self.step_loss(predict_dict, target_dict, step, data_mask)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/loss.py", line 934, in forward
+    return self.loss(predict_dict, target_dict, data_mask=data_mask).scale(
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/loss.py", line 247, in __call__
+    predict_tensors = self.packer.pack(
+        self.normalizer.normalize(predict_dict), axis=self.channel_dim
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/packer.py", line 39, in pack
+    return _pack(tensors, self.names, axis=axis)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 777679) is killed by signal: Terminated. 
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/shutdown.py", line 466, in abort_and_exit_on_termination
+    drain()
+    ~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/distributed.py", line 643, in _drain_local_work
+    torch.cuda.synchronize()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/cuda/__init__.py", line 1108, in synchronize
+    return torch._C._cuda_synchronize()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 777786) is killed by signal: Terminated. 
+Draining local device work failed:
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/distributed.py", line 126, in context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/__main__.py", line 9, in <module>
+    main(args.yaml_config, override_dotlist=args.override)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/train.py", line 107, in main
+    run_train(config)
+    ~~~~~~~~~^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/train.py", line 91, in run_train
+    trainer.train()
+    ~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/generics/trainer.py", line 458, in train
+    train_summary = self.train_one_epoch()
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/generics/trainer.py", line 585, in train_one_epoch
+    stepped = self.stepper.train_on_batch(batch, self.optimization)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1724, in train_on_batch
+    output_list, per_channel_losses = self._accumulate_loss(
+                                      ~~~~~~~~~~~~~~~~~~~~~^
+        data,
+        ^^^^^
+    ...<4 lines>...
+        n_loss_steps=n_loss_steps,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1816, in _accumulate_loss
+    step_total_loss = self._accumulate_step_loss(
+        gen_step=gen_step,
+    ...<7 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1843, in _accumulate_step_loss
+    step_loss = self._loss_obj(
+        gen_step,
+    ...<3 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/loss.py", line 1304, in forward
+    main=self.step_loss(predict_dict, target_dict, step, data_mask)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/loss.py", line 934, in forward
+    return self.loss(predict_dict, target_dict, data_mask=data_mask).scale(
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/loss.py", line 251, in __call__
+    self.normalizer.normalize(target_dict), axis=self.channel_dim
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/normalizer.py", line 159, in normalize
+    return _normalize(
+        filtered_tensors,
+    ...<3 lines>...
+        apply_mean=apply_mean,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/normalizer.py", line 220, in _normalize
+    normalized = {k: (t - means[k]) / stds[k] for k, t in tensors.items()}
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 777685) is killed by signal: Terminated. 
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/shutdown.py", line 466, in abort_and_exit_on_termination
+    drain()
+    ~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/distributed.py", line 643, in _drain_local_work
+    torch.cuda.synchronize()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/cuda/__init__.py", line 1108, in synchronize
+    return torch._C._cuda_synchronize()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 777787) is killed by signal: Terminated. 
+Draining local device work failed:
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/distributed.py", line 126, in context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/__main__.py", line 9, in <module>
+    main(args.yaml_config, override_dotlist=args.override)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/train.py", line 107, in main
+    run_train(config)
+    ~~~~~~~~~^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/train.py", line 91, in run_train
+    trainer.train()
+    ~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/generics/trainer.py", line 458, in train
+    train_summary = self.train_one_epoch()
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/generics/trainer.py", line 585, in train_one_epoch
+    stepped = self.stepper.train_on_batch(batch, self.optimization)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1724, in train_on_batch
+    output_list, per_channel_losses = self._accumulate_loss(
+                                      ~~~~~~~~~~~~~~~~~~~~~^
+        data,
+        ^^^^^
+    ...<4 lines>...
+        n_loss_steps=n_loss_steps,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1816, in _accumulate_loss
+    step_total_loss = self._accumulate_step_loss(
+        gen_step=gen_step,
+    ...<7 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1843, in _accumulate_step_loss
+    step_loss = self._loss_obj(
+        gen_step,
+    ...<3 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/loss.py", line 1304, in forward
+    main=self.step_loss(predict_dict, target_dict, step, data_mask)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/loss.py", line 934, in forward
+    return self.loss(predict_dict, target_dict, data_mask=data_mask).scale(
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/loss.py", line 251, in __call__
+    self.normalizer.normalize(target_dict), axis=self.channel_dim
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/normalizer.py", line 159, in normalize
+    return _normalize(
+        filtered_tensors,
+    ...<3 lines>...
+        apply_mean=apply_mean,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/normalizer.py", line 220, in _normalize
+    normalized = {k: (t - means[k]) / stds[k] for k, t in tensors.items()}
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 777791) is killed by signal: Terminated. 
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/shutdown.py", line 466, in abort_and_exit_on_termination
+    drain()
+    ~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/distributed.py", line 643, in _drain_local_work
+    torch.cuda.synchronize()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/cuda/__init__.py", line 1108, in synchronize
+    return torch._C._cuda_synchronize()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 777684) is killed by signal: Terminated. 
+Draining local device work failed:
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/distributed.py", line 126, in context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/__main__.py", line 9, in <module>
+    main(args.yaml_config, override_dotlist=args.override)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/train.py", line 107, in main
+    run_train(config)
+    ~~~~~~~~~^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/train.py", line 91, in run_train
+    trainer.train()
+    ~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/generics/trainer.py", line 458, in train
+    train_summary = self.train_one_epoch()
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/generics/trainer.py", line 585, in train_one_epoch
+    stepped = self.stepper.train_on_batch(batch, self.optimization)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1724, in train_on_batch
+    output_list, per_channel_losses = self._accumulate_loss(
+                                      ~~~~~~~~~~~~~~~~~~~~~^
+        data,
+        ^^^^^
+    ...<4 lines>...
+        n_loss_steps=n_loss_steps,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1816, in _accumulate_loss
+    step_total_loss = self._accumulate_step_loss(
+        gen_step=gen_step,
+    ...<7 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1843, in _accumulate_step_loss
+    step_loss = self._loss_obj(
+        gen_step,
+    ...<3 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/loss.py", line 1304, in forward
+    main=self.step_loss(predict_dict, target_dict, step, data_mask)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/loss.py", line 934, in forward
+    return self.loss(predict_dict, target_dict, data_mask=data_mask).scale(
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/loss.py", line 251, in __call__
+    self.normalizer.normalize(target_dict), axis=self.channel_dim
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/normalizer.py", line 159, in normalize
+    return _normalize(
+        filtered_tensors,
+    ...<3 lines>...
+        apply_mean=apply_mean,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/normalizer.py", line 220, in _normalize
+    normalized = {k: (t - means[k]) / stds[k] for k, t in tensors.items()}
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 777694) is killed by signal: Terminated. 
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/shutdown.py", line 466, in abort_and_exit_on_termination
+    drain()
+    ~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/distributed.py", line 643, in _drain_local_work
+    torch.cuda.synchronize()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/cuda/__init__.py", line 1108, in synchronize
+    return torch._C._cuda_synchronize()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 777788) is killed by signal: Terminated. 
+Draining local device work failed:
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/distributed.py", line 126, in context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/__main__.py", line 9, in <module>
+    main(args.yaml_config, override_dotlist=args.override)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/train.py", line 107, in main
+    run_train(config)
+    ~~~~~~~~~^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/train.py", line 91, in run_train
+    trainer.train()
+    ~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/generics/trainer.py", line 458, in train
+    train_summary = self.train_one_epoch()
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/generics/trainer.py", line 585, in train_one_epoch
+    stepped = self.stepper.train_on_batch(batch, self.optimization)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1724, in train_on_batch
+    output_list, per_channel_losses = self._accumulate_loss(
+                                      ~~~~~~~~~~~~~~~~~~~~~^
+        data,
+        ^^^^^
+    ...<4 lines>...
+        n_loss_steps=n_loss_steps,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1800, in _accumulate_loss
+    step_output = next(output_iterator)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1200, in predict_generator
+    result = self.step(
+        StepArgs(
+    ...<6 lines>...
+        wrapper=checkpoint,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1114, in step
+    result = self._step_obj.step(args=args, wrapper=wrapper)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/step/single_module.py", line 555, in step
+    return step_with_adjustments(
+        input=args.input,
+    ...<10 lines>...
+        stepper_state=args.stepper_state,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/step/single_module.py", line 792, in step_with_adjustments
+    output_norm = network_calls(input_norm)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/step/single_module.py", line 536, in network_call
+    output_tensor = self.module.wrap_module(wrapper)(
+        input_tensor,
+        labels=args.labels,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/registry/module.py", line 97, in __call__
+    return self._module(input)
+           ~~~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/parallel/distributed.py", line 1666, in forward
+    else self._run_ddp_forward(*inputs, **kwargs)
+         ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/parallel/distributed.py", line 1492, in _run_ddp_forward
+    return self.module(*inputs, **kwargs)  # type: ignore[index]
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/registry/stochastic_sfno.py", line 164, in forward
+    return self.conditional_model(
+           ~~~~~~~~~~~~~~~~~~~~~~^
+        x,
+        ^^
+    ...<5 lines>...
+        ),
+        ^^
+    )
+    ^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/models/conditional_sfno/sfnonet.py", line 812, in forward
+    x = self._forward_features(x, context)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/models/conditional_sfno/sfnonet.py", line 764, in _forward_features
+    x = checkpoint(blk, x, context, use_reentrant=False)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_compile.py", line 54, in inner
+    return disable_fn(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_dynamo/eval_frame.py", line 1181, in _fn
+    return fn(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/checkpoint.py", line 512, in checkpoint
+    ret = function(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/models/conditional_sfno/sfnonet.py", line 406, in forward
+    x = x + self.inner_skip(residual)
+            ~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/models/conditional_sfno/lora.py", line 135, in forward
+    y = super().forward(x)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/conv.py", line 553, in forward
+    return self._conv_forward(input, self.weight, self.bias)
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/conv.py", line 548, in _conv_forward
+    return F.conv2d(
+           ~~~~~~~~^
+        input, weight, bias, self.stride, self.padding, self.dilation, self.groups
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 558723) is killed by signal: Terminated. 
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/shutdown.py", line 466, in abort_and_exit_on_termination
+    drain()
+    ~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/distributed.py", line 643, in _drain_local_work
+    torch.cuda.synchronize()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/cuda/__init__.py", line 1108, in synchronize
+    return torch._C._cuda_synchronize()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 558649) is killed by signal: Terminated. 
+W1020 00:33:26.785000 555018 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 555073 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 00:33:26.796000 555018 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 555074 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 00:33:26.796000 555018 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 555075 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 00:33:26.797000 555018 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 555076 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Draining local device work failed:
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/distributed.py", line 126, in context
+    yield
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/__main__.py", line 9, in <module>
+    main(args.yaml_config, override_dotlist=args.override)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/train.py", line 107, in main
+    run_train(config)
+    ~~~~~~~~~^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/train/train.py", line 91, in run_train
+    trainer.train()
+    ~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/generics/trainer.py", line 458, in train
+    train_summary = self.train_one_epoch()
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/generics/trainer.py", line 585, in train_one_epoch
+    stepped = self.stepper.train_on_batch(batch, self.optimization)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1724, in train_on_batch
+    output_list, per_channel_losses = self._accumulate_loss(
+                                      ~~~~~~~~~~~~~~~~~~~~~^
+        data,
+        ^^^^^
+    ...<4 lines>...
+        n_loss_steps=n_loss_steps,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1816, in _accumulate_loss
+    step_total_loss = self._accumulate_step_loss(
+        gen_step=gen_step,
+    ...<7 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/ace/stepper/single_module.py", line 1843, in _accumulate_step_loss
+    step_loss = self._loss_obj(
+        gen_step,
+    ...<3 lines>...
+        deltas=deltas,
+    )
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/loss.py", line 1304, in forward
+    main=self.step_loss(predict_dict, target_dict, step, data_mask)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/loss.py", line 934, in forward
+    return self.loss(predict_dict, target_dict, data_mask=data_mask).scale(
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/loss.py", line 248, in __call__
+    self.normalizer.normalize(predict_dict), axis=self.channel_dim
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/normalizer.py", line 159, in normalize
+    return _normalize(
+        filtered_tensors,
+    ...<3 lines>...
+        apply_mean=apply_mean,
+    )
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/normalizer.py", line 220, in _normalize
+    normalized = {k: (t - means[k]) / stds[k] for k, t in tensors.items()}
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 558652) is killed by signal: Terminated. 
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/shutdown.py", line 466, in abort_and_exit_on_termination
+    drain()
+    ~~~~~^^
+  File "/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/distributed/distributed.py", line 643, in _drain_local_work
+    torch.cuda.synchronize()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/cuda/__init__.py", line 1108, in synchronize
+    return torch._C._cuda_synchronize()
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: DataLoader worker (pid 558719) is killed by signal: Terminated. 
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.

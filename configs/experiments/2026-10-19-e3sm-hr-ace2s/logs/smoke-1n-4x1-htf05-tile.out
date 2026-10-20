@@ -92,3 +92,72 @@ Could not import pad from earth2grid.healpix.
 2026-10-19 23:23:15,509 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 60 additional batches, or 60 total batches, with best_validation_loss inf and best_inference_error inf
 2026-10-19 23:23:54,268 - root - INFO - Step 65: {'batch_loss': tensor(0.8362, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.12900117557257007, 'lr': 0.0001}
 2026-10-19 23:24:06,027 - root - INFO - Step 70: {'batch_loss': tensor(0.8868, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4252233279547934, 'lr': 0.0001}
+2026-10-19 23:24:17,780 - root - INFO - Step 75: {'batch_loss': tensor(0.8027, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.42543082094508866, 'lr': 0.0001}
+2026-10-19 23:24:29,535 - root - INFO - Step 80: {'batch_loss': tensor(0.7914, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4253493488641186, 'lr': 0.0001}
+2026-10-19 23:24:29,535 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 80 additional batches, or 80 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-19 23:25:07,928 - root - INFO - Step 85: {'batch_loss': tensor(0.7354, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.13023313824018176, 'lr': 0.0001}
+2026-10-19 23:25:19,705 - root - INFO - Step 90: {'batch_loss': tensor(0.6948, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4245558676949824, 'lr': 0.0001}
+2026-10-19 23:25:31,455 - root - INFO - Step 95: {'batch_loss': tensor(0.6958, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4255046145339488, 'lr': 0.0001}
+2026-10-19 23:25:43,210 - root - INFO - Step 100: {'batch_loss': tensor(0.6563, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4253751021272487, 'lr': 0.0001}
+2026-10-19 23:25:43,211 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 100 additional batches, or 100 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-19 23:26:22,293 - root - INFO - Step 105: {'batch_loss': tensor(0.7035, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.12793197445262244, 'lr': 0.0001}
+2026-10-19 23:26:34,048 - root - INFO - Step 110: {'batch_loss': tensor(0.6560, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4253481238284633, 'lr': 0.0001}
+2026-10-19 23:26:45,805 - root - INFO - Step 115: {'batch_loss': tensor(0.6916, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4252950744767085, 'lr': 0.0001}
+2026-10-19 23:26:45,812 - root - WARNING - Power spectrum aggregator not implemented for this grid type, omitting.
+2026-10-19 23:26:45,869 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 23:26:45,885 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 23:28:08,374 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 115 additional batches, or 115 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-19 23:28:35,003 - root - INFO - Starting validation step for model trained for 1 epochs
+2026-10-19 23:28:35,020 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+/pscratch/sd/m/mahf708/hr-bench-snap/88a70581d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+2026-10-19 23:28:35,021 - root - INFO - Starting validation loop
+/pscratch/sd/m/mahf708/hr-bench-snap/88a70581d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/88a70581d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/88a70581d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+2026-10-19 23:28:35,118 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-19 23:28:35,118 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-19 23:28:35,119 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-19 23:28:35,149 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-19 23:29:03,036 - root - INFO - Flushing validation diagnostics
+2026-10-19 23:29:03,037 - root - INFO - Getting validation aggregator summary
+2026-10-19 23:29:03,037 - root - INFO - Getting logs for mean aggregator
+2026-10-19 23:29:03,054 - root - INFO - Getting logs for mean_norm aggregator
+2026-10-19 23:29:03,059 - root - INFO - Getting logs for snapshot aggregator
+2026-10-19 23:29:53,721 - root - INFO - Getting logs for mean_map aggregator
+2026-10-19 23:31:18,336 - root - INFO - Validation complete
+2026-10-19 23:31:18,338 - root - INFO - Starting inference step for model trained for 1 epochs
+2026-10-19 23:31:18,341 - root - WARNING - mean_step_20 metric not supported for this configuration, omitting: step_mean step 20 exceeds n_forward_steps=12
+2026-10-19 23:31:18,341 - root - WARNING - mean_step_20_norm metric not supported for this configuration, omitting: step_mean step 20 exceeds n_forward_steps=12
+2026-10-19 23:31:18,341 - root - WARNING - ensemble_step_20 metric not supported for this configuration, omitting: ensemble step 20 exceeds n_forward_steps=12
+2026-10-19 23:31:18,341 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-19 23:31:18,341 - root - WARNING - Zonal mean max size 4096 is greater than the number of timesteps 13. Setting zonal mean max size to the number of timesteps.
+2026-10-19 23:31:18,342 - root - WARNING - annual metric not supported for this configuration, omitting: annual metric requires > ~2 years of data, got 3 days
+2026-10-19 23:31:18,342 - root - WARNING - enso_index metric not supported for this configuration, omitting: enso_index metric requires > ~2 years of data, got 3 days
+2026-10-19 23:31:18,342 - root - WARNING - enso_coefficient metric not supported for this configuration, omitting: enso_coefficient metric requires > ~5 years of data, got 3 days
+2026-10-19 23:31:18,342 - root - WARNING - ipo_index metric not supported for this configuration, omitting: ipo_index metric requires > ~80 years of data, got 3 days
+2026-10-19 23:31:21,151 - root - INFO - Inference: processing output from window 1 of 3.
+2026-10-19 23:31:22,578 - root - INFO - Inference: processing output from window 2 of 3.
+2026-10-19 23:31:24,006 - root - INFO - Inference: processing output from window 3 of 3.
+2026-10-19 23:31:24,144 - root - INFO - Starting flush of reduced diagnostics to disk
+2026-10-19 23:31:24,144 - root - INFO - Getting inline inference aggregator summary
+2026-10-19 23:31:24,144 - root - INFO - Getting summary logs for zonal_mean aggregator
+2026-10-19 23:31:25,236 - root - INFO - Getting summary logs for time_mean aggregator
+2026-10-19 23:32:03,323 - root - INFO - Getting summary logs for time_mean_norm aggregator
+2026-10-19 23:32:23,760 - root - INFO - Time taken for epoch 1 is 753.5600044727325 sec
+2026-10-19 23:32:23,760 - root - INFO - Train loss: 0.642848551273346
+2026-10-19 23:32:23,760 - root - INFO - Valid loss: 2.5316011905670166
+2026-10-19 23:32:23,760 - root - INFO - Inference error: 0.5142910034954548
+2026-10-19 23:32:23,765 - root - INFO - Logging to wandb
+2026-10-19 23:32:23,782 - root - INFO - Saving checkpoints for epoch 1
+2026-10-19 23:32:23,785 - root - INFO - Epoch inference error (0.5142910034954548) is lower than previous best inference error (0.5142910034954548).
+2026-10-19 23:32:23,785 - root - INFO - Saving lowest inference error checkpoint to /pscratch/sd/m/mahf708/hr-runs/smoke-1n-4x1-htf05-tile/training_checkpoints/best_inference_ckpt.tar
+2026-10-19 23:32:30,516 - root - INFO - Saving lowest validation loss checkpoint to /pscratch/sd/m/mahf708/hr-runs/smoke-1n-4x1-htf05-tile/training_checkpoints/best_ckpt.tar
+2026-10-19 23:32:37,216 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 0 additional batches, or 115 total batches, with best_validation_loss 2.5316011905670166 and best_inference_error 0.5142910034954548
+2026-10-19 23:33:04,036 - root - INFO - Saving EMA epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/smoke-1n-4x1-htf05-tile/training_checkpoints/ema_ckpt_0001.tar
+2026-10-19 23:33:11,009 - root - INFO - Saving epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/smoke-1n-4x1-htf05-tile/training_checkpoints/ckpt_0001.tar
+2026-10-19 23:33:38,244 - root - INFO - DONE ---- rank 0
+2026-10-19 23:33:38,254 - fme.core.distributed.model_torch_distributed - INFO - Shutting down rank 0
