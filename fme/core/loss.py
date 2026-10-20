@@ -2,13 +2,14 @@ import abc
 import dataclasses
 import logging
 from collections.abc import Callable, Collection, Mapping
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 import torch
 import torch.linalg
 import torch.nn.functional as F
 
 from fme.core.device import get_device
+from fme.core.distributed.distributed import Distributed
 from fme.core.ensemble import get_crps, get_energy_score
 from fme.core.gridded_ops import GriddedOperations
 from fme.core.name_and_prefix_matcher import NameAndPrefixSelection
@@ -576,6 +577,32 @@ class SpectralWhiteningConfig:
         return SpectralWhitening(eps_frac=self.eps_frac, exponent=self.exponent)
 
 
+def _spatial_mean(t: torch.Tensor) -> torch.Tensor:
+    """Mean over the last two dims of a ``(B, C, X, Y)`` tensor whose last two
+    dims are partitioned across the spatial group (grid points or spectral
+    modes). Each rank's autograd graph holds only its own share, which the
+    spatial gradient sync sums, while the value is the global mean on every
+    rank.
+    """
+    dist = Distributed.get_instance()
+    if not dist.has_spatial_parallelism:
+        return t.mean(dim=(-2, -1))
+    local_sum = t.sum(dim=(-2, -1))
+    count = torch.tensor(
+        float(t.shape[-2] * t.shape[-1]), device=t.device, dtype=local_sum.dtype
+    )
+    return dist.spatial_reduce_sum(local_sum) / dist.spatial_reduce_sum(count)
+
+
+class _SHT(Protocol):
+    """A (possibly distributed) real SHT; ``lmax``/``mmax`` are global."""
+
+    lmax: int
+    mmax: int
+
+    def __call__(self, x: torch.Tensor) -> torch.Tensor: ...
+
+
 class EnergyScoreLoss(torch.nn.Module):
     """
     Compute the energy score over the complex-valued spectral coefficients.
@@ -594,15 +621,16 @@ class EnergyScoreLoss(torch.nn.Module):
     line with the real-valued CRPS loss, and to prevent its value depending on domain
     size for Gaussian distributed random data where n_lon = 2 * n_lat.
 
-    Returns a pre-weighted ``(B, C, L, M)`` tensor where ``.mean(dim=(-2, -1))``
-    reproduces the old scalar value per ``(B, C)`` pair.
+    Returns a ``(B, C)`` component equal to the sum over all (global) spectral
+    modes divided by the scaling factor. Under spatial parallelism each rank
+    holds an ``(l, m)`` block, and the sum is reduced over the spatial group.
 
     .. [1] https://sites.stat.washington.edu/people/raftery/Research/PDF/Gneiting2007jasa.pdf
     """
 
     def __init__(
         self,
-        sht: Callable[[torch.Tensor], torch.Tensor],
+        sht: _SHT,
         whitening: SpectralWhitening | None = None,
     ):
         super().__init__()
@@ -616,25 +644,22 @@ class EnergyScoreLoss(torch.nn.Module):
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> list[LossComponent]:
         x_hat = self.sht(x)
         y_hat = self.sht(y)
-        n_l, n_m = x_hat.shape[-2], x_hat.shape[-1]
-        if self.scaling is None:
+        if self.mode_weights is None:
+            # global spectral extent; under spatial parallelism x_hat holds
+            # only this rank's (l, m) block
+            n_l, n_m = self.sht.lmax, self.sht.mmax
             self.scaling = 2 * (n_l * n_m) ** 0.5
             self.n_spectral = n_l * n_m
-        if self.mode_weights is None:
-            self.mode_weights = 2 * torch.ones(
-                (*([1] * (x_hat.ndim - 1)), n_l, n_m),
-                device=x_hat.device,
-            )
-            self.mode_weights[..., 0] = 1
-        assert self.n_spectral is not None
+            weights = 2 * torch.ones((n_l, n_m), device=x_hat.device)
+            weights[:, 0] = 1  # only the rank holding global m = 0
+            l_slice, m_slice = Distributed.get_instance().get_local_slices((n_l, n_m))
+            self.mode_weights = weights[l_slice, m_slice]
+        assert self.n_spectral is not None and self.scaling is not None
         es = get_energy_score(x_hat, y_hat) * self.mode_weights
         if self._whitening is not None:
             es = es * self._whitening.factor(y_hat)
-        # Old path: .sum(dim=(-2,-1)).mean() / scaling
-        # New path: StandardLoss does .mean(dim=(-2,-1)) i.e. sum/(L*M)
-        # Multiply by L*M/scaling so mean gives the same result as sum/scaling.
-        pre_weighted = es * (self.n_spectral / self.scaling)
-        return [StandardLoss(pre_weighted)]
+        # sum over all (l, m) / scaling, as a global mean times L*M/scaling
+        return [StandardLoss(_spatial_mean(es) * (self.n_spectral / self.scaling))]
 
 
 class CRPSLoss(torch.nn.Module):
@@ -651,7 +676,7 @@ class CRPSLoss(torch.nn.Module):
         self.alpha = alpha
 
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> list[LossComponent]:
-        return [StandardLoss(get_crps(x, y, alpha=self.alpha))]
+        return [StandardLoss(_spatial_mean(get_crps(x, y, alpha=self.alpha)))]
 
 
 class FiniteDifferenceCRPSLoss(torch.nn.Module):
@@ -715,7 +740,7 @@ class EnsembleLoss(torch.nn.Module):
         self,
         crps_weight: float,
         energy_score_weight: float,
-        sht: Callable[[torch.Tensor], torch.Tensor],
+        sht: _SHT,
         finite_difference_crps_weight: float = 0.0,
         finite_difference_crps_levels: int = 1,
         almost_fair_crps_alpha: float = 1.0,

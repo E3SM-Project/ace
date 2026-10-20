@@ -110,6 +110,32 @@ class _AutogradAllReduce(torch.autograd.Function):
         return grad_output, None
 
 
+class _AutogradAllReduceShared(torch.autograd.Function):
+    """All-reduce (sum) whose backward is also an all-reduce (sum).
+
+    For a reduction used *inside* the graph (e.g. a global mean the corrector
+    applies back to each tile): every rank's downstream graph holds only its
+    tile's share of the objective, so the gradient w.r.t. the replicated
+    reduced value must be summed over the spatial group before flowing back
+    into each rank's local inputs. The identity backward of
+    ``_AutogradAllReduce`` is only right when the downstream graph is
+    replicated, i.e. for the final loss reduction.
+    """
+
+    @staticmethod
+    def forward(ctx, input, group):
+        ctx.group = group
+        output = input.clone()
+        torch.distributed.all_reduce(output, group=group)
+        return output
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        grad = grad_output.contiguous().clone()
+        torch.distributed.all_reduce(grad, group=ctx.group)
+        return grad, None
+
+
 class ModelTorchDistributed(DistributedBackend):
     """Distributed backend with spatial model parallelism.
 
@@ -532,14 +558,19 @@ class ModelTorchDistributed(DistributedBackend):
         weights: torch.Tensor,
         dim: tuple[int, ...],
         keepdim: bool = False,
+        in_graph: bool = False,
     ) -> torch.Tensor:
         local_weighted_sum = metrics.weighted_sum(
             data, weights, dim=dim, keepdim=keepdim
         )
         local_weight_sum = weights.expand(data.shape).sum(dim=dim, keepdim=keepdim)
-        return self.spatial_reduce_sum(local_weighted_sum) / self.spatial_reduce_sum(
-            local_weight_sum
-        )
+        if in_graph and (self._h_size > 1 or self._w_size > 1):
+            numerator = _AutogradAllReduceShared.apply(
+                local_weighted_sum, self._spatial_group
+            )
+        else:
+            numerator = self.spatial_reduce_sum(local_weighted_sum)
+        return numerator / self.spatial_reduce_sum(local_weight_sum)
 
     def zonal_mean(self, data: torch.Tensor) -> torch.Tensor:
         # If we have 1 rank along the longitude dimension, quickly return the local mean

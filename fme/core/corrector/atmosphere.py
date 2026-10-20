@@ -1,5 +1,6 @@
 import dataclasses
 import datetime
+import functools
 from collections.abc import Callable, Mapping
 from typing import Any, Literal, Protocol
 
@@ -356,7 +357,9 @@ class AtmosphereCorrectorConfig(CorrectorConfigABC):
         vertical_coordinate: HasAtmosphereVerticalIntegral | None,
         timestep: datetime.timedelta,
     ) -> "AtmosphereCorrector":
-        area_weighted_mean = gridded_operations.area_weighted_mean
+        area_weighted_mean = functools.partial(
+            gridded_operations.area_weighted_mean, in_graph=True
+        )
         timestep_seconds = timestep.total_seconds()
         corrections: list[Correction] = []
         if len(self.force_positive_names) > 0:

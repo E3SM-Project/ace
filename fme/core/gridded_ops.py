@@ -69,7 +69,13 @@ class GriddedOperations(abc.ABC):
         data: torch.Tensor,
         keepdim: bool = False,
         name: str | None = None,
-    ) -> torch.Tensor: ...
+        in_graph: bool = False,
+    ) -> torch.Tensor:
+        """Area-weighted mean over the horizontal dims.
+
+        ``in_graph``: see ``DistributedBackend.weighted_mean``.
+        """
+        ...
 
     @final
     def area_weighted_mean_dict(
@@ -352,10 +358,15 @@ class LatLonOperations(GriddedOperations):
         data: torch.Tensor,
         keepdim: bool = False,
         name: str | None = None,
+        in_graph: bool = False,
     ) -> torch.Tensor:
         area_weights = self._get_area_weights(data, name)
         return Distributed.get_instance().weighted_mean(
-            data, area_weights, dim=self.HORIZONTAL_DIMS, keepdim=keepdim
+            data,
+            area_weights,
+            dim=self.HORIZONTAL_DIMS,
+            keepdim=keepdim,
+            in_graph=in_graph,
         )
 
     def regional_area_weighted_mean(
@@ -491,6 +502,7 @@ class HEALPixOperations(GriddedOperations):
         data: torch.Tensor,
         keepdim: bool = False,
         name: str | None = None,
+        in_graph: bool = False,
     ) -> torch.Tensor:
         # For HEALPix, area weights are uniform, so mean is sufficient
         return data.mean(dim=self.HORIZONTAL_DIMS, keepdim=keepdim)

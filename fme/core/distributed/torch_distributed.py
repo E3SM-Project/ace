@@ -293,6 +293,7 @@ class TorchDistributed(DistributedBackend):
         weights: torch.Tensor,
         dim: tuple[int, ...],
         keepdim: bool = False,
+        in_graph: bool = False,
     ) -> torch.Tensor:
         return metrics.weighted_mean(data, weights, dim=dim, keepdim=keepdim)
 

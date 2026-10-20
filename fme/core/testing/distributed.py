@@ -50,7 +50,9 @@ class MockDistributed:
     def spatial_reduce_sum(self, tensor: torch.Tensor) -> torch.Tensor:
         return tensor
 
-    def weighted_mean(self, data, weights, dim, keepdim=False) -> torch.Tensor:
+    def weighted_mean(
+        self, data, weights, dim, keepdim=False, in_graph=False
+    ) -> torch.Tensor:
         return metrics.weighted_mean(data, weights, dim=dim, keepdim=keepdim)
 
     def zonal_mean(self, data: torch.Tensor) -> torch.Tensor:
