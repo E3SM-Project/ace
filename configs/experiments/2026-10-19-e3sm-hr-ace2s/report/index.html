@@ -53,7 +53,7 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
 <header style="display:grid;gap:6px">
   <span class="eyebrow">e3sm/exps/hr-2026.10.0 &middot; v3.HR.F2010.aigo.PD.y1 &middot; 720&times;1440 Gaussian &middot; atmosphere only</span>
   <h1>HR ACE2S Bring-up</h1>
-  <p class="mono" style="color:var(--muted);font-size:.85rem">Updated 2026-10-19 22:26 &middot; allocations 60022811 + 60023253 (8 nodes, 32 A100-80GB, end ~00:40 PDT)</p>
+  <p class="mono" style="color:var(--muted);font-size:.85rem">Updated 2026-10-19 23:04 &middot; allocations 60022811 + 60023253 (8 nodes, 32 A100-80GB, end ~00:40 PDT)</p>
 </header>
 
 <section class="answer">
@@ -61,19 +61,24 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
   <p><b>Spatial parallelism is required.</b> The LR baseline network (embed 384, 8 blocks) has 2.1&nbsp;B parameters at 0.25&deg;: the spectral weights scale with lmax&nbsp;=&nbsp;720. It runs out of memory on one A100-80GB at every batch size.</p>
   <p><b>Best one-node layout: 4&times;1 tiles</b> (latitude split). The baseline runs 4.26&nbsp;s/step at 63&nbsp;GB, against 4.51&nbsp;s for 1&times;4 and 5.55&nbsp;s for 2&times;2. Training memory adds an 8.4&nbsp;GB EMA copy, so the full baseline is tight on 80&nbsp;GB.</p>
   <p><b>Recommended production model: spectral modes truncated to half</b> (<code>hard_thresholding_fraction: 0.5</code>, now exposed on the builder). It runs 2.54&nbsp;s/step at 45&nbsp;GB with 1.25&nbsp;B parameters, on 4&times;1 tiles with one data-parallel replica per node. That is the user&rsquo;s modeling call. The full baseline also fits, at 1.7&times; the cost.</p>
-  <p><b>Five fixes to the spatial path are committed.</b> Two more fixes are infrastructure: NCCL ran inter-node collectives over TCP (30&times; slow), and netCDF read these files 8&nbsp;KB at a time (10&ndash;20&times; slow). Details below.</p>
+  <p><b>End-to-end training works.</b> Smoke runs at 0.5 modes with 4&times;1 tiles completed a full epoch on 1 node and on 4 nodes: training, validation, inline inference, EMA and epoch checkpoints. They ran on real HR data with the new HR stats. Throughput is 0.42 samples/s per replica on 1 node and 0.40 on 4 nodes (1.6 samples/s total), so data loading keeps up and multi-node scaling is near-perfect. Loss fell from 4.09 to 0.69 in 115 steps.</p>
+  <p><b>Production estimate:</b> 8 nodes is 3.2 samples/s, so a 13-year epoch takes about 100 minutes of training. With validation, inference and checkpoints it is about 1&nbsp;h&nbsp;50&nbsp;min per epoch, and 20 epochs take about 37&nbsp;h. That fits one 48&nbsp;h job. A 4-node pilot is running in the remaining allocation.</p>
+  <p><b>The full baseline (2.1&nbsp;B) does not fit in real training at 4&times;1:</b> CUDA ran out of memory at 70&nbsp;GB allocated in the first backward pass. It would need 8 tiles over 2 nodes, and splitting tiles across nodes scales poorly (below).</p>
+  <p><b>Seven fixes to the fme/spatial path are committed.</b> Two of them fix infrastructure: NCCL ran inter-node collectives over TCP (30&times; slow), and netCDF read these files 8&nbsp;KB at a time (10&ndash;20&times; slow). Details below.</p>
 </section>
 
 <section>
   <h2>Status</h2>
   <div class="board">
     <div class="item"><b>Data to scratch</b><span class="pill good">done</span><span>193 files, 14&nbsp;TB, about 50 minutes over 4 nodes</span></div>
-    <div class="item"><b>Normalization stats</b><span class="pill run">running</span><span>39 training months, 72 variables. The first two attempts were I/O-starved.</span></div>
+    <div class="item"><b>Normalization stats</b><span class="pill good">done</span><span>39 training months, 74 variables. Means match LR; residual std is 10&ndash;55% higher</span></div>
     <div class="item"><b>Memory and layout sweeps</b><span class="pill good">done</span><span>Single GPU, 1-node spatial, and A/B reruns from a frozen code snapshot</span></div>
-    <div class="item"><b>Multi-node scaling</b><span class="pill warn">partial</span><span>2-node data parallelism verified with the OFI plugin; the 4-node series is not rerun yet</span></div>
-    <div class="item"><b>Spatial-path fixes</b><span class="pill good">5 committed</span><span>Gradient sync, loss, corrector, inline-inference ICs, builder knob</span></div>
+    <div class="item"><b>Multi-node scaling</b><span class="pill good">done</span><span>Data-parallel replicas scale near-perfectly; tiles split across nodes do not</span></div>
+    <div class="item"><b>fme fixes</b><span class="pill good">7 committed</span><span>Gradient sync, loss/corrector, cdf5 engine, IC check, SHT cache leak, builder knob, timeout</span></div>
+    <div class="item"><b>Data defect</b><span class="pill bad">source file</span><span><code>eam.h0.0017-01.nc</code> on CFS has a corrupt header; quarantined from the scratch glob</span></div>
     <div class="item"><b>Loader speed</b><span class="pill good">committed</span><span>New <code>engine: cdf5</code>, about 7&times; faster per sample</span></div>
-    <div class="item"><b>End-to-end training</b><span class="pill run">smoke test</span><span>1 node, 4&times;1, real data, temporary LR stats</span></div>
+    <div class="item"><b>End-to-end training</b><span class="pill good">1 and 4 nodes</span><span>A full epoch each, with validation, inference and checkpoints</span></div>
+    <div class="item"><b>Pilot run</b><span class="pill run">running</span><span>4 nodes, production config at 0.5 modes, until the allocation ends</span></div>
   </div>
 </section>
 
@@ -86,6 +91,7 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
     <li><b>EnsembleLoss was tile-local.</b> CRPS gradients were H&middot;W&times; serial. The energy score was mis-scaled by about &radic;(H&middot;W), so at 2&times;2 the 0.9/0.1 mix trained as roughly 0.9/0.05. The logged loss, and the best-checkpoint selection that uses it, came from rank 0&rsquo;s tile only. The corrector&rsquo;s in-graph global means also dropped cross-tile gradient terms. All now match serial on every rank. Commit <code>88d85d5fb</code>.</li>
     <li><b>Inline inference rejected valid runs.</b> The number of initial conditions had to divide the world size instead of the data-parallel size. Commit <code>1b1f7391d</code>.</li>
     <li><b>The spatial backend ignored the collective timeout</b> and used torch&rsquo;s 10-minute default. Ported from the hist branch and extended to that backend. Commit <code>8e41193f0</code>.</li>
+    <li><b>torch-harmonics leaked about 12&nbsp;GB of host RAM per rank.</b> Its <code>lru_cache</code> keeps every fp64 Legendre table (~3&nbsp;GB each at lmax 720) for the life of the process. With 4 ranks per node, the first training start was OOM-killed during model build. fme now clears that cache after building each SHT. A CPU build drops from 21.3 to 9.4&nbsp;GB RSS. Commit <code>b14fe7a4d</code>.</li>
   </ol>
   <p>Six loader and logging commits were also ported from the hist branch. They provide <code>rename</code>, <code>reference_pressure_name</code>, frozen-precipitation naming, the time-mean <code>plot_variables</code>, the val <code>mean_map</code> N&times; fix and the logging basicConfig.</p>
 </section>
@@ -110,9 +116,22 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
 </section>
 
 <section>
+  <h2>End-to-end smoke runs</h2>
+  <p>These ran <code>fme.ace.train</code> through <code>scripts/train.sh</code>, on the HR config with 0.5 modes, a one-month training window, a one-week validation window and a 12-step inline inference.</p>
+  <div class="tw"><table>
+    <tr><th>run</th><th class=n>nodes</th><th class=n>samples/s per replica</th><th class=n>s/step</th><th class=n>host RAM peak</th><th>validation</th><th>inference</th><th>checkpoint</th></tr>
+    <tr><td>smoke-1n-4x1-htf05</td><td class=n>1</td><td class=n>0.42</td><td class=n>2.4</td><td class=n>152&nbsp;GB</td><td>35&nbsp;s loop + 136&nbsp;s maps</td><td>0.37&nbsp;s/step/IC</td><td>20&nbsp;GB, ~30&nbsp;s</td></tr>
+    <tr><td>smoke-4n-4x1-htf05</td><td class=n>4</td><td class=n>0.40</td><td class=n>2.5</td><td class=n>&ndash;</td><td>passed</td><td>passed</td><td>passed</td></tr>
+    <tr class="oom"><td>smoke-1n-4x1-base</td><td class=n>1</td><td class=n>&ndash;</td><td class=n>&ndash;</td><td class=n>224&nbsp;GB</td><td colspan=3>CUDA OOM in the first backward pass (70.4&nbsp;GB allocated)</td></tr>
+  </table></div>
+  <p>The validation image aggregators (snapshot, <code>mean_map</code>) spend 2.3 minutes drawing 720&times;1440 maps for 50 channels. Production should disable them, as the hist config did.</p>
+</section>
+
+<section>
   <h2>Multi-node scaling</h2>
   <p>Data-parallel replicas of a 4-GPU tile group across nodes. With TCP NCCL, 2 nodes took 18.2&nbsp;s/step. With the OFI plugin, the small model runs 2.0&ndash;2.4&nbsp;s on 2 nodes against 1.99&nbsp;s on one. A 2.1&nbsp;B-parameter run first looked like a hang: it was the model build. torch-harmonics precomputes Legendre weights on CPU, and on nodes busy with the copy and stats jobs that took over 5 minutes against 40&nbsp;s on an idle node.</p>
-  <div class=tw><table><tr><th>run</th><th>model</th><th class=n>GPUs</th><th>tiles HxW</th><th class=n>batch</th><th class=n>params</th><th class=n>peak GB</th><th class=n>s/step</th><th class=n>samples/s</th></tr><tr class=''><td>dp2-sp2x2-base</td><td>embed 384, ckpt 3</td><td class=n>8</td><td>2&times;2</td><td class=n>4</td><td class=n>2.10 B</td><td class=n>61.1</td><td class=n>18.24</td><td class=n>0.11</td></tr></table></div>
+  <div class=tw><table><tr><th>run</th><th>model</th><th class=n>GPUs</th><th>tiles HxW</th><th class=n>batch</th><th class=n>params</th><th class=n>peak GB</th><th class=n>s/step</th><th class=n>samples/s</th></tr><tr class=''><td>dp2-sp2x2-base</td><td>embed 384, ckpt 3</td><td class=n>8</td><td>2&times;2</td><td class=n>4</td><td class=n>2.10 B</td><td class=n>61.1</td><td class=n>18.24</td><td class=n>0.11</td></tr><tr class=''><td>dp2-sp4x1-base(htf-ignored)-ddp</td><td>embed 384, ckpt 3</td><td class=n>8</td><td>4&times;1</td><td class=n>4</td><td class=n>2.10 B</td><td class=n>63.3</td><td class=n>4.25</td><td class=n>0.47</td></tr><tr class=''><td>dp2-sp4x1-base(htf-ignored)-hooks</td><td>embed 384, ckpt 3</td><td class=n>8</td><td>4&times;1</td><td class=n>4</td><td class=n>2.10 B</td><td class=n>63.3</td><td class=n>4.35</td><td class=n>0.46</td></tr><tr class=''><td>dp3-sp4x1-base(htf-ignored)-ddp</td><td>embed 384, ckpt 3</td><td class=n>12</td><td>4&times;1</td><td class=n>6</td><td class=n>2.10 B</td><td class=n>63.3</td><td class=n>4.25</td><td class=n>0.71</td></tr><tr class=''><td>dp2-sp4x1-base-ddp</td><td>embed 384, ckpt 3</td><td class=n>8</td><td>4&times;1</td><td class=n>4</td><td class=n>2.10 B</td><td class=n>63.3</td><td class=n>4.24</td><td class=n>0.47</td></tr><tr class=''><td>dp2-sp4x1-base-hooks</td><td>embed 384, ckpt 3</td><td class=n>8</td><td>4&times;1</td><td class=n>4</td><td class=n>2.10 B</td><td class=n>63.3</td><td class=n>4.35</td><td class=n>0.46</td></tr><tr class=''><td>dp3-sp4x1-base-ddp</td><td>embed 384, ckpt 3</td><td class=n>12</td><td>4&times;1</td><td class=n>6</td><td class=n>2.10 B</td><td class=n>63.3</td><td class=n>4.25</td><td class=n>0.71</td></tr><tr class=''><td>dp1-sp4x2-base-ddp</td><td>embed 384, ckpt 3</td><td class=n>8</td><td>4&times;2</td><td class=n>2</td><td class=n>2.10 B</td><td class=n>53.7</td><td class=n>3.88</td><td class=n>0.26</td></tr><tr class=''><td>dp1-sp4x3-htf0.5-ddp</td><td>embed 384, ckpt 3, modes x0.5</td><td class=n>12</td><td>4&times;3</td><td class=n>2</td><td class=n>1.25 B</td><td class=n>30.8</td><td class=n>2.14</td><td class=n>0.47</td></tr></table></div>
+  <p>With the OFI plugin and DDP gradient sync, 4&times;1 tiles per node scale almost perfectly: the baseline runs 4.26&nbsp;s/step on 1 node and 4.24&ndash;4.25&nbsp;s on 2 and 3 nodes. The old per-parameter hooks cost 2.5% more across nodes. Splitting tiles across nodes scales poorly: 4&times;2 over 2 nodes is only 9% faster than 4&times;1 on one, and 4&times;3 over 3 nodes only 16%. The &ldquo;(htf-ignored)&rdquo; rows were meant to be 0.5 modes, but my new builder field overrode the benchmark&rsquo;s patch, so they ran the full baseline.</p>
 </section>
 
 <section>
@@ -139,6 +158,11 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
     <li><time>22:05</time>Committed the loss and corrector spatial fixes. 64/64 parallel tests pass in 5 layouts.</li>
     <li><time>22:15</time>Committed the cdf5 loader engine (37 new tests).</li>
     <li><time>22:25</time>Fixed the inline-inference IC check and exposed <code>hard_thresholding_fraction</code>. Launched a 1-node end-to-end smoke run.</li>
+    <li><time>22:28</time>The smoke run failed on <code>eam.h0.0017-01.nc</code>: the CFS source has a corrupt header, and netCDF4 cannot open it either. Quarantined.</li>
+    <li><time>22:31</time>Host OOM kill during stepper build. Traced to the torch-harmonics Legendre cache (12&nbsp;GB per rank); fixed.</li>
+    <li><time>22:39</time>The full baseline hit CUDA OOM in training at 4&times;1. Switched the smoke run to 0.5 modes with the real HR stats.</li>
+    <li><time>22:55</time>1-node and 4-node smoke runs each completed a full epoch, at 0.42 and 0.40 samples/s per replica.</li>
+    <li><time>23:04</time>Launched the 4-node pilot and a 1-node checkpoint-resume test.</li>
   </ul>
 </section>
 </main>

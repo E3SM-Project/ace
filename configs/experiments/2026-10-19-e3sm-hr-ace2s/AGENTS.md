@@ -129,3 +129,27 @@ Newest last. Times are PDT on 2026-10-19 unless noted.
 - 22:25 1-node end-to-end smoke run launched (alloc 60023253, nid008532,
   4x1, LR stats as a placeholder):
   `$PSCRATCH/hr-runs/smoke-1n-4x1-base`.
+- 22:28 **Source data defect:** `eam.h0.0017-01.nc` on CFS has a corrupt
+  header (bytes `c1 9e 9a ba`; netCDF4 cannot open it). Moved out of the
+  scratch glob to `$PSCRATCH/hr-data/v3.HR.F2010.aigo.PD.y1/quarantine/`.
+  It falls in the test period. **Tell the data owner.**
+- 22:31 Host OOM kill during stepper build: torch-harmonics' lru_cache keeps
+  ~12 GB of fp64 Legendre tables per rank. Fixed in Distributed.get_sht/
+  get_isht (b14fe7a4d): a CPU build goes from 21.3 to 9.4 GB RSS.
+- 22:39 The full baseline hits CUDA OOM in real training at 4x1 (70.4 GB
+  allocated in the first backward pass). **Production model: modes x0.5.**
+- 22:40 HR stats done (`train-stride4/`, 74 vars, 39 files).
+- 22:55 Smoke runs, a full epoch each: 1 node 0.42 samples/s, 4 nodes 0.40
+  samples/s per replica. Validation, inline inference and EMA/epoch
+  checkpoints all work. Checkpoint 20 GB, ~30 s. Validation map aggregators
+  add 2.3 min: disable them for production.
+- 23:04 4-node pilot started (`$PSCRATCH/hr-runs/pilot-4n-htf05`,
+  scripts/pilot.sh, resumable). Resume test: smoke-1n restarted from its
+  epoch-1 checkpoint and finished epoch 2 (spatial resume works).
+- 23:20 Tile-only loading committed (88a70581d): 4x1 latitude band reads
+  2.6x faster, with 4x less host/pinned memory and H2D traffic. An
+  end-to-end A/B smoke run (`smoke-1n-4x1-htf05-tile`) is running on
+  nid200264.
+- Multi-node (s6): 4x1 per node plus data parallelism scales near-perfectly
+  (4.26 s on 1 node, 4.25 on 2 and 3); tiles across nodes do not (4x2 over 2
+  nodes 3.88 s, 4x3 over 3 nodes for modes x0.5 2.14 s vs 2.54 s at 4x1).

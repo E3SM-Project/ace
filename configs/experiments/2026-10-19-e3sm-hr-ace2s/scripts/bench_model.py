@@ -44,20 +44,12 @@ def main():
         "--htf",
         type=float,
         default=1.0,
-        help="hard_thresholding_fraction (not exposed by the builder; patched in)",
+        help="hard_thresholding_fraction (builder field since 3c67da976)",
     )
     p.add_argument("--phases", action="store_true", help="sync between fwd/bwd/opt")
     p.add_argument("--profile", default="", help="write a torch.profiler table here")
     p.add_argument("--tag", default="")
     a = p.parse_args()
-    if a.htf != 1.0:
-        import functools
-
-        import fme.ace.registry.stochastic_sfno as ss
-
-        ss.SFNONetConfig = functools.partial(
-            ss.SFNONetConfig, hard_thresholding_fraction=a.htf
-        )
 
     with Distributed.context():
         run(a)
@@ -78,6 +70,7 @@ def run(a):
         spectral_ratio=a.spectral_ratio,
         filter_num_groups=a.filter_num_groups,
         pos_embed=not a.no_pos_embed,
+        hard_thresholding_fraction=a.htf,
     )
     out = dict(vars(a))
     t0 = time.time()

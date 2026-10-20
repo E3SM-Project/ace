@@ -1,4 +1,4 @@
-"""Print bench_model.py JSONL results as a table: summarize.py logs/*.jsonl"""
+"""Print bench_model.py JSONL results as a table: summarize.py logs/*.jsonl."""
 
 import json
 import sys

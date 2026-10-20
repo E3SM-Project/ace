@@ -1,0 +1,82 @@
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+2026-10-19 23:19:22,663 - root - INFO - --------------- Versions ---------------
+2026-10-19 23:19:22,663 - root - INFO - Torch: 2.10.0+cu128
+2026-10-19 23:19:22,664 - root - INFO - ----------------------------------------
+2026-10-19 23:19:22,664 - root - WARNING - Beaker Experiment ID not found.
+2026-10-19 23:19:22,664 - root - INFO - Beaker ID: None
+2026-10-19 23:19:22,664 - root - INFO - Beaker URL: No beaker URL.
+2026-10-19 23:19:22,664 - root - WARNING - Environmental variable BEAKER_EXPERIMENT_ID not found.
+2026-10-19 23:19:22,664 - root - INFO - Environmental variable SLURM_JOB_ID=60023253.
+2026-10-19 23:19:22,664 - root - INFO - Environmental variable SLURM_JOB_USER=mahf708.
+2026-10-19 23:19:22,664 - root - WARNING - Environmental variable FME_TRAIN_DIR not found.
+2026-10-19 23:19:22,664 - root - WARNING - Environmental variable FME_VALID_DIR not found.
+2026-10-19 23:19:22,664 - root - WARNING - Environmental variable FME_STATS_DIR not found.
+2026-10-19 23:19:22,664 - root - WARNING - Environmental variable FME_CHECKPOINT_DIR not found.
+2026-10-19 23:19:22,664 - root - WARNING - Environmental variable FME_OUTPUT_DIR not found.
+2026-10-19 23:19:22,664 - root - WARNING - Environmental variable FME_IMAGE not found.
+2026-10-19 23:19:22,665 - root - WARNING - Beaker Experiment ID not found.
+2026-10-19 23:19:22,665 - root - INFO - Current device is cuda:0
+2026-10-19 23:19:22,665 - root - INFO - Initializing training data loader
+2026-10-19 23:19:22,666 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-19 23:19:26,734 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-19 23:19:26,737 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-19 23:19:26,754 - root - INFO - The required variables have been found in the dataset: ['FLUT', 'Tat2m', 'V_5', 'V_3', 'T_4', 'STW_1', 'STW_0', 'STW_3', 'SOLIN', 'T_0', 'Qat2m', 'FLDS', 'V_4', 'U_5', 'U_3', 'V_7', 'STW_6', 'T_3', 'T_6', 'LHFLX', 'DTENDTTW', 'U_4', 'frozen_precipitation_rate', 'surface_precipitation_rate', 'V_6', 'SHFLX', 'T_1', 'T_5', 'STW_7', 'TS', 'U_7', 'FLUS', 'FSUTOA', 'U_1', 'Vat10m', 'T_2', 'LANDFRAC', 'TAUX', 'PS', 'U_0', 'STW_4', 'V_0', 'PHIS', 'OCNFRAC', 'Uat10m', 'STW_2', 'FSNS', 'U_6', 'U_2', 'V_1', 'V_2', 'TAUY', 'T_7', 'ICEFRAC', 'STW_5'].
+2026-10-19 23:19:26,767 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 23:19:26,798 - root - INFO - Subsetting dataset samples according to slice(124, np.int64(237), None).
+2026-10-19 23:19:26,798 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-19 23:19:26,800 - root - INFO - Initializing validation data loaders
+2026-10-19 23:19:26,801 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-19 23:19:26,858 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-19 23:19:26,860 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-19 23:19:26,876 - root - INFO - The required variables have been found in the dataset: ['FLUT', 'Tat2m', 'V_5', 'V_3', 'T_4', 'STW_1', 'STW_0', 'STW_3', 'SOLIN', 'T_0', 'Qat2m', 'FLDS', 'V_4', 'U_5', 'U_3', 'V_7', 'STW_6', 'T_3', 'T_6', 'LHFLX', 'DTENDTTW', 'U_4', 'frozen_precipitation_rate', 'surface_precipitation_rate', 'V_6', 'SHFLX', 'T_1', 'T_5', 'STW_7', 'TS', 'U_7', 'FLUS', 'FSUTOA', 'U_1', 'Vat10m', 'T_2', 'LANDFRAC', 'TAUX', 'PS', 'U_0', 'STW_4', 'V_0', 'PHIS', 'OCNFRAC', 'Uat10m', 'STW_2', 'FSNS', 'U_6', 'U_2', 'V_1', 'V_2', 'TAUY', 'T_7', 'ICEFRAC', 'STW_5'].
+2026-10-19 23:19:26,888 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-19 23:19:26,907 - root - INFO - Subsetting dataset samples according to slice(18980, np.int64(19009), None).
+2026-10-19 23:19:26,907 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-19 23:19:26,907 - root - INFO - train data: 115 samples, 115 batches
+2026-10-19 23:19:26,907 - root - INFO - train data: pool_size=1, 5 sub-batches per window, coming from the following base loader:
+2026-10-19 23:19:26,907 - root - INFO - train (base loader) data: 23 samples, 23 batches
+2026-10-19 23:19:26,907 - root - INFO - train (base loader) data: first sample's initial time: 0001-02-01 00:00:00
+2026-10-19 23:19:26,907 - root - INFO - train (base loader) data: last sample's initial time: 0001-02-28 12:00:00
+2026-10-19 23:19:26,907 - root - INFO - val data: 29 samples, 29 batches
+2026-10-19 23:19:26,908 - root - INFO - val data: first sample's initial time: 0014-01-01 00:00:00
+2026-10-19 23:19:26,908 - root - INFO - val data: last sample's initial time: 0014-01-08 00:00:00
+2026-10-19 23:19:26,908 - root - INFO - Initializing inline inference data loaders
+2026-10-19 23:19:26,909 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-19 23:19:26,964 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-19 23:19:26,966 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-19 23:19:26,982 - root - INFO - The required variables have been found in the dataset: ['FLUT', 'Tat2m', 'V_5', 'V_3', 'T_4', 'STW_1', 'STW_0', 'STW_3', 'SOLIN', 'T_0', 'Qat2m', 'FLDS', 'V_4', 'U_5', 'U_3', 'V_7', 'STW_6', 'T_3', 'T_6', 'LHFLX', 'DTENDTTW', 'U_4', 'frozen_precipitation_rate', 'surface_precipitation_rate', 'V_6', 'SHFLX', 'T_1', 'T_5', 'STW_7', 'TS', 'U_7', 'FLUS', 'FSUTOA', 'U_1', 'Vat10m', 'T_2', 'LANDFRAC', 'TAUX', 'PS', 'U_0', 'STW_4', 'V_0', 'PHIS', 'OCNFRAC', 'Uat10m', 'STW_2', 'FSNS', 'U_6', 'U_2', 'V_1', 'V_2', 'TAUY', 'T_7', 'ICEFRAC', 'STW_5'].
+2026-10-19 23:19:26,993 - root - INFO - Dataset now has 23356 samples of length 5.
+2026-10-19 23:19:26,993 - root - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-19 23:19:27,007 - root - INFO - Multiprocessing inference context: fork
+2026-10-19 23:19:29,012 - root - INFO - Starting model initialization
+2026-10-19 23:19:29,013 - root - INFO - Initializing stepper from provided config
+2026-10-19 23:19:29,013 - root - INFO - Initializing stepper from provided config
+2026-10-19 23:19:49,675 - root - INFO - Current device is cuda:0
+2026-10-19 23:19:49,772 - root - INFO - Number of trainable model parameters: 1254144768
+2026-10-19 23:19:49,772 - root - INFO - Starting Training Loop...
+2026-10-19 23:19:50,200 - root - INFO - Beginning epoch after 0 complete epochs
+2026-10-19 23:19:50,200 - root - INFO - Starting training step for model trained for 0 complete epochs
+2026-10-19 23:19:50,241 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 23:19:50,252 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 23:19:56,375 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 23:19:56,387 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 23:20:11,866 - root - INFO - Step 5: {'batch_loss': tensor(4.0860, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.32364258904317905, 'lr': 0.0001}
+2026-10-19 23:20:23,623 - root - INFO - Step 10: {'batch_loss': tensor(2.5427, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.42289804556215693, 'lr': 0.0001}
+2026-10-19 23:20:35,378 - root - INFO - Step 15: {'batch_loss': tensor(1.9602, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4253568631456594, 'lr': 0.0001}
+2026-10-19 23:20:47,204 - root - INFO - Step 20: {'batch_loss': tensor(1.6330, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4227719727618306, 'lr': 0.0001}
+2026-10-19 23:20:47,205 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 20 additional batches, or 20 total batches, with best_validation_loss inf and best_inference_error inf

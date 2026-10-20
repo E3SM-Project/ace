@@ -101,7 +101,8 @@ def merge(a, b):
 
 def _fastest_copy(path: str) -> str:
     """Prefer the complete scratch copy: CFS served ~30 MB/s per reader here
-    (per-record strided netCDF reads over DVS)."""
+    (per-record strided netCDF reads over DVS).
+    """
     alt = os.path.join(SCRATCH_COPY, os.path.basename(path))
     if os.path.exists(alt) and os.path.getsize(alt) == os.path.getsize(path):
         return alt
@@ -187,7 +188,9 @@ def combine(args):
         "source": RUN_DIR,
         "files": ",".join(os.path.basename(f) for f in sorted(files)),
         "n_files": len(files),
-        "script": "configs/experiments/2026-10-19-e3sm-hr-ace2s/scripts/compute_stats.py",
+        "script": (
+            "configs/experiments/2026-10-19-e3sm-hr-ace2s/scripts/compute_stats.py"
+        ),
         "conventions": "unweighted over (time,lat,lon); ddof=0; residual = "
         "within-file consecutive differences",
     }

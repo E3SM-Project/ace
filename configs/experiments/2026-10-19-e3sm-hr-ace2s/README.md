@@ -81,7 +81,7 @@ Model knobs at 4x1:
 
 Training memory adds an EMA copy (+4 bytes/param, 8.4 GB for the baseline),
 so the baseline at 4x1 is tight. **Recommendation: modes x0.5 at 4x1 tiles,
-one data-parallel replica per node.** That trades spectral resolution in
+one data-parallel replica per node.** `config-train-hr.yaml` now sets it. That trades spectral resolution in
 the filters (to l <= 360) for 1.7x speed and comfortable memory. It is a
 modeling decision for the user.
 
@@ -132,10 +132,27 @@ New, with tests:
    with 1 IC was rejected.
 5. **`hard_thresholding_fraction` on the NoiseConditionedSFNO builder**
    (`3c67da976`).
+6. **Release torch-harmonics' Legendre cache** (`b14fe7a4d`). It held about
+   12 GB of host RAM per rank at lmax 720, and the first 4-rank training start
+   was OOM-killed.
+7. **Tile-only loading** (`88a70581d`). Each spatial rank reads only its own
+   (lat, lon) tile. For 4x1 that is 2.6x faster reads and 4x less host
+   memory and H2D traffic; it is bit-identical to the old path.
+
+## End-to-end (2026-10-19)
+
+- Smoke runs at modes x0.5 with 4x1 tiles each completed a full epoch on
+  1 node (0.42 samples/s) and 4 nodes (0.40 samples/s per replica, 1.6
+  total), including validation, inline inference (0.37 s per step per IC)
+  and checkpoints (20 GB, ~30 s). Checkpoint resume works.
+- The full baseline (modes x1.0) runs out of GPU memory in training at 4x1.
+- Production estimate: 8 nodes is ~100 min of training per 13-year epoch,
+  ~1 h 50 min with validation, inference and checkpoints; 20 epochs is ~37 h.
+- Data defect: `eam.h0.0017-01.nc` on CFS has a corrupt header and is
+  quarantined from the scratch glob.
 
 Known gaps in the spatial path, not fixed:
 
-- every tile rank reads the full sample and then slices it (4x redundant I/O);
 - no restart checkpoint on SIGTERM under spatial parallelism, so set
   `checkpoint_every_n_batches` to fit the walltime;
 - writers and map aggregators keep only the root tile; the power spectrum is

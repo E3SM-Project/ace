@@ -73,7 +73,8 @@ def table(stems: list[str]) -> str:
             f"<td>{h}&times;{w}</td><td class=n>{d['batch']}</td>"
             f"<td class=n>{d['params_M'] / 1000:.2f} B</td>"
             f"<td class=n>{peak}{status}</td>"
-            f"<td class=n>{f'{s:.2f}' if s else '&ndash;'}</td><td class=n>{sps}</td></tr>"
+            f"<td class=n>{f'{s:.2f}' if s else '&ndash;'}</td>"
+            f"<td class=n>{sps}</td></tr>"
         )
     return "<div class=tw><table>" + head + "".join(body) + "</table></div>"
 

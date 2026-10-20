@@ -1,0 +1,275 @@
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+2026-10-19 22:41:50,161 - root - INFO - --------------- Versions ---------------
+2026-10-19 22:41:50,161 - root - INFO - Torch: 2.10.0+cu128
+2026-10-19 22:41:50,161 - root - INFO - ----------------------------------------
+2026-10-19 22:41:50,162 - root - WARNING - Beaker Experiment ID not found.
+2026-10-19 22:41:50,162 - root - INFO - Beaker ID: None
+2026-10-19 22:41:50,162 - root - INFO - Beaker URL: No beaker URL.
+2026-10-19 22:41:50,162 - root - WARNING - Environmental variable BEAKER_EXPERIMENT_ID not found.
+2026-10-19 22:41:50,162 - root - INFO - Environmental variable SLURM_JOB_ID=60022811.
+2026-10-19 22:41:50,162 - root - INFO - Environmental variable SLURM_JOB_USER=mahf708.
+2026-10-19 22:41:50,162 - root - WARNING - Environmental variable FME_TRAIN_DIR not found.
+2026-10-19 22:41:50,162 - root - WARNING - Environmental variable FME_VALID_DIR not found.
+2026-10-19 22:41:50,162 - root - WARNING - Environmental variable FME_STATS_DIR not found.
+2026-10-19 22:41:50,162 - root - WARNING - Environmental variable FME_CHECKPOINT_DIR not found.
+2026-10-19 22:41:50,162 - root - WARNING - Environmental variable FME_OUTPUT_DIR not found.
+2026-10-19 22:41:50,162 - root - WARNING - Environmental variable FME_IMAGE not found.
+2026-10-19 22:41:50,162 - root - WARNING - Beaker Experiment ID not found.
+2026-10-19 22:41:50,163 - root - INFO - Current device is cuda:0
+2026-10-19 22:41:50,163 - root - INFO - Initializing training data loader
+2026-10-19 22:41:50,164 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-19 22:41:54,175 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-19 22:41:54,178 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-19 22:41:54,196 - root - INFO - The required variables have been found in the dataset: ['STW_2', 'LHFLX', 'PHIS', 'TS', 'Qat2m', 'V_1', 'Tat2m', 'STW_5', 'T_2', 'T_3', 'SOLIN', 'U_5', 'T_6', 'TAUY', 'STW_6', 'V_4', 'Vat10m', 'T_7', 'U_0', 'U_3', 'FLUS', 'ICEFRAC', 'T_5', 'PS', 'STW_0', 'T_0', 'U_6', 'U_2', 'Uat10m', 'LANDFRAC', 'V_7', 'FSNS', 'SHFLX', 'STW_1', 'frozen_precipitation_rate', 'U_1', 'FLUT', 'FLDS', 'V_6', 'FSUTOA', 'OCNFRAC', 'V_5', 'V_0', 'DTENDTTW', 'surface_precipitation_rate', 'V_3', 'STW_3', 'U_4', 'V_2', 'STW_4', 'U_7', 'STW_7', 'T_4', 'TAUX', 'T_1'].
+2026-10-19 22:41:54,209 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 22:41:54,231 - root - INFO - Subsetting dataset samples according to slice(124, np.int64(361), None).
+2026-10-19 22:41:54,232 - root - INFO - Initializing validation data loaders
+2026-10-19 22:41:54,233 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-19 22:41:54,292 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-19 22:41:54,294 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-19 22:41:54,312 - root - INFO - The required variables have been found in the dataset: ['STW_2', 'LHFLX', 'PHIS', 'TS', 'Qat2m', 'V_1', 'Tat2m', 'STW_5', 'T_2', 'T_3', 'SOLIN', 'U_5', 'T_6', 'TAUY', 'STW_6', 'V_4', 'Vat10m', 'T_7', 'U_0', 'U_3', 'FLUS', 'ICEFRAC', 'T_5', 'PS', 'STW_0', 'T_0', 'U_6', 'U_2', 'Uat10m', 'LANDFRAC', 'V_7', 'FSNS', 'SHFLX', 'STW_1', 'frozen_precipitation_rate', 'U_1', 'FLUT', 'FLDS', 'V_6', 'FSUTOA', 'OCNFRAC', 'V_5', 'V_0', 'DTENDTTW', 'surface_precipitation_rate', 'V_3', 'STW_3', 'U_4', 'V_2', 'STW_4', 'U_7', 'STW_7', 'T_4', 'TAUX', 'T_1'].
+2026-10-19 22:41:54,325 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-19 22:41:54,346 - root - INFO - Subsetting dataset samples according to slice(18980, np.int64(19009), None).
+2026-10-19 22:41:54,346 - root - INFO - train data: 60 samples, 60 batches
+2026-10-19 22:41:54,346 - root - INFO - train data: pool_size=1, 5 sub-batches per window, coming from the following base loader:
+2026-10-19 22:41:54,347 - root - INFO - train (base loader) data: 12 samples, 12 batches
+2026-10-19 22:41:54,347 - root - INFO - train (base loader) data: first sample's initial time: 0001-02-01 00:00:00
+2026-10-19 22:41:54,347 - root - INFO - train (base loader) data: last sample's initial time: 0001-03-31 18:00:00
+2026-10-19 22:41:54,347 - root - INFO - val data: 8 samples, 8 batches
+2026-10-19 22:41:54,347 - root - INFO - val data: first sample's initial time: 0014-01-01 00:00:00
+2026-10-19 22:41:54,347 - root - INFO - val data: last sample's initial time: 0014-01-08 00:00:00
+2026-10-19 22:41:54,347 - root - INFO - Initializing inline inference data loaders
+2026-10-19 22:41:54,348 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-19 22:41:54,407 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-19 22:41:54,409 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-19 22:41:54,427 - root - INFO - The required variables have been found in the dataset: ['STW_2', 'LHFLX', 'PHIS', 'TS', 'Qat2m', 'V_1', 'Tat2m', 'STW_5', 'T_2', 'T_3', 'SOLIN', 'U_5', 'T_6', 'TAUY', 'STW_6', 'V_4', 'Vat10m', 'T_7', 'U_0', 'U_3', 'FLUS', 'ICEFRAC', 'T_5', 'PS', 'STW_0', 'T_0', 'U_6', 'U_2', 'Uat10m', 'LANDFRAC', 'V_7', 'FSNS', 'SHFLX', 'STW_1', 'frozen_precipitation_rate', 'U_1', 'FLUT', 'FLDS', 'V_6', 'FSUTOA', 'OCNFRAC', 'V_5', 'V_0', 'DTENDTTW', 'surface_precipitation_rate', 'V_3', 'STW_3', 'U_4', 'V_2', 'STW_4', 'U_7', 'STW_7', 'T_4', 'TAUX', 'T_1'].
+2026-10-19 22:41:54,440 - root - INFO - Dataset now has 23356 samples of length 5.
+2026-10-19 22:41:54,455 - root - INFO - Multiprocessing inference context: fork
+2026-10-19 22:41:59,318 - root - INFO - Starting model initialization
+2026-10-19 22:41:59,319 - root - INFO - Initializing stepper from provided config
+2026-10-19 22:41:59,319 - root - INFO - Initializing stepper from provided config
+2026-10-19 22:42:43,496 - root - INFO - Current device is cuda:0
+2026-10-19 22:42:43,551 - root - INFO - Number of trainable model parameters: 1254144768
+2026-10-19 22:42:43,552 - root - INFO - Starting Training Loop...
+2026-10-19 22:42:43,897 - root - INFO - Beginning epoch after 0 complete epochs
+2026-10-19 22:42:43,897 - root - INFO - Starting training step for model trained for 0 complete epochs
+2026-10-19 22:42:43,957 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 22:42:43,967 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 22:43:03,685 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 22:43:03,698 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 22:43:39,058 - root - INFO - Step 5: {'batch_loss': tensor(4.0305, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.14139574617356196, 'lr': 0.0001}
+2026-10-19 22:43:51,448 - root - INFO - Step 10: {'batch_loss': tensor(2.3888, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4015328982196303, 'lr': 0.0001}
+2026-10-19 22:44:03,815 - root - INFO - Step 15: {'batch_loss': tensor(2.0373, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4042843166192359, 'lr': 0.0001}
+2026-10-19 22:44:16,194 - root - INFO - Step 20: {'batch_loss': tensor(1.7402, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4040042958899482, 'lr': 0.0001}
+2026-10-19 22:44:16,194 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 20 additional batches, or 20 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-19 22:45:00,811 - root - INFO - Step 25: {'batch_loss': tensor(1.5317, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.11205633901915608, 'lr': 0.0001}
+2026-10-19 22:45:13,175 - root - INFO - Step 30: {'batch_loss': tensor(1.3418, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.40443606240584334, 'lr': 0.0001}
+2026-10-19 22:45:25,503 - root - INFO - Step 35: {'batch_loss': tensor(1.2124, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4055239614417786, 'lr': 0.0001}
+2026-10-19 22:45:37,857 - root - INFO - Step 40: {'batch_loss': tensor(1.1057, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4047603859980041, 'lr': 0.0001}
+2026-10-19 22:45:37,857 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 40 additional batches, or 40 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-19 22:46:29,332 - root - INFO - Step 45: {'batch_loss': tensor(1.0356, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.0971340766576131, 'lr': 0.0001}
+2026-10-19 22:46:41,360 - root - INFO - Step 50: {'batch_loss': tensor(1.0285, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4157102175771068, 'lr': 0.0001}
+2026-10-19 22:46:53,407 - root - INFO - Step 55: {'batch_loss': tensor(0.9396, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.41496242487810103, 'lr': 0.0001}
+2026-10-19 22:47:05,449 - root - INFO - Step 60: {'batch_loss': tensor(0.8761, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.4151921599504419, 'lr': 0.0001}
+2026-10-19 22:47:05,449 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 60 additional batches, or 60 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-19 22:47:37,146 - root - WARNING - Power spectrum aggregator not implemented for this grid type, omitting.
+2026-10-19 22:47:37,246 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 22:47:37,262 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 22:48:27,280 - root - INFO - Starting validation step for model trained for 1 epochs
+2026-10-19 22:48:27,298 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+2026-10-19 22:48:27,299 - root - INFO - Starting validation loop
+/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/b14fe7a4d/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+2026-10-19 22:48:27,447 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-19 22:48:27,448 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-19 22:48:27,448 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-19 22:48:27,459 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-19 22:48:46,245 - root - INFO - Flushing validation diagnostics
+2026-10-19 22:48:46,246 - root - INFO - Getting validation aggregator summary
+2026-10-19 22:48:46,246 - root - INFO - Getting logs for mean aggregator
+2026-10-19 22:48:52,572 - root - INFO - Getting logs for mean_norm aggregator
+2026-10-19 22:48:52,579 - root - INFO - Getting logs for snapshot aggregator
+2026-10-19 22:49:43,816 - root - INFO - Getting logs for mean_map aggregator
+2026-10-19 22:51:28,601 - root - INFO - Validation complete
+2026-10-19 22:51:28,604 - root - INFO - Starting inference step for model trained for 1 epochs
+2026-10-19 22:51:28,609 - root - WARNING - mean_step_20 metric not supported for this configuration, omitting: step_mean step 20 exceeds n_forward_steps=12
+2026-10-19 22:51:28,609 - root - WARNING - mean_step_20_norm metric not supported for this configuration, omitting: step_mean step 20 exceeds n_forward_steps=12
+2026-10-19 22:51:28,609 - root - WARNING - ensemble_step_20 metric not supported for this configuration, omitting: ensemble step 20 exceeds n_forward_steps=12
+2026-10-19 22:51:28,609 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-19 22:51:28,609 - root - WARNING - Zonal mean max size 4096 is greater than the number of timesteps 13. Setting zonal mean max size to the number of timesteps.
+2026-10-19 22:51:28,610 - root - WARNING - annual metric not supported for this configuration, omitting: annual metric requires > ~2 years of data, got 3 days
+2026-10-19 22:51:28,610 - root - WARNING - enso_index metric not supported for this configuration, omitting: enso_index metric requires > ~2 years of data, got 3 days
+2026-10-19 22:51:28,611 - root - WARNING - enso_coefficient metric not supported for this configuration, omitting: enso_coefficient metric requires > ~5 years of data, got 3 days
+2026-10-19 22:51:28,611 - root - WARNING - ipo_index metric not supported for this configuration, omitting: ipo_index metric requires > ~80 years of data, got 3 days
+2026-10-19 22:51:34,234 - root - INFO - Inference: processing output from window 1 of 3.
+2026-10-19 22:51:35,713 - root - INFO - Inference: processing output from window 2 of 3.
+2026-10-19 22:51:37,199 - root - INFO - Inference: processing output from window 3 of 3.
+2026-10-19 22:51:37,359 - root - INFO - Starting flush of reduced diagnostics to disk
+2026-10-19 22:51:37,359 - root - INFO - Getting inline inference aggregator summary
+2026-10-19 22:51:37,359 - root - INFO - Getting summary logs for zonal_mean aggregator
+2026-10-19 22:51:41,133 - root - INFO - Getting summary logs for time_mean aggregator
+2026-10-19 22:52:22,467 - root - INFO - Getting summary logs for time_mean_norm aggregator
+2026-10-19 22:52:47,660 - root - INFO - Time taken for epoch 1 is 603.7628173828125 sec
+2026-10-19 22:52:47,660 - root - INFO - Train loss: 0.896690845489502
+2026-10-19 22:52:47,660 - root - INFO - Valid loss: 2.578688144683838
+2026-10-19 22:52:47,660 - root - INFO - Inference error: 0.423198005259037
+2026-10-19 22:52:47,667 - root - INFO - Logging to wandb
+2026-10-19 22:52:47,685 - root - INFO - Saving checkpoints for epoch 1
+2026-10-19 22:52:47,688 - root - INFO - Epoch inference error (0.423198005259037) is lower than previous best inference error (0.423198005259037).
+2026-10-19 22:52:47,688 - root - INFO - Saving lowest inference error checkpoint to /pscratch/sd/m/mahf708/hr-runs/smoke-4n-4x1-htf05/training_checkpoints/best_inference_ckpt.tar
+2026-10-19 22:52:54,862 - root - INFO - Saving lowest validation loss checkpoint to /pscratch/sd/m/mahf708/hr-runs/smoke-4n-4x1-htf05/training_checkpoints/best_ckpt.tar
+2026-10-19 22:53:02,392 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 0 additional batches, or 60 total batches, with best_validation_loss 2.578688144683838 and best_inference_error 0.423198005259037
+2026-10-19 22:53:34,847 - root - INFO - Saving EMA epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/smoke-4n-4x1-htf05/training_checkpoints/ema_ckpt_0001.tar
+2026-10-19 22:53:44,817 - root - INFO - Saving epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/smoke-4n-4x1-htf05/training_checkpoints/ckpt_0001.tar
+2026-10-19 22:54:16,783 - root - INFO - DONE ---- rank 0
+2026-10-19 22:54:16,795 - fme.core.distributed.model_torch_distributed - INFO - Shutting down rank 0
+[W1019 22:54:30.537546350 TCPStore.cpp:115] [c10d] recvVector failed on SocketImpl(fd=46, addr=[nid008597-hsn0]:36262, remote=[nid008593-hsn0]:29911): Failed to recv, got 0 bytes. Connection was likely closed. Did the remote server shutdown or crash?
+Exception raised from recvBytes at /pytorch/torch/csrc/distributed/c10d/Utils.hpp:682 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7fa8c01c6fdd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0x6a323bd (0x7fa81db7e3bd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #2: <unknown function> + 0x6a343cf (0x7fa81db803cf in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #3: c10d::TCPStore::compareSet(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::vector<unsigned char, std::allocator<unsigned char> > const&, std::vector<unsigned char, std::allocator<unsigned char> > const&) + 0x1d1 (0x7fa81db7b0a1 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #4: <unknown function> + 0xeb82fa (0x7fa82d46e2fa in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_python.so)
+frame #5: <unknown function> + 0x40fad0 (0x7fa82c9c5ad0 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_python.so)
+frame #6: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16179b8]
+frame #7: _PyObject_MakeTpCall + 0x118 (0x1662218 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #8: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x193feb1]
+frame #9: _PyEval_EvalFrameDefault + 0xf2c9 (0x16296c9 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #10: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16eafee]
+frame #11: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16eaf33]
+frame #12: _PyEval_EvalFrameDefault + 0xef53 (0x1629353 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #13: PyEval_EvalCode + 0x94 (0x16a0354 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #14: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x169b4fa]
+frame #15: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16d6603]
+frame #16: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843e89]
+frame #17: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843577]
+frame #18: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843090]
+frame #19: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843036]
+frame #20: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1842f1a]
+frame #21: Py_RunMain + 0x340 (0x1787092 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #22: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1786d45]
+frame #23: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1786b2d]
+frame #24: <unknown function> + 0x40eec (0x7fa8f8d13eec in /lib64/libc.so.6)
+frame #25: __libc_start_main + 0x87 (0x7fa8f8d13fb5 in /lib64/libc.so.6)
+frame #26: _start + 0x29 (0x1803029 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+
+[W1019 22:54:30.065738151 TCPStore.cpp:115] [c10d] recvVector failed on SocketImpl(fd=46, addr=[nid008596-hsn0]:44194, remote=[nid008593-hsn0]:29911): Failed to recv, got 0 bytes. Connection was likely closed. Did the remote server shutdown or crash?
+Exception raised from recvBytes at /pytorch/torch/csrc/distributed/c10d/Utils.hpp:682 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7ffafe772fdd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0x6a323bd (0x7ffa2417e3bd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #2: <unknown function> + 0x6a343cf (0x7ffa241803cf in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #3: c10d::TCPStore::compareSet(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::vector<unsigned char, std::allocator<unsigned char> > const&, std::vector<unsigned char, std::allocator<unsigned char> > const&) + 0x1d1 (0x7ffa2417b0a1 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #4: <unknown function> + 0xeb82fa (0x7ffa33a6e2fa in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_python.so)
+frame #5: <unknown function> + 0x40fad0 (0x7ffa32fc5ad0 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_python.so)
+frame #6: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16179b8]
+frame #7: _PyObject_MakeTpCall + 0x118 (0x1662218 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #8: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x193feb1]
+frame #9: _PyEval_EvalFrameDefault + 0xf2c9 (0x16296c9 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #10: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16eafee]
+frame #11: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16eaf33]
+frame #12: _PyEval_EvalFrameDefault + 0xef53 (0x1629353 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #13: PyEval_EvalCode + 0x94 (0x16a0354 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #14: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x169b4fa]
+frame #15: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16d6603]
+frame #16: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843e89]
+frame #17: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843577]
+frame #18: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843090]
+frame #19: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843036]
+frame #20: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1842f1a]
+frame #21: Py_RunMain + 0x340 (0x1787092 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #22: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1786d45]
+frame #23: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1786b2d]
+frame #24: <unknown function> + 0x40eec (0x7ffaff40eeec in /lib64/libc.so.6)
+frame #25: __libc_start_main + 0x87 (0x7ffaff40efb5 in /lib64/libc.so.6)
+frame #26: _start + 0x29 (0x1803029 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+
+[W1019 22:54:30.580183331 TCPStore.cpp:115] [c10d] recvVector failed on SocketImpl(fd=46, addr=[nid008600-hsn0]:40948, remote=[nid008593-hsn0]:29911): Failed to recv, got 0 bytes. Connection was likely closed. Did the remote server shutdown or crash?
+Exception raised from recvBytes at /pytorch/torch/csrc/distributed/c10d/Utils.hpp:682 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7f6f254ddfdd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0x6a323bd (0x7f6e4af7e3bd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #2: <unknown function> + 0x6a343cf (0x7f6e4af803cf in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #3: c10d::TCPStore::compareSet(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::vector<unsigned char, std::allocator<unsigned char> > const&, std::vector<unsigned char, std::allocator<unsigned char> > const&) + 0x1d1 (0x7f6e4af7b0a1 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #4: <unknown function> + 0xeb82fa (0x7f6e5a86e2fa in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_python.so)
+frame #5: <unknown function> + 0x40fad0 (0x7f6e59dc5ad0 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_python.so)
+frame #6: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16179b8]
+frame #7: _PyObject_MakeTpCall + 0x118 (0x1662218 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #8: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x193feb1]
+frame #9: _PyEval_EvalFrameDefault + 0xf2c9 (0x16296c9 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #10: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16eafee]
+frame #11: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16eaf33]
+frame #12: _PyEval_EvalFrameDefault + 0xef53 (0x1629353 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #13: PyEval_EvalCode + 0x94 (0x16a0354 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #14: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x169b4fa]
+frame #15: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16d6603]
+frame #16: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843e89]
+frame #17: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843577]
+frame #18: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843090]
+frame #19: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1843036]
+frame #20: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1842f1a]
+frame #21: Py_RunMain + 0x340 (0x1787092 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #22: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1786d45]
+frame #23: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x1786b2d]
+frame #24: <unknown function> + 0x40eec (0x7f6f26194eec in /lib64/libc.so.6)
+frame #25: __libc_start_main + 0x87 (0x7f6f26194fb5 in /lib64/libc.so.6)
+frame #26: _start + 0x29 (0x1803029 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+
+W1019 22:54:30.840000 549611 torch/distributed/elastic/rendezvous/dynamic_rendezvous.py:1293] The node 'nid008596-hsn0_549611_0' has failed to shutdown the rendezvous 'train29911' due to an error of type RendezvousConnectionError.
+W1019 22:54:30.840000 551492 torch/distributed/elastic/rendezvous/dynamic_rendezvous.py:1293] The node 'nid008600-hsn0_551492_0' has failed to shutdown the rendezvous 'train29911' due to an error of type RendezvousConnectionError.
+W1019 22:54:30.840000 554711 torch/distributed/elastic/rendezvous/dynamic_rendezvous.py:1293] The node 'nid008597-hsn0_554711_0' has failed to shutdown the rendezvous 'train29911' due to an error of type RendezvousConnectionError.

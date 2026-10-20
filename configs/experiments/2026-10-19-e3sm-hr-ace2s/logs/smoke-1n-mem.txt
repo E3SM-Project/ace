@@ -1,0 +1,39 @@
+22:36:55 22 229 No devices were found
+22:37:00 23 227 No devices were found
+22:37:05 24 227 No devices were found
+22:37:10 25 225 No devices were found
+22:37:15 26 224 No devices were found
+22:37:20 54 196 No devices were found
+22:37:25 54 196 No devices were found
+22:37:30 58 192 No devices were found
+22:37:35 61 189 No devices were found
+22:37:40 67 183 No devices were found
+22:37:45 71 179 No devices were found
+22:37:50 70 180 No devices were found
+22:37:55 82 168 No devices were found
+22:38:00 58 192 No devices were found
+22:38:05 54 196 No devices were found
+22:38:10 75 175 No devices were found
+22:38:15 117 133 No devices were found
+22:38:20 126 125 No devices were found
+22:38:25 200 50 No devices were found
+22:38:30 223 28 No devices were found
+22:38:35 221 29 No devices were found
+22:38:41 224 26 No devices were found
+22:38:46 223 27 No devices were found
+22:38:51 137 113 No devices were found
+22:38:56 118 133 No devices were found
+22:39:10 21 229 No devices were found
+22:39:15 21 229 No devices were found
+22:39:20 21 229 No devices were found
+22:39:25 21 229 No devices were found
+22:39:31 21 229 No devices were found
+22:39:36 21 229 No devices were found
+22:39:41 21 229 No devices were found
+22:39:46 22 229 No devices were found
+22:39:51 23 227 No devices were found
+22:39:56 24 227 No devices were found
+[2026-10-20T05:39:58.785] error: *** STEP 60023253.24 ON nid008532 CANCELLED AT 2026-10-20T05:39:58 DUE to SIGNAL Killed ***
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+srun: error: nid008532: task 0: Killed
+srun: Terminating StepId=60023253.24

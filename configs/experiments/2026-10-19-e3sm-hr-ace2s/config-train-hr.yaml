@@ -119,6 +119,16 @@ validation:
         start_time: '0014-01-01T00:00:00'
         stop_time: '0014-12-31T18:00:00'
         step: 4
+  # Image metrics off: at 720x1440 the snapshot and mean_map figures for 50
+  # channels took 2.3 min per validation (smoke run, 2026-10-19). The scalar
+  # metrics are unaffected.
+  aggregator:
+    snapshot:
+      enabled: false
+    mean_map:
+      enabled: false
+    ensemble_denorm:
+      log_mean_maps: false
 optimization:
   enable_automatic_mixed_precision: false
   lr: 0.0001
@@ -150,6 +160,11 @@ stepper:
           use_mlp: true
           num_layers: 8
           affine_norms: true
+          # Spectral filters keep l <= 360 of the grid's 720 modes. The full
+          # set (1.0, the LR baseline) is 2.1 B params and OOMs in training at
+          # 4x1 tiles (70 GB allocated in the first backward pass); 0.5 is
+          # 1.25 B params, ~60 GB/GPU, 2.4-2.5 s/step. 2026-10-19 smoke runs.
+          hard_thresholding_fraction: 0.5
       normalization:
         network:
           global_means_path: /pscratch/sd/m/mahf708/hr-data/stats-2026-10-19/train-stride4/centering.nc

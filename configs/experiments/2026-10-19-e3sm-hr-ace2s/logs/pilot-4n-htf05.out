@@ -1,0 +1,90 @@
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+2026-10-19 23:04:22,309 - root - INFO - --------------- Versions ---------------
+2026-10-19 23:04:22,310 - root - INFO - Torch: 2.10.0+cu128
+2026-10-19 23:04:22,310 - root - INFO - ----------------------------------------
+2026-10-19 23:04:22,310 - root - WARNING - Beaker Experiment ID not found.
+2026-10-19 23:04:22,310 - root - INFO - Beaker ID: None
+2026-10-19 23:04:22,310 - root - INFO - Beaker URL: No beaker URL.
+2026-10-19 23:04:22,310 - root - WARNING - Environmental variable BEAKER_EXPERIMENT_ID not found.
+2026-10-19 23:04:22,310 - root - INFO - Environmental variable SLURM_JOB_ID=60022811.
+2026-10-19 23:04:22,310 - root - INFO - Environmental variable SLURM_JOB_USER=mahf708.
+2026-10-19 23:04:22,310 - root - WARNING - Environmental variable FME_TRAIN_DIR not found.
+2026-10-19 23:04:22,310 - root - WARNING - Environmental variable FME_VALID_DIR not found.
+2026-10-19 23:04:22,310 - root - WARNING - Environmental variable FME_STATS_DIR not found.
+2026-10-19 23:04:22,310 - root - WARNING - Environmental variable FME_CHECKPOINT_DIR not found.
+2026-10-19 23:04:22,310 - root - WARNING - Environmental variable FME_OUTPUT_DIR not found.
+2026-10-19 23:04:22,310 - root - WARNING - Environmental variable FME_IMAGE not found.
+2026-10-19 23:04:22,311 - root - WARNING - Beaker Experiment ID not found.
+2026-10-19 23:04:22,311 - root - INFO - Current device is cuda:0
+2026-10-19 23:04:22,311 - root - INFO - Initializing training data loader
+2026-10-19 23:04:22,312 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-19 23:04:26,319 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-19 23:04:26,322 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-19 23:04:26,339 - root - INFO - The required variables have been found in the dataset: ['TAUX', 'T_1', 'FSNS', 'STW_3', 'surface_precipitation_rate', 'T_3', 'V_4', 'T_6', 'U_1', 'FLUT', 'LANDFRAC', 'TAUY', 'TS', 'V_5', 'frozen_precipitation_rate', 'U_2', 'V_6', 'LHFLX', 'PHIS', 'STW_0', 'V_2', 'PS', 'STW_1', 'Tat2m', 'STW_5', 'T_4', 'T_5', 'Qat2m', 'FLDS', 'Uat10m', 'SHFLX', 'U_0', 'DTENDTTW', 'OCNFRAC', 'STW_4', 'V_7', 'V_3', 'V_1', 'FLUS', 'T_7', 'STW_7', 'U_7', 'U_5', 'U_3', 'V_0', 'SOLIN', 'STW_6', 'U_4', 'Vat10m', 'STW_2', 'T_0', 'ICEFRAC', 'U_6', 'FSUTOA', 'T_2'].
+2026-10-19 23:04:26,352 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 23:04:26,373 - root - INFO - Subsetting dataset samples according to slice(124, np.int64(18980), None).
+2026-10-19 23:04:26,391 - root - INFO - Initializing validation data loaders
+2026-10-19 23:04:26,392 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-19 23:04:26,450 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-19 23:04:26,452 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-19 23:04:26,470 - root - INFO - The required variables have been found in the dataset: ['TAUX', 'T_1', 'FSNS', 'STW_3', 'surface_precipitation_rate', 'T_3', 'V_4', 'T_6', 'U_1', 'FLUT', 'LANDFRAC', 'TAUY', 'TS', 'V_5', 'frozen_precipitation_rate', 'U_2', 'V_6', 'LHFLX', 'PHIS', 'STW_0', 'V_2', 'PS', 'STW_1', 'Tat2m', 'STW_5', 'T_4', 'T_5', 'Qat2m', 'FLDS', 'Uat10m', 'SHFLX', 'U_0', 'DTENDTTW', 'OCNFRAC', 'STW_4', 'V_7', 'V_3', 'V_1', 'FLUS', 'T_7', 'STW_7', 'U_7', 'U_5', 'U_3', 'V_0', 'SOLIN', 'STW_6', 'U_4', 'Vat10m', 'STW_2', 'T_0', 'ICEFRAC', 'U_6', 'FSUTOA', 'T_2'].
+2026-10-19 23:04:26,482 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-19 23:04:26,503 - root - INFO - Subsetting dataset samples according to slice(18980, np.int64(20440), 4).
+2026-10-19 23:04:26,503 - root - INFO - train data: 4715 samples, 4715 batches
+2026-10-19 23:04:26,503 - root - INFO - train data: pool_size=1, 5 sub-batches per window, coming from the following base loader:
+2026-10-19 23:04:26,503 - root - INFO - train (base loader) data: 943 samples, 943 batches
+2026-10-19 23:04:26,504 - root - INFO - train (base loader) data: first sample's initial time: 0001-02-01 00:00:00
+2026-10-19 23:04:26,504 - root - INFO - train (base loader) data: last sample's initial time: 0013-12-31 18:00:00
+2026-10-19 23:04:26,504 - root - INFO - val data: 92 samples, 92 batches
+2026-10-19 23:04:26,504 - root - INFO - val data: first sample's initial time: 0014-01-01 00:00:00
+2026-10-19 23:04:26,504 - root - INFO - val data: last sample's initial time: 0014-12-31 00:00:00
+2026-10-19 23:04:26,504 - root - INFO - Initializing inline inference data loaders
+2026-10-19 23:04:26,505 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-19 23:04:26,563 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-19 23:04:26,565 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-19 23:04:26,583 - root - INFO - The required variables have been found in the dataset: ['TAUX', 'T_1', 'FSNS', 'STW_3', 'surface_precipitation_rate', 'T_3', 'V_4', 'T_6', 'U_1', 'FLUT', 'LANDFRAC', 'TAUY', 'TS', 'V_5', 'frozen_precipitation_rate', 'U_2', 'V_6', 'LHFLX', 'PHIS', 'STW_0', 'V_2', 'PS', 'STW_1', 'Tat2m', 'STW_5', 'T_4', 'T_5', 'Qat2m', 'FLDS', 'Uat10m', 'SHFLX', 'U_0', 'DTENDTTW', 'OCNFRAC', 'STW_4', 'V_7', 'V_3', 'V_1', 'FLUS', 'T_7', 'STW_7', 'U_7', 'U_5', 'U_3', 'V_0', 'SOLIN', 'STW_6', 'U_4', 'Vat10m', 'STW_2', 'T_0', 'ICEFRAC', 'U_6', 'FSUTOA', 'T_2'].
+2026-10-19 23:04:26,595 - root - INFO - Dataset now has 23340 samples of length 21.
+2026-10-19 23:04:26,610 - root - INFO - Multiprocessing inference context: fork
+2026-10-19 23:05:34,677 - root - INFO - Starting model initialization
+2026-10-19 23:05:34,680 - root - INFO - Initializing stepper from provided config
+2026-10-19 23:05:34,680 - root - INFO - Initializing stepper from provided config
+2026-10-19 23:05:57,220 - root - INFO - Current device is cuda:0
+2026-10-19 23:05:57,257 - root - INFO - Number of trainable model parameters: 1254144768
+2026-10-19 23:05:57,258 - root - INFO - Starting Training Loop...
+2026-10-19 23:05:57,632 - root - INFO - Beginning epoch after 0 complete epochs
+2026-10-19 23:05:57,633 - root - INFO - Starting training step for model trained for 0 complete epochs
+2026-10-19 23:05:57,706 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 23:05:57,712 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 23:06:18,700 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 23:06:18,706 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-19 23:10:49,293 - root - INFO - Step 100: {'batch_loss': tensor(1.3770, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.36957466497464725, 'lr': 0.0001}
+2026-10-19 23:15:40,461 - root - INFO - Step 200: {'batch_loss': tensor(0.6364, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.34337167427304643, 'lr': 0.0001}
+2026-10-19 23:15:40,463 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 200 additional batches, or 200 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-19 23:20:55,127 - root - INFO - Step 300: {'batch_loss': tensor(0.5229, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.3177919795224054, 'lr': 0.0001}
