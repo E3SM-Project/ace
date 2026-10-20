@@ -286,3 +286,34 @@ GPU); modes x0.5 4x1 at 0.42-0.44 per replica (~0.105 per GPU).
 - The smoke config uses short validation/inference windows. Production adds
   a 360-step inline inference (forward only, lower memory than training) and
   a 1-year validation, which doesn't change the per-step peak.
+
+## 13. Epoch boundaries: continuous multi-epoch runs (40 GB nodes, 2026-10-20)
+
+The user had seen runs "collapse" at the epoch 1 -> 2 transition. Every
+earlier crossing here went through a restart from the checkpoint, so these
+runs cross epochs in ONE process: 3 epochs, smoke config, embed 256, modes
+x0.5, 4x1 tiles, expandable_segments. Variants: no sharding / ZeRO only /
+parameter sharding only / both.
+
+Loss at the boundaries (same for all four variants to 4 digits):
+step 115 (end of epoch 1) 0.8069 -> step 120 0.7175; step 230 0.5578 -> step
+235 0.5335; step 345 0.5240. Inline inference error per epoch: 0.539 ->
+0.507 -> 0.481 (identical between variants to 5 digits).
+
+Memory per phase, at the end of epoch 3 (sampled every 2 s):
+
+| variant | training GPU max | validation / inference / ckpt GPU max | host used: training -> during ckpt saves |
+|---|---|---|---|
+| none | 39,593 MiB | 39,593 | 68 -> 67 GB |
+| zero | 36,893 | 36,895 | 68 -> 71 GB |
+| shard | 27,935 | 27,935 | 73 -> 76 GB |
+| both | 27,965 | 27,965 | 73 -> 77 GB |
+
+GPU memory does not rise at the epoch boundary here: the caching allocator
+already holds the training peak. In the earlier 40 GB modes-x0.5 run (much
+tighter, 4x1, embed 384), validation/inference added +234 MiB over training
+(39,325 -> 39,559) and was the run's peak. Host RAM rises 3-4 GB during the
+checkpoint saves (the root assembling full tensors) and comes back down.
+
+No collapse reproduced. Not yet tested: the production config's longer
+validation (1 year) and 360-step inline inference, and many epochs.

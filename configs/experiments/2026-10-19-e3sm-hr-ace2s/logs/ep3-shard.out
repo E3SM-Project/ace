@@ -1,0 +1,319 @@
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+2026-10-20 09:54:21,601 - root - INFO - --------------- Versions ---------------
+2026-10-20 09:54:21,601 - root - INFO - Torch: 2.10.0+cu128
+2026-10-20 09:54:21,601 - root - INFO - ----------------------------------------
+2026-10-20 09:54:21,601 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 09:54:21,602 - root - INFO - Beaker ID: None
+2026-10-20 09:54:21,602 - root - INFO - Beaker URL: No beaker URL.
+2026-10-20 09:54:21,602 - root - WARNING - Environmental variable BEAKER_EXPERIMENT_ID not found.
+2026-10-20 09:54:21,602 - root - INFO - Environmental variable SLURM_JOB_ID=60038940.
+2026-10-20 09:54:21,602 - root - INFO - Environmental variable SLURM_JOB_USER=mahf708.
+2026-10-20 09:54:21,602 - root - WARNING - Environmental variable FME_TRAIN_DIR not found.
+2026-10-20 09:54:21,602 - root - WARNING - Environmental variable FME_VALID_DIR not found.
+2026-10-20 09:54:21,602 - root - WARNING - Environmental variable FME_STATS_DIR not found.
+2026-10-20 09:54:21,602 - root - WARNING - Environmental variable FME_CHECKPOINT_DIR not found.
+2026-10-20 09:54:21,602 - root - WARNING - Environmental variable FME_OUTPUT_DIR not found.
+2026-10-20 09:54:21,602 - root - WARNING - Environmental variable FME_IMAGE not found.
+2026-10-20 09:54:21,603 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 09:54:21,603 - root - INFO - Current device is cuda:0
+2026-10-20 09:54:21,603 - root - INFO - Initializing training data loader
+2026-10-20 09:54:21,604 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 09:54:25,673 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 09:54:25,678 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 09:54:25,696 - root - INFO - The required variables have been found in the dataset: ['STW_5', 'V_0', 'FSUTOA', 'U_6', 'DTENDTTW', 'U_1', 'surface_precipitation_rate', 'LANDFRAC', 'V_4', 'U_3', 'T_5', 'PS', 'V_5', 'TAUX', 'Vat10m', 'PHIS', 'T_2', 'TAUY', 'V_6', 'Tat2m', 'T_7', 'STW_3', 'U_5', 'V_1', 'V_7', 'LHFLX', 'Qat2m', 'STW_0', 'STW_7', 'SOLIN', 'TS', 'FLUT', 'STW_6', 'U_0', 'STW_1', 'FLUS', 'frozen_precipitation_rate', 'T_3', 'V_3', 'SHFLX', 'T_4', 'U_2', 'STW_2', 'V_2', 'T_0', 'STW_4', 'Uat10m', 'U_7', 'FLDS', 'OCNFRAC', 'T_6', 'T_1', 'FSNS', 'U_4', 'ICEFRAC'].
+2026-10-20 09:54:25,711 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 09:54:25,740 - root - INFO - Subsetting dataset samples according to slice(124, np.int64(237), None).
+2026-10-20 09:54:25,741 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 09:54:25,744 - root - INFO - Initializing validation data loaders
+2026-10-20 09:54:25,745 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 09:54:25,803 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 09:54:25,805 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 09:54:25,822 - root - INFO - The required variables have been found in the dataset: ['STW_5', 'V_0', 'FSUTOA', 'U_6', 'DTENDTTW', 'U_1', 'surface_precipitation_rate', 'LANDFRAC', 'V_4', 'U_3', 'T_5', 'PS', 'V_5', 'TAUX', 'Vat10m', 'PHIS', 'T_2', 'TAUY', 'V_6', 'Tat2m', 'T_7', 'STW_3', 'U_5', 'V_1', 'V_7', 'LHFLX', 'Qat2m', 'STW_0', 'STW_7', 'SOLIN', 'TS', 'FLUT', 'STW_6', 'U_0', 'STW_1', 'FLUS', 'frozen_precipitation_rate', 'T_3', 'V_3', 'SHFLX', 'T_4', 'U_2', 'STW_2', 'V_2', 'T_0', 'STW_4', 'Uat10m', 'U_7', 'FLDS', 'OCNFRAC', 'T_6', 'T_1', 'FSNS', 'U_4', 'ICEFRAC'].
+2026-10-20 09:54:25,834 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 09:54:25,855 - root - INFO - Subsetting dataset samples according to slice(18980, np.int64(19009), None).
+2026-10-20 09:54:25,855 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 09:54:25,856 - root - INFO - train data: 115 samples, 115 batches
+2026-10-20 09:54:25,856 - root - INFO - train data: pool_size=1, 5 sub-batches per window, coming from the following base loader:
+2026-10-20 09:54:25,856 - root - INFO - train (base loader) data: 23 samples, 23 batches
+2026-10-20 09:54:25,856 - root - INFO - train (base loader) data: first sample's initial time: 0001-02-01 00:00:00
+2026-10-20 09:54:25,856 - root - INFO - train (base loader) data: last sample's initial time: 0001-02-28 12:00:00
+2026-10-20 09:54:25,856 - root - INFO - val data: 29 samples, 29 batches
+2026-10-20 09:54:25,856 - root - INFO - val data: first sample's initial time: 0014-01-01 00:00:00
+2026-10-20 09:54:25,856 - root - INFO - val data: last sample's initial time: 0014-01-08 00:00:00
+2026-10-20 09:54:25,856 - root - INFO - Initializing inline inference data loaders
+2026-10-20 09:54:25,857 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 09:54:25,916 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 09:54:25,918 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 09:54:25,935 - root - INFO - The required variables have been found in the dataset: ['STW_5', 'V_0', 'FSUTOA', 'U_6', 'DTENDTTW', 'U_1', 'surface_precipitation_rate', 'LANDFRAC', 'V_4', 'U_3', 'T_5', 'PS', 'V_5', 'TAUX', 'Vat10m', 'PHIS', 'T_2', 'TAUY', 'V_6', 'Tat2m', 'T_7', 'STW_3', 'U_5', 'V_1', 'V_7', 'LHFLX', 'Qat2m', 'STW_0', 'STW_7', 'SOLIN', 'TS', 'FLUT', 'STW_6', 'U_0', 'STW_1', 'FLUS', 'frozen_precipitation_rate', 'T_3', 'V_3', 'SHFLX', 'T_4', 'U_2', 'STW_2', 'V_2', 'T_0', 'STW_4', 'Uat10m', 'U_7', 'FLDS', 'OCNFRAC', 'T_6', 'T_1', 'FSNS', 'U_4', 'ICEFRAC'].
+2026-10-20 09:54:25,948 - root - INFO - Dataset now has 23356 samples of length 5.
+2026-10-20 09:54:25,948 - root - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 09:54:25,963 - root - INFO - Multiprocessing inference context: fork
+2026-10-20 09:54:27,947 - root - INFO - Starting model initialization
+2026-10-20 09:54:27,948 - root - INFO - Initializing stepper from provided config
+2026-10-20 09:54:27,948 - root - INFO - Initializing stepper from provided config
+2026-10-20 09:54:42,890 - root - INFO - Current device is cuda:0
+2026-10-20 09:54:42,924 - root - INFO - Number of trainable model parameters: 163795456
+2026-10-20 09:54:42,924 - root - INFO - Starting Training Loop...
+2026-10-20 09:54:43,250 - root - INFO - Beginning epoch after 0 complete epochs
+2026-10-20 09:54:43,250 - root - INFO - Starting training step for model trained for 0 complete epochs
+2026-10-20 09:54:43,288 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 09:54:43,300 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 09:54:49,295 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 09:54:49,303 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 09:55:02,540 - root - INFO - Step 5: {'batch_loss': tensor(4.4733, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.37791753445945436, 'lr': 0.0001}
+2026-10-20 09:55:10,948 - root - INFO - Step 10: {'batch_loss': tensor(3.3378, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5908049577817769, 'lr': 0.0001}
+2026-10-20 09:55:19,345 - root - INFO - Step 15: {'batch_loss': tensor(2.5500, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5950304569956664, 'lr': 0.0001}
+2026-10-20 09:55:27,816 - root - INFO - Step 20: {'batch_loss': tensor(2.1546, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5902300339961368, 'lr': 0.0001}
+2026-10-20 09:55:28,788 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 20 additional batches, or 20 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-20 09:55:50,782 - root - INFO - Step 25: {'batch_loss': tensor(1.8723, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2177129482922716, 'lr': 0.0001}
+2026-10-20 09:55:59,165 - root - INFO - Step 30: {'batch_loss': tensor(1.6649, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5964602239069414, 'lr': 0.0001}
+2026-10-20 09:56:07,549 - root - INFO - Step 35: {'batch_loss': tensor(1.4394, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.596410862206542, 'lr': 0.0001}
+2026-10-20 09:56:15,931 - root - INFO - Step 40: {'batch_loss': tensor(1.3904, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5964896751906836, 'lr': 0.0001}
+2026-10-20 09:56:16,883 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 40 additional batches, or 40 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-20 09:56:38,867 - root - INFO - Step 45: {'batch_loss': tensor(1.2867, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.21800288713864652, 'lr': 0.0001}
+2026-10-20 09:56:47,249 - root - INFO - Step 50: {'batch_loss': tensor(1.2083, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5965517936830228, 'lr': 0.0001}
+2026-10-20 09:56:55,746 - root - INFO - Step 55: {'batch_loss': tensor(1.0869, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5884240435814128, 'lr': 0.0001}
+2026-10-20 09:57:04,128 - root - INFO - Step 60: {'batch_loss': tensor(1.0452, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5965611779070237, 'lr': 0.0001}
+2026-10-20 09:57:05,107 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 60 additional batches, or 60 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-20 09:57:26,917 - root - INFO - Step 65: {'batch_loss': tensor(0.9944, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2193999068062606, 'lr': 0.0001}
+2026-10-20 09:57:35,395 - root - INFO - Step 70: {'batch_loss': tensor(1.0263, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5898361524679788, 'lr': 0.0001}
+2026-10-20 09:57:43,877 - root - INFO - Step 75: {'batch_loss': tensor(0.9584, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5893757723579246, 'lr': 0.0001}
+2026-10-20 09:57:52,353 - root - INFO - Step 80: {'batch_loss': tensor(0.9210, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5899349593916746, 'lr': 0.0001}
+2026-10-20 09:57:53,305 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 80 additional batches, or 80 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-20 09:58:14,975 - root - INFO - Step 85: {'batch_loss': tensor(0.8551, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.22100886109636625, 'lr': 0.0001}
+2026-10-20 09:58:23,361 - root - INFO - Step 90: {'batch_loss': tensor(0.8170, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5962169379806758, 'lr': 0.0001}
+2026-10-20 09:58:31,744 - root - INFO - Step 95: {'batch_loss': tensor(0.8213, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5964998888150184, 'lr': 0.0001}
+2026-10-20 09:58:40,122 - root - INFO - Step 100: {'batch_loss': tensor(0.7764, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5967802552844874, 'lr': 0.0001}
+2026-10-20 09:58:40,903 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 100 additional batches, or 100 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-20 09:59:02,634 - root - INFO - Step 105: {'batch_loss': tensor(0.8203, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.22210362726972635, 'lr': 0.0001}
+2026-10-20 09:59:11,016 - root - INFO - Step 110: {'batch_loss': tensor(0.7612, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5966162334423969, 'lr': 0.0001}
+2026-10-20 09:59:19,398 - root - INFO - Step 115: {'batch_loss': tensor(0.8069, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5964568141247346, 'lr': 0.0001}
+2026-10-20 09:59:19,404 - root - WARNING - Power spectrum aggregator not implemented for this grid type, omitting.
+2026-10-20 09:59:19,462 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 09:59:19,473 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 10:00:23,054 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 115 additional batches, or 115 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-20 10:00:36,496 - root - INFO - Starting validation step for model trained for 1 epochs
+2026-10-20 10:00:36,506 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+2026-10-20 10:00:36,507 - root - INFO - Starting validation loop
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/9c198cadb/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+2026-10-20 10:00:36,606 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 10:00:36,606 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 10:00:36,606 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 10:00:36,616 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 10:00:59,613 - root - INFO - Flushing validation diagnostics
+2026-10-20 10:00:59,615 - root - INFO - Getting validation aggregator summary
+2026-10-20 10:00:59,615 - root - INFO - Getting logs for mean aggregator
+2026-10-20 10:00:59,632 - root - INFO - Getting logs for mean_norm aggregator
+2026-10-20 10:00:59,755 - root - INFO - Validation complete
+2026-10-20 10:00:59,756 - root - INFO - Starting inference step for model trained for 1 epochs
+2026-10-20 10:00:59,759 - root - WARNING - mean_step_20 metric not supported for this configuration, omitting: step_mean step 20 exceeds n_forward_steps=12
+2026-10-20 10:00:59,759 - root - WARNING - mean_step_20_norm metric not supported for this configuration, omitting: step_mean step 20 exceeds n_forward_steps=12
+2026-10-20 10:00:59,759 - root - WARNING - ensemble_step_20 metric not supported for this configuration, omitting: ensemble step 20 exceeds n_forward_steps=12
+2026-10-20 10:00:59,759 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 10:00:59,760 - root - WARNING - Zonal mean max size 4096 is greater than the number of timesteps 13. Setting zonal mean max size to the number of timesteps.
+2026-10-20 10:00:59,760 - root - WARNING - annual metric not supported for this configuration, omitting: annual metric requires > ~2 years of data, got 3 days
+2026-10-20 10:00:59,760 - root - WARNING - enso_index metric not supported for this configuration, omitting: enso_index metric requires > ~2 years of data, got 3 days
+2026-10-20 10:00:59,760 - root - WARNING - enso_coefficient metric not supported for this configuration, omitting: enso_coefficient metric requires > ~5 years of data, got 3 days
+2026-10-20 10:00:59,760 - root - WARNING - ipo_index metric not supported for this configuration, omitting: ipo_index metric requires > ~80 years of data, got 3 days
+2026-10-20 10:01:02,621 - root - INFO - Inference: processing output from window 1 of 3.
+2026-10-20 10:01:03,693 - root - INFO - Inference: processing output from window 2 of 3.
+2026-10-20 10:01:04,764 - root - INFO - Inference: processing output from window 3 of 3.
+2026-10-20 10:01:04,893 - root - INFO - Starting flush of reduced diagnostics to disk
+2026-10-20 10:01:04,893 - root - INFO - Getting inline inference aggregator summary
+2026-10-20 10:01:04,893 - root - INFO - Getting summary logs for zonal_mean aggregator
+2026-10-20 10:01:05,924 - root - INFO - Getting summary logs for time_mean aggregator
+2026-10-20 10:01:43,959 - root - INFO - Getting summary logs for time_mean_norm aggregator
+2026-10-20 10:02:04,516 - root - INFO - Time taken for epoch 1 is 441.2664988040924 sec
+2026-10-20 10:02:04,518 - root - INFO - Train loss: 0.7631629109382629
+2026-10-20 10:02:04,518 - root - INFO - Valid loss: 2.581303358078003
+2026-10-20 10:02:04,518 - root - INFO - Inference error: 0.5392424091696739
+2026-10-20 10:02:04,523 - root - INFO - Logging to wandb
+2026-10-20 10:02:05,313 - root - INFO - Saving checkpoints for epoch 1
+2026-10-20 10:02:05,317 - root - INFO - Epoch inference error (0.5392424091696739) is lower than previous best inference error (0.5392424091696739).
+2026-10-20 10:02:05,317 - root - INFO - Saving lowest inference error checkpoint to /pscratch/sd/m/mahf708/hr-runs/ep3-shard/training_checkpoints/best_inference_ckpt.tar
+2026-10-20 10:02:08,877 - root - INFO - Saving lowest validation loss checkpoint to /pscratch/sd/m/mahf708/hr-runs/ep3-shard/training_checkpoints/best_ckpt.tar
+2026-10-20 10:02:12,465 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 0 additional batches, or 115 total batches, with best_validation_loss 2.581303358078003 and best_inference_error 0.5392424091696739
+2026-10-20 10:02:26,319 - root - INFO - Saving EMA epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/ep3-shard/training_checkpoints/ema_ckpt_0001.tar
+2026-10-20 10:02:29,894 - root - INFO - Saving epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/ep3-shard/training_checkpoints/ckpt_0001.tar
+2026-10-20 10:03:04,778 - root - INFO - Beginning epoch after 1 complete epochs
+2026-10-20 10:03:04,780 - root - INFO - Starting training step for model trained for 1 complete epochs
+2026-10-20 10:03:04,918 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 10:03:04,960 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 10:03:14,656 - root - INFO - Step 120: {'batch_loss': tensor(0.7175, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5077862174000422, 'lr': 0.0001}
+2026-10-20 10:03:15,593 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 5 additional batches, or 120 total batches, with best_validation_loss 2.581303358078003 and best_inference_error 0.5392424091696739
+2026-10-20 10:03:38,099 - root - INFO - Step 125: {'batch_loss': tensor(0.7538, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.21328331901987665, 'lr': 0.0001}
+2026-10-20 10:03:46,497 - root - INFO - Step 130: {'batch_loss': tensor(0.7059, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.59398323021093, 'lr': 0.0001}
+2026-10-20 10:03:54,888 - root - INFO - Step 135: {'batch_loss': tensor(0.7176, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5959004565454395, 'lr': 0.0001}
+2026-10-20 10:04:03,274 - root - INFO - Step 140: {'batch_loss': tensor(0.6706, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5961902932187942, 'lr': 0.0001}
+2026-10-20 10:04:04,215 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 25 additional batches, or 140 total batches, with best_validation_loss 2.581303358078003 and best_inference_error 0.5392424091696739
+2026-10-20 10:04:27,972 - root - INFO - Step 145: {'batch_loss': tensor(0.6588, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20260721221668687, 'lr': 0.0001}
+2026-10-20 10:04:36,373 - root - INFO - Step 150: {'batch_loss': tensor(0.6585, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5939089970238451, 'lr': 0.0001}
+2026-10-20 10:04:44,771 - root - INFO - Step 155: {'batch_loss': tensor(0.6523, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5954684021850204, 'lr': 0.0001}
+2026-10-20 10:04:53,158 - root - INFO - Step 160: {'batch_loss': tensor(0.6132, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5960747923290365, 'lr': 0.0001}
+2026-10-20 10:04:54,059 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 45 additional batches, or 160 total batches, with best_validation_loss 2.581303358078003 and best_inference_error 0.5392424091696739
+2026-10-20 10:05:15,946 - root - INFO - Step 165: {'batch_loss': tensor(0.6641, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.21940108890168838, 'lr': 0.0001}
+2026-10-20 10:05:24,332 - root - INFO - Step 170: {'batch_loss': tensor(0.6070, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5963783490139327, 'lr': 0.0001}
+2026-10-20 10:05:32,719 - root - INFO - Step 175: {'batch_loss': tensor(0.6062, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5960519042009093, 'lr': 0.0001}
+2026-10-20 10:05:41,104 - root - INFO - Step 180: {'batch_loss': tensor(0.5719, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5963096877804329, 'lr': 0.0001}
+2026-10-20 10:05:41,995 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 65 additional batches, or 180 total batches, with best_validation_loss 2.581303358078003 and best_inference_error 0.5392424091696739
+2026-10-20 10:06:03,755 - root - INFO - Step 185: {'batch_loss': tensor(0.6472, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2207617980628393, 'lr': 0.0001}
+2026-10-20 10:06:12,145 - root - INFO - Step 190: {'batch_loss': tensor(0.5922, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5957460226466507, 'lr': 0.0001}
+2026-10-20 10:06:20,527 - root - INFO - Step 195: {'batch_loss': tensor(0.6002, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5965937110380641, 'lr': 0.0001}
+2026-10-20 10:06:28,909 - root - INFO - Step 200: {'batch_loss': tensor(0.6105, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5965310238646031, 'lr': 0.0001}
+2026-10-20 10:06:29,776 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 85 additional batches, or 200 total batches, with best_validation_loss 2.581303358078003 and best_inference_error 0.5392424091696739
+2026-10-20 10:06:51,797 - root - INFO - Step 205: {'batch_loss': tensor(0.5912, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2184507983938603, 'lr': 0.0001}
+2026-10-20 10:07:00,185 - root - INFO - Step 210: {'batch_loss': tensor(0.5577, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.596153889340765, 'lr': 0.0001}
+2026-10-20 10:07:08,570 - root - INFO - Step 215: {'batch_loss': tensor(0.5548, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5962940381486221, 'lr': 0.0001}
+2026-10-20 10:07:16,950 - root - INFO - Step 220: {'batch_loss': tensor(0.5649, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5966580070751056, 'lr': 0.0001}
+2026-10-20 10:07:17,702 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 105 additional batches, or 220 total batches, with best_validation_loss 2.581303358078003 and best_inference_error 0.5392424091696739
+2026-10-20 10:07:39,649 - root - INFO - Step 225: {'batch_loss': tensor(0.5458, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.22026624845790665, 'lr': 0.0001}
+2026-10-20 10:07:48,026 - root - INFO - Step 230: {'batch_loss': tensor(0.5578, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5968345869176624, 'lr': 0.0001}
+2026-10-20 10:07:48,041 - root - WARNING - Power spectrum aggregator not implemented for this grid type, omitting.
+2026-10-20 10:07:48,140 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 10:07:48,160 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 10:08:51,788 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 115 additional batches, or 230 total batches, with best_validation_loss 2.581303358078003 and best_inference_error 0.5392424091696739
+2026-10-20 10:09:05,125 - root - INFO - Starting validation step for model trained for 2 epochs
+2026-10-20 10:09:05,134 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 10:09:05,134 - root - INFO - Starting validation loop
+2026-10-20 10:09:05,236 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 10:09:05,237 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 10:09:05,241 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 10:09:05,247 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 10:09:27,493 - root - INFO - Flushing validation diagnostics
+2026-10-20 10:09:27,494 - root - INFO - Getting validation aggregator summary
+2026-10-20 10:09:27,494 - root - INFO - Getting logs for mean aggregator
+2026-10-20 10:09:27,511 - root - INFO - Getting logs for mean_norm aggregator
+2026-10-20 10:09:27,628 - root - INFO - Validation complete
+2026-10-20 10:09:27,629 - root - INFO - Starting inference step for model trained for 2 epochs
+2026-10-20 10:09:27,632 - root - WARNING - mean_step_20 metric not supported for this configuration, omitting: step_mean step 20 exceeds n_forward_steps=12
+2026-10-20 10:09:27,633 - root - WARNING - mean_step_20_norm metric not supported for this configuration, omitting: step_mean step 20 exceeds n_forward_steps=12
+2026-10-20 10:09:27,633 - root - WARNING - ensemble_step_20 metric not supported for this configuration, omitting: ensemble step 20 exceeds n_forward_steps=12
+2026-10-20 10:09:27,633 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 10:09:27,633 - root - WARNING - Zonal mean max size 4096 is greater than the number of timesteps 13. Setting zonal mean max size to the number of timesteps.
+2026-10-20 10:09:27,633 - root - WARNING - annual metric not supported for this configuration, omitting: annual metric requires > ~2 years of data, got 3 days
+2026-10-20 10:09:27,633 - root - WARNING - enso_index metric not supported for this configuration, omitting: enso_index metric requires > ~2 years of data, got 3 days
+2026-10-20 10:09:27,633 - root - WARNING - enso_coefficient metric not supported for this configuration, omitting: enso_coefficient metric requires > ~5 years of data, got 3 days
+2026-10-20 10:09:27,634 - root - WARNING - ipo_index metric not supported for this configuration, omitting: ipo_index metric requires > ~80 years of data, got 3 days
+2026-10-20 10:09:29,996 - root - INFO - Inference: processing output from window 1 of 3.
+2026-10-20 10:09:31,067 - root - INFO - Inference: processing output from window 2 of 3.
+2026-10-20 10:09:32,137 - root - INFO - Inference: processing output from window 3 of 3.
+2026-10-20 10:09:32,250 - root - INFO - Starting flush of reduced diagnostics to disk
+2026-10-20 10:09:32,251 - root - INFO - Getting inline inference aggregator summary
+2026-10-20 10:09:32,251 - root - INFO - Getting summary logs for zonal_mean aggregator
+2026-10-20 10:09:33,282 - root - INFO - Getting summary logs for time_mean aggregator
+2026-10-20 10:10:11,863 - root - INFO - Getting summary logs for time_mean_norm aggregator
+2026-10-20 10:10:32,597 - root - INFO - Time taken for epoch 2 is 447.81744384765625 sec
+2026-10-20 10:10:32,599 - root - INFO - Train loss: 0.5428863763809204
+2026-10-20 10:10:32,599 - root - INFO - Valid loss: 2.3729302883148193
+2026-10-20 10:10:32,599 - root - INFO - Inference error: 0.5071956311166287
+2026-10-20 10:10:32,605 - root - INFO - Logging to wandb
+2026-10-20 10:10:33,271 - root - INFO - Saving checkpoints for epoch 2
+2026-10-20 10:10:33,277 - root - INFO - Epoch inference error (0.5071956311166287) is lower than previous best inference error (0.5071956311166287).
+2026-10-20 10:10:33,277 - root - INFO - Saving lowest inference error checkpoint to /pscratch/sd/m/mahf708/hr-runs/ep3-shard/training_checkpoints/best_inference_ckpt.tar
+2026-10-20 10:10:36,805 - root - INFO - Saving lowest validation loss checkpoint to /pscratch/sd/m/mahf708/hr-runs/ep3-shard/training_checkpoints/best_ckpt.tar
+2026-10-20 10:10:40,363 - root - INFO - Saving latest checkpoint model trained for 2 complete epochs and 0 additional batches, or 230 total batches, with best_validation_loss 2.3729302883148193 and best_inference_error 0.5071956311166287
+2026-10-20 10:10:53,717 - root - INFO - Saving EMA epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/ep3-shard/training_checkpoints/ema_ckpt_0002.tar
+2026-10-20 10:10:57,318 - root - INFO - Saving epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/ep3-shard/training_checkpoints/ckpt_0002.tar
+2026-10-20 10:11:30,972 - root - INFO - Beginning epoch after 2 complete epochs
+2026-10-20 10:11:30,974 - root - INFO - Starting training step for model trained for 2 complete epochs
+2026-10-20 10:11:31,036 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 10:11:31,041 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 10:11:40,319 - root - INFO - Step 235: {'batch_loss': tensor(0.5335, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5352136780798772, 'lr': 0.0001}
+2026-10-20 10:11:48,704 - root - INFO - Step 240: {'batch_loss': tensor(0.5204, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5962654707875548, 'lr': 0.0001}
+2026-10-20 10:11:49,438 - root - INFO - Saving latest checkpoint model trained for 2 complete epochs and 10 additional batches, or 240 total batches, with best_validation_loss 2.3729302883148193 and best_inference_error 0.5071956311166287
+2026-10-20 10:12:13,809 - root - INFO - Step 245: {'batch_loss': tensor(0.5238, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.19932711207886264, 'lr': 0.0001}
+2026-10-20 10:12:22,192 - root - INFO - Step 250: {'batch_loss': tensor(0.5291, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.59503896612706, 'lr': 0.0001}
+2026-10-20 10:12:30,575 - root - INFO - Step 255: {'batch_loss': tensor(0.5183, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5964579167863573, 'lr': 0.0001}
+2026-10-20 10:12:38,957 - root - INFO - Step 260: {'batch_loss': tensor(0.5049, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.596480428938746, 'lr': 0.0001}
+2026-10-20 10:12:39,707 - root - INFO - Saving latest checkpoint model trained for 2 complete epochs and 30 additional batches, or 260 total batches, with best_validation_loss 2.3729302883148193 and best_inference_error 0.5071956311166287
+2026-10-20 10:13:01,289 - root - INFO - Step 265: {'batch_loss': tensor(0.5076, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.22389177653116357, 'lr': 0.0001}
+2026-10-20 10:13:09,672 - root - INFO - Step 270: {'batch_loss': tensor(0.5013, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5965241178810063, 'lr': 0.0001}
+2026-10-20 10:13:18,057 - root - INFO - Step 275: {'batch_loss': tensor(0.5265, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5961968355415135, 'lr': 0.0001}
+2026-10-20 10:13:26,437 - root - INFO - Step 280: {'batch_loss': tensor(0.5029, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.596666274228884, 'lr': 0.0001}
+2026-10-20 10:13:27,194 - root - INFO - Saving latest checkpoint model trained for 2 complete epochs and 50 additional batches, or 280 total batches, with best_validation_loss 2.3729302883148193 and best_inference_error 0.5071956311166287
+2026-10-20 10:13:49,233 - root - INFO - Step 285: {'batch_loss': tensor(0.5013, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.219338168638118, 'lr': 0.0001}
+2026-10-20 10:13:57,613 - root - INFO - Step 290: {'batch_loss': tensor(0.5006, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5966698052391266, 'lr': 0.0001}
+2026-10-20 10:14:05,993 - root - INFO - Step 295: {'batch_loss': tensor(0.5096, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5966467016463496, 'lr': 0.0001}
+2026-10-20 10:14:14,376 - root - INFO - Step 300: {'batch_loss': tensor(0.4775, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5964351688544278, 'lr': 0.0001}
+2026-10-20 10:14:15,168 - root - INFO - Saving latest checkpoint model trained for 2 complete epochs and 70 additional batches, or 300 total batches, with best_validation_loss 2.3729302883148193 and best_inference_error 0.5071956311166287
+2026-10-20 10:14:36,897 - root - INFO - Step 305: {'batch_loss': tensor(0.4809, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.22202150335733692, 'lr': 0.0001}
+2026-10-20 10:14:45,280 - root - INFO - Step 310: {'batch_loss': tensor(0.4954, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5964280615416818, 'lr': 0.0001}
+2026-10-20 10:14:53,666 - root - INFO - Step 315: {'batch_loss': tensor(0.4933, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5962780672153145, 'lr': 0.0001}
+2026-10-20 10:15:02,051 - root - INFO - Step 320: {'batch_loss': tensor(0.4981, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5963180639771913, 'lr': 0.0001}
+2026-10-20 10:15:02,804 - root - INFO - Saving latest checkpoint model trained for 2 complete epochs and 90 additional batches, or 320 total batches, with best_validation_loss 2.3729302883148193 and best_inference_error 0.5071956311166287
+2026-10-20 10:15:24,740 - root - INFO - Step 325: {'batch_loss': tensor(0.5047, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2203628138424135, 'lr': 0.0001}
+2026-10-20 10:15:33,123 - root - INFO - Step 330: {'batch_loss': tensor(0.4693, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5964385275002935, 'lr': 0.0001}
+2026-10-20 10:15:41,502 - root - INFO - Step 335: {'batch_loss': tensor(0.4965, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5967487206401417, 'lr': 0.0001}
+2026-10-20 10:15:49,883 - root - INFO - Step 340: {'batch_loss': tensor(0.4821, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.5966010259655972, 'lr': 0.0001}
+2026-10-20 10:15:50,580 - root - INFO - Saving latest checkpoint model trained for 2 complete epochs and 110 additional batches, or 340 total batches, with best_validation_loss 2.3729302883148193 and best_inference_error 0.5071956311166287
+2026-10-20 10:16:12,538 - root - INFO - Step 345: {'batch_loss': tensor(0.5240, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.22070235469923868, 'lr': 0.0001}
+2026-10-20 10:16:12,553 - root - WARNING - Power spectrum aggregator not implemented for this grid type, omitting.
+2026-10-20 10:16:12,630 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 10:16:12,640 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 10:17:16,461 - root - INFO - Saving latest checkpoint model trained for 2 complete epochs and 115 additional batches, or 345 total batches, with best_validation_loss 2.3729302883148193 and best_inference_error 0.5071956311166287
+2026-10-20 10:17:29,872 - root - INFO - Starting validation step for model trained for 3 epochs
+2026-10-20 10:17:29,884 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 10:17:29,884 - root - INFO - Starting validation loop
+2026-10-20 10:17:29,990 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 10:17:29,990 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 10:17:29,991 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 10:17:30,003 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 10:17:52,287 - root - INFO - Flushing validation diagnostics
+2026-10-20 10:17:52,289 - root - INFO - Getting validation aggregator summary
+2026-10-20 10:17:52,289 - root - INFO - Getting logs for mean aggregator
+2026-10-20 10:17:52,307 - root - INFO - Getting logs for mean_norm aggregator
+2026-10-20 10:17:52,417 - root - INFO - Validation complete
+2026-10-20 10:17:52,418 - root - INFO - Starting inference step for model trained for 3 epochs
+2026-10-20 10:17:52,421 - root - WARNING - mean_step_20 metric not supported for this configuration, omitting: step_mean step 20 exceeds n_forward_steps=12
+2026-10-20 10:17:52,421 - root - WARNING - mean_step_20_norm metric not supported for this configuration, omitting: step_mean step 20 exceeds n_forward_steps=12
+2026-10-20 10:17:52,421 - root - WARNING - ensemble_step_20 metric not supported for this configuration, omitting: ensemble step 20 exceeds n_forward_steps=12
+2026-10-20 10:17:52,422 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 10:17:52,422 - root - WARNING - Zonal mean max size 4096 is greater than the number of timesteps 13. Setting zonal mean max size to the number of timesteps.
+2026-10-20 10:17:52,422 - root - WARNING - annual metric not supported for this configuration, omitting: annual metric requires > ~2 years of data, got 3 days
+2026-10-20 10:17:52,422 - root - WARNING - enso_index metric not supported for this configuration, omitting: enso_index metric requires > ~2 years of data, got 3 days
+2026-10-20 10:17:52,422 - root - WARNING - enso_coefficient metric not supported for this configuration, omitting: enso_coefficient metric requires > ~5 years of data, got 3 days
+2026-10-20 10:17:52,422 - root - WARNING - ipo_index metric not supported for this configuration, omitting: ipo_index metric requires > ~80 years of data, got 3 days
+2026-10-20 10:17:54,884 - root - INFO - Inference: processing output from window 1 of 3.
+2026-10-20 10:17:55,955 - root - INFO - Inference: processing output from window 2 of 3.
+2026-10-20 10:17:57,027 - root - INFO - Inference: processing output from window 3 of 3.
+2026-10-20 10:17:57,159 - root - INFO - Starting flush of reduced diagnostics to disk
+2026-10-20 10:17:57,160 - root - INFO - Getting inline inference aggregator summary
+2026-10-20 10:17:57,160 - root - INFO - Getting summary logs for zonal_mean aggregator
+2026-10-20 10:17:58,200 - root - INFO - Getting summary logs for time_mean aggregator
+2026-10-20 10:18:36,861 - root - INFO - Getting summary logs for time_mean_norm aggregator
+2026-10-20 10:18:57,610 - root - INFO - Time taken for epoch 3 is 446.63614654541016 sec
+2026-10-20 10:18:57,612 - root - INFO - Train loss: 0.46171244978904724
+2026-10-20 10:18:57,612 - root - INFO - Valid loss: 2.2986457347869873
+2026-10-20 10:18:57,612 - root - INFO - Inference error: 0.481467487514019
+2026-10-20 10:18:57,617 - root - INFO - Logging to wandb
+2026-10-20 10:18:58,314 - root - INFO - Saving checkpoints for epoch 3
+2026-10-20 10:18:58,319 - root - INFO - Epoch inference error (0.481467487514019) is lower than previous best inference error (0.481467487514019).
+2026-10-20 10:18:58,319 - root - INFO - Saving lowest inference error checkpoint to /pscratch/sd/m/mahf708/hr-runs/ep3-shard/training_checkpoints/best_inference_ckpt.tar
+2026-10-20 10:19:01,860 - root - INFO - Saving lowest validation loss checkpoint to /pscratch/sd/m/mahf708/hr-runs/ep3-shard/training_checkpoints/best_ckpt.tar
+2026-10-20 10:19:05,411 - root - INFO - Saving latest checkpoint model trained for 3 complete epochs and 0 additional batches, or 345 total batches, with best_validation_loss 2.2986457347869873 and best_inference_error 0.481467487514019
+2026-10-20 10:19:18,519 - root - INFO - Saving EMA epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/ep3-shard/training_checkpoints/ema_ckpt_0003.tar
+2026-10-20 10:19:22,145 - root - INFO - Saving epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/ep3-shard/training_checkpoints/ckpt_0003.tar
+2026-10-20 10:19:35,426 - root - INFO - DONE ---- rank 0
+2026-10-20 10:19:35,437 - fme.core.distributed.model_torch_distributed - INFO - Shutting down rank 0
