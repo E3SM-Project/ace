@@ -20,6 +20,28 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
+def _release_torch_harmonics_caches() -> None:
+    """Drop torch-harmonics' memoized Legendre tables.
+
+    torch-harmonics wraps its quadrature/Legendre precomputations in an LRU
+    cache (maxsize 20) that keeps every float64 table for the life of the
+    process; each transform keeps its own copy anyway. At 720x1440 (lmax 720)
+    one table is ~3 GB and an SFNO builds four, so every rank held ~12 GB of
+    dead host memory -- with four ranks per node that OOM-killed a spatially
+    parallel training start. Building a transform again only costs the
+    recompute.
+    """
+    import torch_harmonics.legendre
+    import torch_harmonics.quadrature
+
+    for module in (torch_harmonics.legendre, torch_harmonics.quadrature):
+        for value in vars(module).values():
+            for cell in getattr(value, "__closure__", None) or ():
+                cached = cell.cell_contents
+                if callable(getattr(cached, "cache_clear", None)):
+                    cached.cache_clear()
+
+
 class SpatialParallelismNotImplemented(NotImplementedError):
     """Raised when a code path is incompatible with spatial parallelism."""
 
@@ -512,10 +534,14 @@ class Distributed:
         return self._seed
 
     def get_sht(self, nlat, nlon, lmax=None, mmax=None, grid="legendre-gauss"):
-        return self._distributed.get_sht(nlat, nlon, lmax, mmax, grid)
+        sht = self._distributed.get_sht(nlat, nlon, lmax, mmax, grid)
+        _release_torch_harmonics_caches()
+        return sht
 
     def get_isht(self, nlat, nlon, lmax=None, mmax=None, grid="legendre-gauss"):
-        return self._distributed.get_isht(nlat, nlon, lmax, mmax, grid)
+        isht = self._distributed.get_isht(nlat, nlon, lmax, mmax, grid)
+        _release_torch_harmonics_caches()
+        return isht
 
     def get_disco_conv_s2(self, *args, **kwargs):
         return self._distributed.get_disco_conv_s2(*args, **kwargs)
