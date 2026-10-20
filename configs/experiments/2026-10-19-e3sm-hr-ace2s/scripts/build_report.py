@@ -87,7 +87,8 @@ def table(stems: list[str]) -> str:
 
 def decomp(stems: list[str]) -> str:
     """Group runs tagged <layout>-{compute,real-nosync,fake,real} into one row:
-    pure split compute, + transposes, + grad sync, and the comm share."""
+    pure split compute, + transposes, + grad sync, and the comm share.
+    """
     rows: dict[str, dict[str, dict]] = {}
     for d in (d for s in stems for d in load(s)):
         aliases = {"-fake-nosync": "compute"}

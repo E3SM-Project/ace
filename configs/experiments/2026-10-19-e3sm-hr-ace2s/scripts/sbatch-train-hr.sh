@@ -5,9 +5,13 @@
 #   cd configs/experiments/2026-10-19-e3sm-hr-ace2s
 #   RUN=hr-e01 sbatch -N 8 scripts/sbatch-train-hr.sh
 #
-# STATUS: written and checked with `sbatch --test-only`, NOT yet run through
-# the queue. The same train.sh ran interactively on 1 and 4 nodes on
-# 2026-10-19.
+# STATUS: see notes/comm-and-memory.md section 15 for the queued
+# walltime/requeue test (2026-10-20). train.sh itself ran interactively on
+# 1-4 nodes, on 80 GB and 40 GB cards.
+#
+# Environment knobs (all optional):
+#   CKPT_EVERY  checkpoint_every_n_batches (default 400, ~17 min)
+#   EXTRA       extra space-separated k=v overrides passed to fme
 #
 # Requeue: the spatial backend does not save a restart checkpoint on SIGTERM
 # (fme/core/generics/trainer.py skips it when has_spatial_parallelism), so a
@@ -16,7 +20,8 @@
 # at ~2.5 s is ~17 min lost at most.
 #SBATCH -A e3sm_g
 #SBATCH -q regular
-#SBATCH -C gpu&hbm80g          # needs 80 GB cards: ~60 GB/GPU with modes x0.5
+#SBATCH -C gpu&hbm80g          # 40 GB cards also work with the sharding flags
+                               # (full harmonics: 35 GiB allocated at 4x1)
 #SBATCH -J fme-hr-atm
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=4
@@ -45,8 +50,10 @@ requeue() {
 }
 trap requeue USR1
 
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True  # needed on 40 GB cards
+# shellcheck disable=SC2086
 srun --ntasks-per-node 1 --gpus-per-node 4 --export=ALL,ACE_SRC="$ACE_SRC" \
   "$here/scripts/train.sh" 4 1 "$config" "$expdir" \
   train_loader.batch_size="$n" validation.loader.batch_size="$n" \
-  checkpoint_every_n_batches=400 &
+  checkpoint_every_n_batches="${CKPT_EVERY:-400}" ${EXTRA:-} &
 wait

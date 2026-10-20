@@ -133,6 +133,8 @@ optimization:
   enable_automatic_mixed_precision: false
   lr: 0.0001
   optimizer_type: FusedAdam
+  # ZeRO-1 over each spatial group (commit 45030b9be).
+  shard_optimizer_state: true
   kwargs:
     weight_decay: 0.01
 stepper_training:
@@ -165,6 +167,10 @@ stepper:
           # 4x1 tiles (70 GB allocated in the first backward pass); 0.5 is
           # 1.25 B params, ~60 GB/GPU, 2.4-2.5 s/step. 2026-10-19 smoke runs.
           hard_thresholding_fraction: 0.5
+          # Each spatial rank stores only its l-slice of the spectral weights
+          # and its tile of pos_embed (commit 02d312cfa): 4x less replicated
+          # memory, same numerics; checkpoints keep the full format.
+          shard_spatial_parameters: true
       normalization:
         network:
           global_means_path: /pscratch/sd/m/mahf708/hr-data/stats-2026-10-19/train-stride4/centering.nc

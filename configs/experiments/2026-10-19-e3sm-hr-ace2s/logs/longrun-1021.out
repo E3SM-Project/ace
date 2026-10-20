@@ -1,0 +1,193 @@
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+2026-10-20 13:32:04,466 - root - INFO - --------------- Versions ---------------
+2026-10-20 13:32:04,467 - root - INFO - Torch: 2.10.0+cu128
+2026-10-20 13:32:04,467 - root - INFO - ----------------------------------------
+2026-10-20 13:32:04,467 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 13:32:04,467 - root - INFO - Beaker ID: None
+2026-10-20 13:32:04,467 - root - INFO - Beaker URL: No beaker URL.
+2026-10-20 13:32:04,467 - root - WARNING - Environmental variable BEAKER_EXPERIMENT_ID not found.
+2026-10-20 13:32:04,467 - root - INFO - Environmental variable SLURM_JOB_ID=60048637.
+2026-10-20 13:32:04,467 - root - INFO - Environmental variable SLURM_JOB_USER=mahf708.
+2026-10-20 13:32:04,467 - root - WARNING - Environmental variable FME_TRAIN_DIR not found.
+2026-10-20 13:32:04,468 - root - WARNING - Environmental variable FME_VALID_DIR not found.
+2026-10-20 13:32:04,468 - root - WARNING - Environmental variable FME_STATS_DIR not found.
+2026-10-20 13:32:04,468 - root - WARNING - Environmental variable FME_CHECKPOINT_DIR not found.
+2026-10-20 13:32:04,468 - root - WARNING - Environmental variable FME_OUTPUT_DIR not found.
+2026-10-20 13:32:04,468 - root - WARNING - Environmental variable FME_IMAGE not found.
+2026-10-20 13:32:04,468 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 13:32:04,468 - root - INFO - Current device is cuda:0
+2026-10-20 13:32:04,468 - root - INFO - Initializing training data loader
+2026-10-20 13:32:04,469 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 13:32:08,507 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 13:32:08,514 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 13:32:08,531 - root - INFO - The required variables have been found in the dataset: ['PS', 'Qat2m', 'frozen_precipitation_rate', 'FLUS', 'T_5', 'V_6', 'FSUTOA', 'U_5', 'Uat10m', 'PHIS', 'STW_7', 'FLUT', 'V_3', 'T_6', 'surface_precipitation_rate', 'T_4', 'V_7', 'U_4', 'Tat2m', 'TS', 'T_7', 'U_1', 'U_7', 'DTENDTTW', 'U_2', 'T_1', 'STW_1', 'V_0', 'FLDS', 'V_2', 'STW_0', 'U_0', 'ICEFRAC', 'STW_6', 'SHFLX', 'V_4', 'TAUY', 'FSNS', 'OCNFRAC', 'V_1', 'T_0', 'V_5', 'U_6', 'SOLIN', 'TAUX', 'STW_5', 'Vat10m', 'STW_2', 'T_3', 'LANDFRAC', 'STW_4', 'T_2', 'U_3', 'LHFLX', 'STW_3'].
+2026-10-20 13:32:08,547 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 13:32:08,577 - root - INFO - Subsetting dataset samples according to slice(124, np.int64(361), None).
+2026-10-20 13:32:08,577 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 13:32:08,581 - root - INFO - Initializing validation data loaders
+2026-10-20 13:32:08,582 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 13:32:08,639 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 13:32:08,641 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 13:32:08,657 - root - INFO - The required variables have been found in the dataset: ['PS', 'Qat2m', 'frozen_precipitation_rate', 'FLUS', 'T_5', 'V_6', 'FSUTOA', 'U_5', 'Uat10m', 'PHIS', 'STW_7', 'FLUT', 'V_3', 'T_6', 'surface_precipitation_rate', 'T_4', 'V_7', 'U_4', 'Tat2m', 'TS', 'T_7', 'U_1', 'U_7', 'DTENDTTW', 'U_2', 'T_1', 'STW_1', 'V_0', 'FLDS', 'V_2', 'STW_0', 'U_0', 'ICEFRAC', 'STW_6', 'SHFLX', 'V_4', 'TAUY', 'FSNS', 'OCNFRAC', 'V_1', 'T_0', 'V_5', 'U_6', 'SOLIN', 'TAUX', 'STW_5', 'Vat10m', 'STW_2', 'T_3', 'LANDFRAC', 'STW_4', 'T_2', 'U_3', 'LHFLX', 'STW_3'].
+2026-10-20 13:32:08,669 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 13:32:08,688 - root - INFO - Subsetting dataset samples according to slice(18980, np.int64(20440), 4).
+2026-10-20 13:32:08,688 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 13:32:08,688 - root - INFO - train data: 120 samples, 120 batches
+2026-10-20 13:32:08,688 - root - INFO - train data: pool_size=1, 5 sub-batches per window, coming from the following base loader:
+2026-10-20 13:32:08,688 - root - INFO - train (base loader) data: 24 samples, 24 batches
+2026-10-20 13:32:08,688 - root - INFO - train (base loader) data: first sample's initial time: 0001-02-01 00:00:00
+2026-10-20 13:32:08,688 - root - INFO - train (base loader) data: last sample's initial time: 0001-03-31 18:00:00
+2026-10-20 13:32:08,689 - root - INFO - val data: 183 samples, 183 batches
+2026-10-20 13:32:08,689 - root - INFO - val data: first sample's initial time: 0014-01-01 00:00:00
+2026-10-20 13:32:08,689 - root - INFO - val data: last sample's initial time: 0014-12-31 00:00:00
+2026-10-20 13:32:08,689 - root - INFO - Initializing inline inference data loaders
+2026-10-20 13:32:08,690 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 13:32:08,745 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 13:32:08,747 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 13:32:08,763 - root - INFO - The required variables have been found in the dataset: ['PS', 'Qat2m', 'frozen_precipitation_rate', 'FLUS', 'T_5', 'V_6', 'FSUTOA', 'U_5', 'Uat10m', 'PHIS', 'STW_7', 'FLUT', 'V_3', 'T_6', 'surface_precipitation_rate', 'T_4', 'V_7', 'U_4', 'Tat2m', 'TS', 'T_7', 'U_1', 'U_7', 'DTENDTTW', 'U_2', 'T_1', 'STW_1', 'V_0', 'FLDS', 'V_2', 'STW_0', 'U_0', 'ICEFRAC', 'STW_6', 'SHFLX', 'V_4', 'TAUY', 'FSNS', 'OCNFRAC', 'V_1', 'T_0', 'V_5', 'U_6', 'SOLIN', 'TAUX', 'STW_5', 'Vat10m', 'STW_2', 'T_3', 'LANDFRAC', 'STW_4', 'T_2', 'U_3', 'LHFLX', 'STW_3'].
+2026-10-20 13:32:08,774 - root - INFO - Dataset now has 23340 samples of length 21.
+2026-10-20 13:32:08,775 - root - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 13:32:08,791 - root - INFO - Multiprocessing inference context: fork
+2026-10-20 13:32:18,392 - root - INFO - Starting model initialization
+2026-10-20 13:32:18,392 - root - INFO - Initializing stepper from provided config
+2026-10-20 13:32:18,392 - root - INFO - Initializing stepper from provided config
+2026-10-20 13:32:51,076 - root - INFO - Current device is cuda:0
+2026-10-20 13:32:51,188 - root - INFO - Number of trainable model parameters: 530873088
+2026-10-20 13:32:51,188 - root - INFO - Starting Training Loop...
+2026-10-20 13:32:51,460 - root - INFO - Beginning epoch after 0 complete epochs
+2026-10-20 13:32:51,460 - root - INFO - Starting training step for model trained for 0 complete epochs
+2026-10-20 13:32:51,518 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 13:32:51,525 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 13:32:59,037 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 13:32:59,051 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 13:40:34,785 - root - INFO - Step 100: {'batch_loss': tensor(1.3058, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.21940236190646578, 'lr': 0.0001}
+2026-10-20 13:42:05,245 - root - WARNING - Power spectrum aggregator not implemented for this grid type, omitting.
+2026-10-20 13:42:05,335 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 13:42:05,345 - root - INFO - Dataset now has 23355 samples of length 6.
+[rank3]:[W1020 13:44:33.547924407 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 4 PG GUID 73fd43c6382230e4139a92b4f3644819bcd96168 Rank 3] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 4.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank1]:[W1020 13:44:33.548032116 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 4 PG GUID 73fd43c6382230e4139a92b4f3644819bcd96168 Rank 1] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 4.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank2]:[W1020 13:44:33.548787707 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 4 PG GUID 73fd43c6382230e4139a92b4f3644819bcd96168 Rank 2] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 4.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank0]:[W1020 13:44:33.555708884 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 4 PG GUID 73fd43c6382230e4139a92b4f3644819bcd96168 Rank 0] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 4.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+2026-10-20 13:44:36,411 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 120 additional batches, or 120 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-20 13:45:40,375 - root - INFO - Starting validation step for model trained for 1 epochs
+/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+2026-10-20 13:45:40,414 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+2026-10-20 13:45:40,421 - root - INFO - Starting validation loop
+/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/timing.py:63: UserWarning: The GlobalTimer is currently inactive; therefore no timing information will be recorded. To activate it, wrap your code within the GlobalTimer() context.
+  warnings.warn(INACTIVE_WARNING_MESSAGE)
+2026-10-20 13:45:40,524 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 13:45:40,534 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 13:50:02,319 - root - INFO - Flushing validation diagnostics
+2026-10-20 13:50:02,320 - root - INFO - Getting validation aggregator summary
+2026-10-20 13:50:02,320 - root - INFO - Getting logs for mean aggregator
+2026-10-20 13:50:03,354 - root - INFO - Getting logs for mean_norm aggregator
+2026-10-20 13:50:03,521 - root - INFO - Validation complete
+2026-10-20 13:50:03,521 - root - INFO - Starting inference step for model trained for 1 epochs
+2026-10-20 13:50:03,529 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 13:50:03,529 - root - WARNING - Zonal mean max size 4096 is greater than the number of timesteps 361. Setting zonal mean max size to the number of timesteps.
+2026-10-20 13:50:03,530 - root - WARNING - annual metric not supported for this configuration, omitting: annual metric requires > ~2 years of data, got 90 days
+2026-10-20 13:50:03,530 - root - WARNING - enso_index metric not supported for this configuration, omitting: enso_index metric requires > ~2 years of data, got 90 days
+2026-10-20 13:50:03,530 - root - WARNING - enso_coefficient metric not supported for this configuration, omitting: enso_coefficient metric requires > ~5 years of data, got 90 days
+2026-10-20 13:50:03,530 - root - WARNING - ipo_index metric not supported for this configuration, omitting: ipo_index metric requires > ~80 years of data, got 90 days
+2026-10-20 13:50:27,503 - root - INFO - Inference: processing output from window 1 of 18.
+2026-10-20 13:50:39,948 - root - INFO - Inference: processing output from window 2 of 18.
+2026-10-20 13:50:52,540 - root - INFO - Inference: processing output from window 3 of 18.
+2026-10-20 13:51:04,818 - root - INFO - Inference: processing output from window 4 of 18.
+2026-10-20 13:51:17,095 - root - INFO - Inference: processing output from window 5 of 18.
+2026-10-20 13:51:29,376 - root - INFO - Inference: processing output from window 6 of 18.
+2026-10-20 13:51:41,653 - root - INFO - Inference: processing output from window 7 of 18.
+2026-10-20 13:51:53,931 - root - INFO - Inference: processing output from window 8 of 18.
+2026-10-20 13:52:08,798 - root - INFO - Inference: processing output from window 9 of 18.
+2026-10-20 13:52:21,079 - root - INFO - Inference: processing output from window 10 of 18.
+2026-10-20 13:52:33,355 - root - INFO - Inference: processing output from window 11 of 18.
+2026-10-20 13:52:45,628 - root - INFO - Inference: processing output from window 12 of 18.
+2026-10-20 13:52:57,903 - root - INFO - Inference: processing output from window 13 of 18.
+2026-10-20 13:53:10,185 - root - INFO - Inference: processing output from window 14 of 18.
+2026-10-20 13:53:22,460 - root - INFO - Inference: processing output from window 15 of 18.
+2026-10-20 13:53:34,737 - root - INFO - Inference: processing output from window 16 of 18.
+2026-10-20 13:53:47,012 - root - INFO - Inference: processing output from window 17 of 18.
+2026-10-20 13:53:59,291 - root - INFO - Inference: processing output from window 18 of 18.
+2026-10-20 13:53:59,619 - root - INFO - Starting flush of reduced diagnostics to disk
+2026-10-20 13:53:59,619 - root - INFO - Getting inline inference aggregator summary
+2026-10-20 13:53:59,619 - root - INFO - Getting summary logs for mean_step_20 aggregator
+2026-10-20 13:54:15,116 - root - INFO - Getting summary logs for mean_step_20_norm aggregator
+2026-10-20 13:54:15,123 - root - INFO - Getting summary logs for zonal_mean aggregator
+2026-10-20 13:54:24,857 - root - INFO - Getting summary logs for time_mean aggregator
+2026-10-20 13:55:00,375 - root - INFO - Getting summary logs for time_mean_norm aggregator
+2026-10-20 13:55:19,555 - root - INFO - Time taken for epoch 1 is 1348.0947105884552 sec
+2026-10-20 13:55:19,555 - root - INFO - Train loss: 0.6347219944000244
+2026-10-20 13:55:19,555 - root - INFO - Valid loss: 2.4653496742248535
+2026-10-20 13:55:19,555 - root - INFO - Inference error: 0.3754148069024086
+2026-10-20 13:55:19,560 - root - INFO - Logging to wandb
+2026-10-20 13:55:22,070 - root - INFO - Saving checkpoints for epoch 1
+2026-10-20 13:55:22,090 - root - INFO - Epoch inference error (0.3754148069024086) is lower than previous best inference error (0.3754148069024086).
+2026-10-20 13:55:22,090 - root - INFO - Saving lowest inference error checkpoint to /pscratch/sd/m/mahf708/hr-runs/longrun-1021/training_checkpoints/best_inference_ckpt.tar
+2026-10-20 13:55:34,103 - root - INFO - Saving lowest validation loss checkpoint to /pscratch/sd/m/mahf708/hr-runs/longrun-1021/training_checkpoints/best_ckpt.tar
+2026-10-20 13:55:45,921 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 0 additional batches, or 120 total batches, with best_validation_loss 2.4653496742248535 and best_inference_error 0.3754148069024086
+2026-10-20 13:56:38,736 - root - INFO - Saving EMA epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/longrun-1021/training_checkpoints/ema_ckpt_0001.tar
+2026-10-20 13:56:50,953 - root - INFO - Saving epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/longrun-1021/training_checkpoints/ckpt_0001.tar
+2026-10-20 13:58:03,498 - root - INFO - Beginning epoch after 1 complete epochs
+2026-10-20 13:58:03,499 - root - INFO - Starting training step for model trained for 1 complete epochs
+2026-10-20 13:58:03,656 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 13:58:03,660 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 14:04:13,632 - root - INFO - Step 200: {'batch_loss': tensor(0.5618, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.21616139154926547, 'lr': 0.0001}
+2026-10-20 14:04:16,215 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 80 additional batches, or 200 total batches, with best_validation_loss 2.4653496742248535 and best_inference_error 0.3754148069024086
+2026-10-20 14:08:16,617 - root - WARNING - Power spectrum aggregator not implemented for this grid type, omitting.
+2026-10-20 14:08:16,743 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 14:08:16,749 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 14:10:51,779 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 120 additional batches, or 240 total batches, with best_validation_loss 2.4653496742248535 and best_inference_error 0.3754148069024086
+2026-10-20 14:11:47,069 - root - INFO - Starting validation step for model trained for 2 epochs
+2026-10-20 14:11:47,111 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 14:11:47,112 - root - INFO - Starting validation loop
+2026-10-20 14:11:47,203 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 14:11:47,213 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 14:16:09,283 - root - INFO - Flushing validation diagnostics
+2026-10-20 14:16:09,284 - root - INFO - Getting validation aggregator summary
+2026-10-20 14:16:09,284 - root - INFO - Getting logs for mean aggregator
+2026-10-20 14:16:12,594 - root - INFO - Getting logs for mean_norm aggregator
+2026-10-20 14:16:12,747 - root - INFO - Validation complete
+2026-10-20 14:16:12,748 - root - INFO - Starting inference step for model trained for 2 epochs
+2026-10-20 14:16:12,757 - root - WARNING - power_spectrum metric not supported for this configuration, omitting: SphericalPowerSpectrumAggregator does not support spatial parallelism.
+2026-10-20 14:16:12,757 - root - WARNING - Zonal mean max size 4096 is greater than the number of timesteps 361. Setting zonal mean max size to the number of timesteps.
+2026-10-20 14:16:12,757 - root - WARNING - annual metric not supported for this configuration, omitting: annual metric requires > ~2 years of data, got 90 days
+2026-10-20 14:16:12,758 - root - WARNING - enso_index metric not supported for this configuration, omitting: enso_index metric requires > ~2 years of data, got 90 days
+2026-10-20 14:16:12,758 - root - WARNING - enso_coefficient metric not supported for this configuration, omitting: enso_coefficient metric requires > ~5 years of data, got 90 days
+2026-10-20 14:16:12,758 - root - WARNING - ipo_index metric not supported for this configuration, omitting: ipo_index metric requires > ~80 years of data, got 90 days
+2026-10-20 14:16:32,070 - root - INFO - Inference: processing output from window 1 of 18.
+2026-10-20 14:16:44,699 - root - INFO - Inference: processing output from window 2 of 18.
+2026-10-20 14:16:56,971 - root - INFO - Inference: processing output from window 3 of 18.
+2026-10-20 14:17:09,244 - root - INFO - Inference: processing output from window 4 of 18.
+2026-10-20 14:17:21,523 - root - INFO - Inference: processing output from window 5 of 18.
+2026-10-20 14:17:33,802 - root - INFO - Inference: processing output from window 6 of 18.

@@ -1,0 +1,274 @@
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+[rank6]: Traceback (most recent call last):
+[rank6]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank6]:   File "<frozen runpy>", line 88, in _run_code
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/__main__.py", line 9, in <module>
+[rank6]:     main(args.yaml_config, override_dotlist=args.override)
+[rank6]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank6]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/train.py", line 97, in main
+[rank6]:     config = dacite.from_dict(
+[rank6]:         data_class=TrainConfig, data=config_data, config=dacite.Config(strict=True)
+[rank6]:     )
+[rank6]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 69, in from_dict
+[rank6]:     value = _build_value(type_=field_type, data=data[key], config=config)
+[rank6]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 103, in _build_value
+[rank6]:     data = _build_value_for_union(union=type_, data=data, config=config)
+[rank6]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 143, in _build_value_for_union
+[rank6]:     raise UnionMatchError(field_type=union, value=data)
+[rank6]: dacite.exceptions.UnionMatchError: can not match type "list" to any type of "inference" union: fme.ace.train.train_config.InlineInferenceConfig | list[fme.ace.train.train_config.InlineInferenceConfig]
+[rank5]: Traceback (most recent call last):
+[rank5]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank5]:   File "<frozen runpy>", line 88, in _run_code
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/__main__.py", line 9, in <module>
+[rank5]:     main(args.yaml_config, override_dotlist=args.override)
+[rank5]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank5]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/train.py", line 97, in main
+[rank5]:     config = dacite.from_dict(
+[rank5]:         data_class=TrainConfig, data=config_data, config=dacite.Config(strict=True)
+[rank5]:     )
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 69, in from_dict
+[rank5]:     value = _build_value(type_=field_type, data=data[key], config=config)
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 103, in _build_value
+[rank5]:     data = _build_value_for_union(union=type_, data=data, config=config)
+[rank5]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 143, in _build_value_for_union
+[rank5]:     raise UnionMatchError(field_type=union, value=data)
+[rank5]: dacite.exceptions.UnionMatchError: can not match type "list" to any type of "inference" union: fme.ace.train.train_config.InlineInferenceConfig | list[fme.ace.train.train_config.InlineInferenceConfig]
+[rank4]: Traceback (most recent call last):
+[rank4]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank4]:   File "<frozen runpy>", line 88, in _run_code
+[rank4]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/__main__.py", line 9, in <module>
+[rank4]:     main(args.yaml_config, override_dotlist=args.override)
+[rank4]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank4]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/train.py", line 97, in main
+[rank4]:     config = dacite.from_dict(
+[rank4]:         data_class=TrainConfig, data=config_data, config=dacite.Config(strict=True)
+[rank4]:     )
+[rank4]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 69, in from_dict
+[rank4]:     value = _build_value(type_=field_type, data=data[key], config=config)
+[rank4]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 103, in _build_value
+[rank4]:     data = _build_value_for_union(union=type_, data=data, config=config)
+[rank4]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 143, in _build_value_for_union
+[rank4]:     raise UnionMatchError(field_type=union, value=data)
+[rank4]: dacite.exceptions.UnionMatchError: can not match type "list" to any type of "inference" union: fme.ace.train.train_config.InlineInferenceConfig | list[fme.ace.train.train_config.InlineInferenceConfig]
+[rank7]: Traceback (most recent call last):
+[rank7]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank7]:   File "<frozen runpy>", line 88, in _run_code
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/__main__.py", line 9, in <module>
+[rank7]:     main(args.yaml_config, override_dotlist=args.override)
+[rank7]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank7]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/train.py", line 97, in main
+[rank7]:     config = dacite.from_dict(
+[rank7]:         data_class=TrainConfig, data=config_data, config=dacite.Config(strict=True)
+[rank7]:     )
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 69, in from_dict
+[rank7]:     value = _build_value(type_=field_type, data=data[key], config=config)
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 103, in _build_value
+[rank7]:     data = _build_value_for_union(union=type_, data=data, config=config)
+[rank7]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 143, in _build_value_for_union
+[rank7]:     raise UnionMatchError(field_type=union, value=data)
+[rank7]: dacite.exceptions.UnionMatchError: can not match type "list" to any type of "inference" union: fme.ace.train.train_config.InlineInferenceConfig | list[fme.ace.train.train_config.InlineInferenceConfig]
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank3]:   File "<frozen runpy>", line 88, in _run_code
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/__main__.py", line 9, in <module>
+[rank3]:     main(args.yaml_config, override_dotlist=args.override)
+[rank3]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/train.py", line 97, in main
+[rank3]:     config = dacite.from_dict(
+[rank3]:         data_class=TrainConfig, data=config_data, config=dacite.Config(strict=True)
+[rank3]:     )
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 69, in from_dict
+[rank3]:     value = _build_value(type_=field_type, data=data[key], config=config)
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 103, in _build_value
+[rank3]:     data = _build_value_for_union(union=type_, data=data, config=config)
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 143, in _build_value_for_union
+[rank3]:     raise UnionMatchError(field_type=union, value=data)
+[rank3]: dacite.exceptions.UnionMatchError: can not match type "list" to any type of "inference" union: fme.ace.train.train_config.InlineInferenceConfig | list[fme.ace.train.train_config.InlineInferenceConfig]
+[rank2]: Traceback (most recent call last):
+[rank2]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank2]:   File "<frozen runpy>", line 88, in _run_code
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/__main__.py", line 9, in <module>
+[rank2]:     main(args.yaml_config, override_dotlist=args.override)
+[rank2]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/train.py", line 97, in main
+[rank2]:     config = dacite.from_dict(
+[rank2]:         data_class=TrainConfig, data=config_data, config=dacite.Config(strict=True)
+[rank2]:     )
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 69, in from_dict
+[rank2]:     value = _build_value(type_=field_type, data=data[key], config=config)
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 103, in _build_value
+[rank2]:     data = _build_value_for_union(union=type_, data=data, config=config)
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 143, in _build_value_for_union
+[rank2]:     raise UnionMatchError(field_type=union, value=data)
+[rank2]: dacite.exceptions.UnionMatchError: can not match type "list" to any type of "inference" union: fme.ace.train.train_config.InlineInferenceConfig | list[fme.ace.train.train_config.InlineInferenceConfig]
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank1]:   File "<frozen runpy>", line 88, in _run_code
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/__main__.py", line 9, in <module>
+[rank1]:     main(args.yaml_config, override_dotlist=args.override)
+[rank1]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/train.py", line 97, in main
+[rank1]:     config = dacite.from_dict(
+[rank1]:         data_class=TrainConfig, data=config_data, config=dacite.Config(strict=True)
+[rank1]:     )
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 69, in from_dict
+[rank1]:     value = _build_value(type_=field_type, data=data[key], config=config)
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 103, in _build_value
+[rank1]:     data = _build_value_for_union(union=type_, data=data, config=config)
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 143, in _build_value_for_union
+[rank1]:     raise UnionMatchError(field_type=union, value=data)
+[rank1]: dacite.exceptions.UnionMatchError: can not match type "list" to any type of "inference" union: fme.ace.train.train_config.InlineInferenceConfig | list[fme.ace.train.train_config.InlineInferenceConfig]
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank0]:   File "<frozen runpy>", line 88, in _run_code
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/__main__.py", line 9, in <module>
+[rank0]:     main(args.yaml_config, override_dotlist=args.override)
+[rank0]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/train.py", line 97, in main
+[rank0]:     config = dacite.from_dict(
+[rank0]:         data_class=TrainConfig, data=config_data, config=dacite.Config(strict=True)
+[rank0]:     )
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 69, in from_dict
+[rank0]:     value = _build_value(type_=field_type, data=data[key], config=config)
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 103, in _build_value
+[rank0]:     data = _build_value_for_union(union=type_, data=data, config=config)
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/dacite/core.py", line 143, in _build_value_for_union
+[rank0]:     raise UnionMatchError(field_type=union, value=data)
+[rank0]: dacite.exceptions.UnionMatchError: can not match type "list" to any type of "inference" union: fme.ace.train.train_config.InlineInferenceConfig | list[fme.ace.train.train_config.InlineInferenceConfig]
+W1020 12:53:57.706000 626266 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 626312 closing signal SIGTERM
+W1020 12:53:57.707000 626266 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 626313 closing signal SIGTERM
+W1020 12:53:57.730000 618244 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 618292 closing signal SIGTERM
+W1020 12:53:57.731000 618244 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 618293 closing signal SIGTERM
+W1020 12:53:57.732000 618244 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 618294 closing signal SIGTERM
+E1020 12:53:57.847000 618244 torch/distributed/elastic/multiprocessing/api.py:984] failed (exitcode: 1) local_rank: 0 (pid: 618291) of binary: /pscratch/sd/m/mahf708/ace/.venv/bin/python3
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+    ~~~^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 317, in launch_agent
+    raise ChildFailedError(
+    ...<2 lines>...
+    )
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+fme.ace.train FAILED
+------------------------------------------------------------
+Failures:
+[1]:
+  time      : 2026-10-20_12:53:57
+  host      : nid008540-hsn0
+  rank      : 1 (local_rank: 1)
+  exitcode  : 1 (pid: 618292)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[2]:
+  time      : 2026-10-20_12:53:57
+  host      : nid008540-hsn0
+  rank      : 2 (local_rank: 2)
+  exitcode  : 1 (pid: 618293)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[3]:
+  time      : 2026-10-20_12:53:57
+  host      : nid008540-hsn0
+  rank      : 3 (local_rank: 3)
+  exitcode  : 1 (pid: 618294)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-10-20_12:53:57
+  host      : nid008540-hsn0
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 618291)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
+E1020 12:53:57.872000 626266 torch/distributed/elastic/multiprocessing/api.py:984] failed (exitcode: 1) local_rank: 0 (pid: 626310) of binary: /pscratch/sd/m/mahf708/ace/.venv/bin/python3
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+    ~~~^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 317, in launch_agent
+    raise ChildFailedError(
+    ...<2 lines>...
+    )
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+fme.ace.train FAILED
+------------------------------------------------------------
+Failures:
+[1]:
+  time      : 2026-10-20_12:53:57
+  host      : nid008576-hsn0
+  rank      : 5 (local_rank: 1)
+  exitcode  : 1 (pid: 626311)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[2]:
+  time      : 2026-10-20_12:53:57
+  host      : nid008576-hsn0
+  rank      : 6 (local_rank: 2)
+  exitcode  : 1 (pid: 626312)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[3]:
+  time      : 2026-10-20_12:53:57
+  host      : nid008576-hsn0
+  rank      : 7 (local_rank: 3)
+  exitcode  : 1 (pid: 626313)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-10-20_12:53:57
+  host      : nid008576-hsn0
+  rank      : 4 (local_rank: 0)
+  exitcode  : 1 (pid: 626310)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
+srun: error: nid008540: task 0: Exited with exit code 1
+srun: Terminating StepId=60048637.4
+srun: error: nid008576: task 1: Exited with exit code 1

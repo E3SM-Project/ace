@@ -350,3 +350,74 @@ The fixed run completed both epochs with GPU memory flat at 39,427 MiB from
 the first inline inference on, through the second boundary (inference error
 0.409 -> 0.384). Host RAM peaks at ~160 GB during inline inference on both
 runs (251 GB nodes).
+
+## 15. Readiness tests (allocation 60048637: 1x 40 GB + 3x 80 GB nodes, 2026-10-20)
+
+Memory is logged per rank from the caching allocator (`scripts/memtools`:
+FME_MEMTOOLS=1 FME_MEMLOG_DIR=..., optional FME_GPU_MEM_CAP_GB to emulate a
+smaller card), not nvidia-smi.
+
+### Full harmonics on 40 GB, 4x1, one node: fits
+
+`runs/smoke-1n-4x1-full-zero.yaml` + `shard_spatial_parameters` +
+`shard_optimizer_state` + `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`
+on a real A100-40GB node. One full epoch completed (inference error 0.512).
+Allocator memory per phase (GiB, rank 0):
+
+| phase | allocated max | reserved max |
+|---|---|---|
+| training | 35.05 | 36.80 |
+| validation | 15.91 | 36.57 |
+| inline inference | 18.22 | 24.43 |
+| checkpoint saves | 15.37 | 20.56 |
+
+Training is the peak; the epoch-end phases are far below it. The earlier
+40 GB OOM (section 12b) ran without expandable_segments. Speed: 0.206
+samples/s per replica, against 0.253 on 80 GB, consistent with the
+A100-40GB's lower HBM bandwidth (1.56 vs 2.04 TB/s).
+
+### Walltime-style SIGTERM and resume (2 nodes, 80 GB)
+
+SIGTERM to every process on both nodes at step ~85 (periodic checkpoint at
+80). fme logs "Received SIGTERM, aborting distributed communicators before
+exiting", and all processes were gone within 45 s (no hang). Relaunching
+into the same experiment dir resumed from ckpt.tar ("skip first 80
+batches ... already processed for this epoch"), continued at step 85, and
+finished the epoch with validation, inference and epoch checkpoints. The
+restart cost ~4 min of startup. The work lost is at most one
+`checkpoint_every_n_batches` interval.
+
+### Production config, full harmonics, on 40 GB (2 replicas, 2 epochs)
+
+`runs/prodtest-2n-full.yaml`: config-train-hr.yaml with full harmonics,
+2-month training window, 1-year validation, 360-step inline inference with 1
+IC per replica (as in production with >= 8 replicas), inference after every
+epoch, both sharding flags, expandable_segments. Node A is a real
+A100-40GB; node B is an A100-80GB capped to 38.5 GiB. Both epochs
+completed (inference error 0.375 -> 0.360). Allocator memory per phase
+(GiB, allocated / reserved max):
+
+| phase | real 40 GB (rank 0) | 80 GB capped (rank 4) |
+|---|---|---|
+| train epoch 1 | 35.64 / 37.07 | 36.51 / 38.50 |
+| validation | 16.49 / 36.01 | 20.52 / 38.32 |
+| inline inference | 23.29 / 36.01 | 24.08 / 38.32 |
+| checkpoint saves | 16.65 / 27.37 | 22.64 / 37.41 |
+| train epoch 2 | 35.64 / 36.88 | 36.51 / 38.27 |
+| validation | 19.04 / 25.35 | 16.45 / 37.57 |
+| inline inference | 23.90 / 26.70 | 23.01 / 38.46 |
+
+Training sets the peak, and it is identical in epochs 1 and 2. The 80 GB
+card allocates ~1-2 GiB more (cuDNN picks larger workspaces when more
+memory is free); under the cap it ran at the cap without failing.
+
+### Real Slurm walltime + requeue (job 60050154, debug QOS, 40 GB nodes)
+
+`sbatch -N 1 -q debug -t 00:20:00 -C "gpu&hbm40g" scripts/sbatch-train-hr.sh`
+with CKPT_EVERY=20 and full harmonics. Segment 1 (nid001852) received USR1
+at T-5 min (13:38:52), the batch script ran `scontrol requeue`, and sacct
+shows REQUEUED. Segment 2 started 8 min later on a different node
+(nid003265), reused the frozen code snapshot from `$EXPDIR/ACE_SRC`,
+resumed from the step-100 checkpoint ("skip first 100 batches") and
+continued at step 105. It was requeued again at its own T-5 min. Segment 3
+ran on nid002352, so repeated requeues work.
