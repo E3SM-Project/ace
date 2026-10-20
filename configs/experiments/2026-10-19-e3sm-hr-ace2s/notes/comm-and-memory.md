@@ -421,3 +421,17 @@ shows REQUEUED. Segment 2 started 8 min later on a different node
 resumed from the step-100 checkpoint ("skip first 100 batches") and
 continued at step 105. It was requeued again at its own T-5 min. Segment 3
 ran on nid002352, so repeated requeues work.
+
+The requeue job then went through 4 segments on 4 different 40 GB nodes
+(nid001852, nid003265, nid002352, nid002341) with 3 walltime requeues: one
+mid-epoch, one around the epoch-1 end, one in epoch 2. It finished both
+epochs (inference error 0.513 -> 0.481) and ended COMPLETED.
+
+### Inference ICs per replica on 40 GB
+
+`runs/prod40-2ic-full.yaml`: full harmonics, 2 replicas, 4 inference ICs (2
+per replica), real 40 GB node + capped 80 GB node. Inline inference peaks at
+33.2 GiB allocated (one IC per replica: 23.3), under the 35.7 GiB training
+peak; run max 36.4 allocated / 37.1 reserved. Each extra IC per replica adds
+~10 GiB, so on 40 GB keep **at most 2 ICs per replica** (n_ICs <= 2 x
+replicas).
