@@ -28,6 +28,7 @@ from fme.ace.train.train_config import (
 )
 from fme.core.dataset.xarray import XarrayDataConfig
 from fme.core.generics.aggregator import AggregatorSummary, InferenceSummary
+from fme.core.generics.lr_tuning import LRTuningConfig
 from fme.core.logging_utils import LoggingConfig
 from fme.core.optimization import OptimizationConfig
 from fme.core.step.single_module import SingleModuleStepConfig
@@ -96,6 +97,8 @@ def _make_train_config(
     max_epochs: int = 5,
     validation: InlineValidationConfig | list[InlineValidationConfig] | None = None,
     evaluate_before_training: bool | None = None,
+    optimization: OptimizationConfig | None = None,
+    lr_tuning: LRTuningConfig | None = None,
 ) -> TrainConfig:
     if validation is None:
         validation = _make_validation_config()
@@ -112,13 +115,31 @@ def _make_train_config(
             dataset=XarrayDataConfig(data_path=""), batch_size=1
         ),
         validation=validation,
-        optimization=OptimizationConfig(),
+        optimization=optimization or OptimizationConfig(),
         logging=LoggingConfig(),
         max_epochs=max_epochs,
         save_checkpoint=False,
         inference=inference,
+        lr_tuning=lr_tuning,
         **extra_kwargs,
     )
+
+
+def test_lr_tuning_with_sharded_optimizer_state_raises(tmp_path):
+    with pytest.raises(ValueError, match="shard_optimizer_state"):
+        _make_train_config(
+            tmp_path,
+            _make_inference_config(),
+            optimization=OptimizationConfig(shard_optimizer_state=True),
+            lr_tuning=LRTuningConfig(),
+        )
+    # either one alone is fine
+    _make_train_config(
+        tmp_path,
+        _make_inference_config(),
+        optimization=OptimizationConfig(shard_optimizer_state=True),
+    )
+    _make_train_config(tmp_path, _make_inference_config(), lr_tuning=LRTuningConfig())
 
 
 def test_inference_single_config_gives_list(tmp_path):

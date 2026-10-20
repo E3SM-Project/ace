@@ -94,10 +94,25 @@ class OptimizationABC(abc.ABC):
         """
         ...
 
+    @contextlib.contextmanager
+    def consolidated_state(self):
+        """
+        Context within which ``get_state()`` on the root rank is complete.
+
+        Collective: when optimizer state is sharded across ranks, entering
+        gathers it onto the root, so every rank must enter this context at
+        the same point before the root calls ``get_state()``. Without
+        sharding this does nothing.
+        """
+        yield
+
     @abc.abstractmethod
     def get_state(self):
         """
         Returns state as a serializable data structure.
+
+        If the optimizer state is sharded across ranks, this is only
+        available on the root rank inside ``consolidated_state()``.
         """
         ...
 

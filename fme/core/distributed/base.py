@@ -246,6 +246,16 @@ class DistributedBackend(ABC):
         """
         ...
 
+    def spatial_process_group(self) -> torch.distributed.ProcessGroup | None:
+        """The process group of this rank's spatial (h, w) co-ranks, or None
+        when there is no spatial parallelism.
+
+        Ranks in one spatial group hold replicas of the same parameters and,
+        after the gradient all-reduce, identical gradients, so per-parameter
+        work such as an optimizer step can be divided among them.
+        """
+        return None
+
     @abstractmethod
     def weighted_mean(
         self,

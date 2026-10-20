@@ -9,6 +9,7 @@ import pytest
 import torch
 
 from fme.core.device import get_device
+from fme.core.distributed import Distributed
 from fme.core.ema import EMAConfig, EMATracker, load_ema_params_if_available
 from fme.core.generics.aggregator import (
     AggregatorABC,
@@ -1983,3 +1984,70 @@ class TestBuildInferenceCallback:
             callback(epoch=1)
             callback(epoch=2)
         assert factory.call_count == 2
+
+
+def _run_trainer_recording_consolidations(
+    tmp_path: str, is_root: bool
+) -> tuple[int, int]:
+    """Train with mid-epoch and epoch checkpoints, returning how many times
+    this rank entered ``optimization.consolidated_state`` and how many times
+    it read the optimization state to save it (asserting that every read
+    happens inside the context)."""
+    _, trainer = get_trainer(
+        tmp_path,
+        max_epochs=3,
+        n_train_batches=5,
+        checkpoint_every_n_batches=2,
+        checkpoint_save_epochs=Slice(start=1, step=2),
+    )
+    optimization = trainer.optimization
+    original_get_state = optimization.get_state
+    inside = False
+    n_entered = 0
+    n_reads = 0
+
+    @contextlib.contextmanager
+    def consolidated_state():
+        nonlocal inside, n_entered
+        n_entered += 1
+        inside = True
+        try:
+            yield
+        finally:
+            inside = False
+
+    def get_state():
+        nonlocal n_reads
+        assert inside, "optimization state read outside consolidated_state"
+        n_reads += 1
+        return original_get_state()
+
+    with (
+        unittest.mock.patch.object(
+            optimization, "consolidated_state", consolidated_state
+        ),
+        unittest.mock.patch.object(optimization, "get_state", get_state),
+        unittest.mock.patch.object(
+            type(Distributed.get_instance()), "is_root", return_value=is_root
+        ),
+    ):
+        trainer.train()
+    return n_entered, n_reads
+
+
+def test_checkpoint_saves_consolidate_optimizer_state_on_every_rank(tmp_path: str):
+    """Gathering sharded optimizer state is a collective, so every rank must
+    enter `consolidated_state` exactly as often as the root does, and the root
+    must only read the state for a checkpoint inside it."""
+    n_root, n_root_reads = _run_trainer_recording_consolidations(
+        os.path.join(tmp_path, "root"), is_root=True
+    )
+    n_other, n_other_reads = _run_trainer_recording_consolidations(
+        os.path.join(tmp_path, "other"), is_root=False
+    )
+    # batches 2, 4, 6, 8, 10, 12, 14 (mid-epoch restart saves), batches 5 and
+    # 15 (end of training on an epoch not ending in one), and 3 epoch ends
+    assert n_root == 7 + 2 + 3
+    assert n_other == n_root
+    assert n_root_reads > n_root  # restart + epoch checkpoints share a gather
+    assert n_other_reads == 0
