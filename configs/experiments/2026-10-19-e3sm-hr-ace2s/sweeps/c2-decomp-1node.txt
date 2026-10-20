@@ -1,0 +1,19 @@
+# Communication decomposition on one node. For each layout: real, fake
+# transposes (reshape) + no grad sync = pure split compute, real + no grad
+# sync, fake + grad sync. e256h also has a 1-GPU reference (5.51 s).
+4 1 --embed-dim 384 --htf 0.5 --checkpointing 3 --batch 2 --steps 6 --phases --tag d-h05-4x1-real
+4 1 --embed-dim 384 --htf 0.5 --checkpointing 3 --batch 2 --steps 6 --phases --fake-transpose --no-grad-sync --tag d-h05-4x1-compute
+4 1 --embed-dim 384 --htf 0.5 --checkpointing 3 --batch 2 --steps 6 --phases --no-grad-sync --tag d-h05-4x1-real-nosync
+4 1 --embed-dim 384 --htf 0.5 --checkpointing 3 --batch 2 --steps 6 --phases --fake-transpose --tag d-h05-4x1-fake
+2 2 --embed-dim 384 --htf 0.5 --checkpointing 3 --batch 2 --steps 6 --phases --tag d-h05-2x2-real
+2 2 --embed-dim 384 --htf 0.5 --checkpointing 3 --batch 2 --steps 6 --phases --fake-transpose --no-grad-sync --tag d-h05-2x2-compute
+2 2 --embed-dim 384 --htf 0.5 --checkpointing 3 --batch 2 --steps 6 --phases --no-grad-sync --tag d-h05-2x2-real-nosync
+1 4 --embed-dim 384 --htf 0.5 --checkpointing 3 --batch 2 --steps 6 --phases --tag d-h05-1x4-real
+1 4 --embed-dim 384 --htf 0.5 --checkpointing 3 --batch 2 --steps 6 --phases --fake-transpose --no-grad-sync --tag d-h05-1x4-compute
+1 4 --embed-dim 384 --htf 0.5 --checkpointing 3 --batch 2 --steps 6 --phases --no-grad-sync --tag d-h05-1x4-real-nosync
+2 2 --embed-dim 256 --htf 0.5 --checkpointing 3 --batch 2 --steps 6 --phases --fake-transpose --no-grad-sync --tag d-e256h-2x2-compute
+1 4 --embed-dim 256 --htf 0.5 --checkpointing 3 --batch 2 --steps 6 --phases --fake-transpose --no-grad-sync --tag d-e256h-1x4-compute
+2 2 --embed-dim 256 --htf 0.5 --checkpointing 3 --batch 2 --steps 6 --phases --no-grad-sync --tag d-e256h-2x2-real-nosync
+1 4 --embed-dim 256 --htf 0.5 --checkpointing 3 --batch 2 --steps 6 --phases --no-grad-sync --tag d-e256h-1x4-real-nosync
+4 1 --embed-dim 384 --checkpointing 3 --batch 2 --steps 6 --phases --tag d-base-4x1-real
+4 1 --embed-dim 384 --checkpointing 3 --batch 2 --steps 6 --phases --fake-transpose --no-grad-sync --tag d-base-4x1-compute

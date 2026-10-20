@@ -1,0 +1,8 @@
+RESULT {"p": 8, "model": "htf0.5", "method": "th", "local_MB": 199, "ms": 6.53, "algbw_GBps": 26.7, "ofi": true, "nnodes": 2}
+RESULT {"p": 8, "model": "htf0.5", "method": "single", "local_MB": 199, "ms": 6.14, "algbw_GBps": 28.4, "ofi": true, "nnodes": 2}
+RESULT {"p": 8, "model": "htf0.5", "method": "comm", "local_MB": 199, "ms": 5.54, "algbw_GBps": 31.4, "ofi": true, "nnodes": 2}
+RESULT {"p": 8, "model": "base", "method": "th", "local_MB": 399, "ms": 12.66, "algbw_GBps": 27.6, "ofi": true, "nnodes": 2}
+RESULT {"p": 8, "model": "base", "method": "single", "local_MB": 399, "ms": 11.88, "algbw_GBps": 29.4, "ofi": true, "nnodes": 2}
+RESULT {"p": 8, "model": "base", "method": "comm", "local_MB": 399, "ms": 10.94, "algbw_GBps": 31.9, "ofi": true, "nnodes": 2}
+srun: error: nid200508: task 1: Exited with exit code 1
+srun: Terminating StepId=60032495.34

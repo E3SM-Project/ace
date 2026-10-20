@@ -161,3 +161,27 @@ Newest last. Times are PDT on 2026-10-19 unless noted.
 - 23:30 Hist 1-deg model (0.46 B), 2 nodes x 4, local batch 2: TCP NCCL
   0.873 s/step vs OFI 0.782 (+12%, all in backward). Recommend sourcing
   nccl-ofi.sh in the hist sbatch scripts.
+
+### 2026-10-20 (allocation 60032495, nid200429/200448/200484/200508)
+- Branch pushed to E3SM-Project/ace (`e3sm/exps/hr-2026.10.0`). The pilot
+  reached step 1700 (loss 0.31); its resumable ckpt is at step 1600.
+- Communication decomposition (`--fake-transpose`/`--no-grad-sync` in
+  bench_model.py; `notes/comm-and-memory.md`): at 4x1 on one node the comm
+  is 9% (h05) / 14% (base); 1x4 16%, 2x2 37%; compute splits ideally.
+  Across nodes the comm is 35-48% of the step. Data parallelism is free.
+- Transpose microbench: NVLink all-to-all ~200 GB/s aggregate (4 GPUs), 66
+  (2 GPUs), Slingshot ~31 per GPU; ~40% of an intra-node transpose is
+  torch-harmonics' copies.
+- Memory: everything param-sized is replicated per tile. Committed:
+  SHT dedup + gradient_as_bucket_view (3fb5c1d7d, -11 GB);
+  `optimization.shard_optimizer_state` (45030b9be, ZeRO over the spatial
+  group, -12.6 GB). The full-harmonics model now trains end to end at 4x1
+  (0.245 samples/s, nvidia-smi 66.7 GB, 33.7 GB checkpoints, ~60 s per save).
+- Prototype `--shard-params` (local l-slices of spectral weights + pos_embed
+  tile): peak 35 GB, 4% faster. A background agent is implementing it in fme
+  (`notes/weight-sharding.md` when done).
+- Gotcha (again): a waiter `until ! pgrep -f "<script>"` matches its OWN
+  command line and never exits. Wait on log contents or use
+  run_in_background on the script itself.
+- Random rendezvous ports collided for concurrent multi-node runs; use fixed,
+  distinct ports.

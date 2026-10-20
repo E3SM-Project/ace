@@ -79,10 +79,54 @@ def table(stems: list[str]) -> str:
     return "<div class=tw><table>" + head + "".join(body) + "</table></div>"
 
 
+def decomp(stems: list[str]) -> str:
+    """Group runs tagged <layout>-{compute,real-nosync,fake,real} into one row:
+    pure split compute, + transposes, + grad sync, and the comm share."""
+    rows: dict[str, dict[str, dict]] = {}
+    for d in (d for s in stems for d in load(s)):
+        aliases = {"-fake-nosync": "compute"}
+        for kind in ("-real-nosync", "-fake-nosync", "-compute", "-fake", "-real"):
+            if d["tag"].endswith(kind) and d["ok"]:
+                base = d["tag"][: -len(kind)]
+                rows.setdefault(base, {})[aliases.get(kind, kind[1:])] = d
+                break
+    if not rows:
+        return '<p class="pending">Running; no results yet.</p>'
+    head = (
+        "<tr><th>layout</th><th class=n>GPUs</th><th>tiles HxW</th>"
+        "<th class=n>compute s</th><th class=n>+ transposes</th>"
+        "<th class=n>+ grad sync</th><th class=n>step s</th><th class=n>comm %</th></tr>"
+    )
+    body = []
+    for base, r in rows.items():
+        any_d = next(iter(r.values()))
+        step = r.get("real", {}).get("s_per_step_median")
+        comp = r.get("compute", {}).get("s_per_step_median")
+        nosync = r.get("real-nosync", {}).get("s_per_step_median")
+
+        def f(v):
+            return "&ndash;" if v is None else f"{v:.2f}"
+
+        tr = None if (nosync is None or comp is None) else nosync - comp
+        gs = None if (step is None or nosync is None) else step - nosync
+        share = None if (step is None or comp is None) else 100 * (step - comp) / step
+        body.append(
+            f"<tr><td>{html.escape(base)}</td><td class=n>{any_d.get('world', 1)}</td>"
+            f"<td>{any_d.get('fme_h', 1)}&times;{any_d.get('fme_w', 1)}</td>"
+            f"<td class=n>{f(comp)}</td><td class=n>{f(tr)}</td><td class=n>{f(gs)}</td>"
+            f"<td class=n>{f(step)}</td>"
+            f"<td class=n>{'&ndash;' if share is None else f'{share:.0f}'}</td></tr>"
+        )
+    return "<div class=tw><table>" + head + "".join(body) + "</table></div>"
+
+
 def main():
     src = open(os.path.join(HERE, "report", "narrative.html")).read()
     src = re.sub(
         r"\{\{table:([\w,\-.]+)\}\}", lambda m: table(m.group(1).split(",")), src
+    )
+    src = re.sub(
+        r"\{\{decomp:([\w,\-.]+)\}\}", lambda m: decomp(m.group(1).split(",")), src
     )
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M %Z").strip()
     src = src.replace("{{updated}}", now or "")

@@ -1,0 +1,12 @@
+RESULT {"p": 4, "model": "htf0.5", "method": "th", "local_MB": 398, "ms": 2.49, "algbw_GBps": 120.0, "ofi": true, "nnodes": 1}
+RESULT {"p": 4, "model": "htf0.5", "method": "single", "local_MB": 398, "ms": 2.44, "algbw_GBps": 122.3, "ofi": true, "nnodes": 1}
+RESULT {"p": 4, "model": "htf0.5", "method": "comm", "local_MB": 398, "ms": 1.51, "algbw_GBps": 198.0, "ofi": true, "nnodes": 1}
+RESULT {"p": 4, "model": "base", "method": "th", "local_MB": 797, "ms": 4.85, "algbw_GBps": 123.2, "ofi": true, "nnodes": 1}
+RESULT {"p": 4, "model": "base", "method": "single", "local_MB": 797, "ms": 4.83, "algbw_GBps": 123.7, "ofi": true, "nnodes": 1}
+RESULT {"p": 4, "model": "base", "method": "comm", "local_MB": 797, "ms": 2.95, "algbw_GBps": 202.8, "ofi": true, "nnodes": 1}
+RESULT {"p": 2, "model": "htf0.5", "method": "th", "local_MB": 796, "ms": 7.9, "algbw_GBps": 50.4, "ofi": true, "nnodes": 1}
+RESULT {"p": 2, "model": "htf0.5", "method": "single", "local_MB": 796, "ms": 7.88, "algbw_GBps": 50.5, "ofi": true, "nnodes": 1}
+RESULT {"p": 2, "model": "htf0.5", "method": "comm", "local_MB": 796, "ms": 6.03, "algbw_GBps": 66.1, "ofi": true, "nnodes": 1}
+RESULT {"p": 2, "model": "base", "method": "th", "local_MB": 1595, "ms": 16.0, "algbw_GBps": 49.8, "ofi": true, "nnodes": 1}
+RESULT {"p": 2, "model": "base", "method": "single", "local_MB": 1595, "ms": 15.91, "algbw_GBps": 50.1, "ofi": true, "nnodes": 1}
+RESULT {"p": 2, "model": "base", "method": "comm", "local_MB": 1595, "ms": 12.17, "algbw_GBps": 65.5, "ofi": true, "nnodes": 1}

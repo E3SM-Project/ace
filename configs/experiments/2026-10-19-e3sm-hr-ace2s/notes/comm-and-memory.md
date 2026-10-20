@@ -1,0 +1,171 @@
+# Spatial parallelism: where the time and the memory go (2026-10-20)
+
+Allocation 60032495 (4 A100-80GB nodes). Isolated fwd+bwd+AdamW of the real
+NoiseConditionedSFNO builder at 720x1440 (`scripts/bench_model.py`), batch 2
+(one sample x n_ensemble 2) per spatial group, gradient checkpointing level 3,
+code frozen at `hr-bench-snap/3fb5c1d7d`. "h05" = embed 384 with
+`hard_thresholding_fraction: 0.5` (1.25 B params). "base" = embed 384 with all
+modes (2.10 B). "e256h" = embed 256, 0.5 modes (fits on one GPU: 5.51 s/step).
+
+## 1. Communication pattern
+
+torch-harmonics' `DistributedRealSHT`/`DistributedInverseRealSHT` move data
+with all-to-all transposes:
+
+- H split (polar): 2 per transform (c-split/h-local before the Legendre
+  contraction, then l-split/c-local after it);
+- W split (azimuth): 2 more per transform (before and after the FFT).
+
+Each SFNO block does an SHT and an iSHT. With gradient checkpointing, forward
+transposes run again in backward, and every transpose has a transpose in its
+backward. So a 4x1 step does ~96 polar transposes, ~0.4 GB each per rank for
+h05 (~0.8 GB for base). Each transpose is `split -> .contiguous()` per chunk,
+then `all_to_all(list)`, then `torch.cat`: two full copies plus the exchange.
+
+The gradient sync is one DDP all-reduce over the world of the replicated
+parameters (sum over tiles, mean over data replicas; commit dabfe58a9).
+
+## 2. Decomposition method
+
+Per layout, four runs:
+
+| run | what it contains |
+|---|---|
+| `compute` | `--fake-transpose --no-grad-sync`: every transpose replaced by a free reshape to the same local shape (wrong numbers, identical compute), no DDP |
+| `real-nosync` | real transposes, no DDP |
+| `fake` | fake transposes + DDP |
+| `real` | production path |
+
+From these: transposes = real-nosync - compute; grad sync = real - real-nosync.
+
+## 3. One node (4 GPUs, NVLink)
+
+| model | tiles | compute | + transposes | + grad sync | step | comm, % of compute |
+|---|---|---|---|---|---|---|
+| e256h | 4x1 | 1.35 | +0.12 | +0.03 | 1.50 | 11% |
+| e256h | 1x4 | 1.39 | +0.24 | | | 17% (no sync) |
+| e256h | 2x2 | 1.37 | +0.58 | | | 42% (no sync) |
+| h05 | 4x1 | 2.32 | +0.16 | +0.05 | 2.54 | 9% |
+| h05 | 1x4 | 2.39 | +0.35 | +0.03 | 2.76 | 16% |
+| h05 | 2x2 | 2.39 | +0.85 | +0.04 | 3.28 | 37% |
+| base | 4x1 | 3.74 | (0.51 combined) | | 4.25 | 14% |
+
+- The split compute is ideal: e256h computes in 1.35 s at 4x1 against
+  5.51/4 = 1.38 s on one GPU, and every layout computes within 3% of the
+  others.
+- All of the layout difference is communication. 2x2 pays both transpose
+  families at smaller message sizes: 5x the 4x1 transpose cost.
+- **4x1 (latitude split) is the right layout**, at 9-14% overhead.
+
+## 4. Memory, base model at 4x1 (GB per GPU, cumulative)
+
+| stage | default | + `gradient_as_bucket_view` | + ZeRO (Adam over 4) | both |
+|---|---|---|---|---|
+| params + SHT tables | 14.4 | 14.4 | 14.4 | 14.4 |
+| + DDP buckets | 22.8 | 22.8 | 22.8 | 22.8 |
+| + EMA | 31.2 | 31.2 | 31.2 | 31.2 |
+| after first backward | 40.1 | 31.6 | 40.1 | 31.6 |
+| after first optimizer step | 48.5 | 48.5 | 36.5 | 36.5 |
+| steady-state peak | **71.7** | 71.7 | **60.0** | 60.0 |
+
+Breakdown:
+
+- parameters 8.4 GB (2.1 B fp32);
+- SHT Legendre tables 6.0 GB (4 x 1.5 GB, two of them duplicates; commit
+  3fb5c1d7d shares them, -3 GB);
+- DDP buckets 8.4, grads 8.4 (aliased into the buckets with bucket view;
+  3fb5c1d7d), EMA 8.4, Adam 16.8;
+- activations about 15 GB.
+
+Real training adds the stepper, loss SHT and data (+~10 GB), which is how the
+70.4 GB OOM in the first backward happened.
+
+**Everything parameter-sized is replicated on all four tiles.** The spectral
+weights (1.70 B, shape (C, L, C) per block) are sliced to the local l-range in
+forward, and pos_embed (0.40 B) to the local tile, so 3/4 of each copy is
+never used on a given rank.
+
+## 5. Prototype: shard the l-dependent weights and pos_embed
+
+`--shard-params` keeps only the local l-slice of every spectral weight and the
+local tile of pos_embed as parameters. Those gradients are already complete
+on their rank, so only the replicated rest (7 M params) is all-reduced.
+
+| base model, 4x1, with EMA | params/GPU | peak GB | s/step |
+|---|---|---|---|
+| replicated (today) | 2.10 B | 71.7 | 4.28 |
+| bucket view + ZeRO | 2.10 B | 57.0 | 4.23 |
+| **sharded** | 0.53 B | **35.2** | **4.10** |
+| sharded + ZeRO | 0.53 B | 32.2 | 4.09 |
+| sharded + ZeRO, embed 512 | 0.90 B | 43.8 | 5.97 |
+
+Sharding halves peak memory, is 4% faster (it removes 99.7% of the
+gradient-sync volume), and makes the full-harmonics model and even a wider one
+fit. **Reducing harmonics is not necessary; it was compensating for
+replication.**
+
+What a real implementation in fme needs:
+- sharded parameter creation;
+- a gather of the sharded parameters on every checkpoint save (a collective on
+  all ranks before the root writes) and a scatter on load, so checkpoints stay
+  identical to serial;
+- EMA on shards;
+- DDP over the data group only for sharded parameters, plus the world sum for
+  the replicated ones;
+- uneven l-splits handled.
+
+## 6. Cross node (h05, OFI plugin)
+
+| layout | GPUs | compute | step | comm, % of step |
+|---|---|---|---|---|
+| 4x1 x DP2 | 8 | | 2.53 | data parallelism is free |
+| 4x1 x DP4 | 16 | | 2.54 | data parallelism is free |
+| 8x1 | 8 | 1.20 | 1.84 | 35% |
+| 4x2 | 8 | 1.19 | 2.08 | 43% |
+| 2x4 | 8 | | 2.00 | |
+| 16x1 | 16 | | 1.34 | |
+| 4x4 | 16 | 0.62 | 1.18 | 48% |
+
+Splitting one sample across nodes scales poorly. 16 GPUs process a sample
+2.2x faster than 4, but per-GPU throughput is 46% lower than 4x1 with data
+parallelism.
+
+## 7. Transpose microbenchmark (`scripts/transpose_bench.py`)
+
+One polar transpose of a (2, 384, 720/P, M) complex64 tensor:
+
+| group | MB/rank | torch-harmonics | all_to_all_single | NCCL floor | floor GB/s |
+|---|---|---|---|---|---|
+| 4 GPUs, 1 node | 398 | 2.49 ms | 2.44 | 1.51 | 198 |
+| 4 GPUs, 1 node, all modes | 797 | 4.85 | 4.83 | 2.95 | 203 |
+| 2 GPUs, 1 node | 796 | 7.90 | 7.88 | 6.03 | 66 |
+| 8 GPUs, 2 nodes | 199 | 6.53 | 6.14 | 5.54 | 31 |
+
+- Within a node ~40% of a transpose is copies (split -> contiguous, cat).
+  `all_to_all_single` needs the same two layout copies, so it gains nothing.
+- One NVLink peer gives 66 GB/s; three peers give ~200 in aggregate, which is
+  why 2-GPU tile groups are worse.
+- The cross-node floor is the network (~31 GB/s per GPU).
+
+What is left within a node: ~2.5% (copies) plus ~2% (grad sync, which
+weight sharding removes). The 4x1 path is close to its floor.
+
+## 8. Tile-group size per node
+
+| config | GPUs/replica | s/step | peak GB | samples/s per node |
+|---|---|---|---|---|
+| h05 4x1 | 4 | 2.54 | 44 | 0.394 |
+| h05 2x1 x 2 | 2 | 5.31 | 72 | 0.377 |
+| base sharded+ZeRO 4x1 | 4 | 4.09 | 32 | 0.244 |
+| base sharded+ZeRO 2x1 x 2 | 2 | 9.35 | 61 | 0.214 |
+| base sharded+ZeRO 1x1 x 4 | 1 | OOM | | |
+
+4x1 wins.
+
+## 9. Real training, full harmonics (commits 3fb5c1d7d + 45030b9be)
+
+`runs/smoke-1n-4x1-full-zero.yaml`: hard_thresholding_fraction 1.0,
+`shard_optimizer_state: true`, 4x1 tiles on 1 node. It trains at 0.245
+samples/s (~4.1 s/step); the loss fell from 4.19 to 1.08 by step 45.
+nvidia-smi peaks at 66.7 GB. The checkpoint is 33.7 GB (weights + Adam + EMA,
+saved in the plain format) and takes ~60 s with consolidation.

@@ -48,6 +48,36 @@ def main():
     )
     p.add_argument("--phases", action="store_true", help="sync between fwd/bwd/opt")
     p.add_argument("--profile", default="", help="write a torch.profiler table here")
+    p.add_argument(
+        "--fake-transpose",
+        action="store_true",
+        help="replace torch-harmonics' distributed transposes by a free reshape "
+        "to the same local output shape (wrong numbers, same compute): "
+        "real - fake = cost of the transposes (all_to_all + copies)",
+    )
+    p.add_argument("--ema", action="store_true", help="hold an fp32 EMA copy")
+    p.add_argument(
+        "--shard-params",
+        action="store_true",
+        help="PROTOTYPE: keep only this rank's l-slice of every spectral weight "
+        "and its tile of pos_embed as parameters; all-reduce only the replicated "
+        "parameters' grads over the world (valid for one data replica)",
+    )
+    p.add_argument(
+        "--bucket-view",
+        action="store_true",
+        help="DDP gradient_as_bucket_view=True (grads alias the comm buckets)",
+    )
+    p.add_argument(
+        "--zero",
+        action="store_true",
+        help="ZeroRedundancyOptimizer over the world: shard Adam state",
+    )
+    p.add_argument(
+        "--no-grad-sync",
+        action="store_true",
+        help="do not wrap the model in DDP (no gradient all-reduce)",
+    )
     p.add_argument("--tag", default="")
     a = p.parse_args()
 
@@ -55,7 +85,87 @@ def main():
         run(a)
 
 
+def _install_fake_transposes():
+    """Swap the distributed transposes in torch-harmonics' SHTs for reshapes.
+
+    A transpose of local shape (..., n0_local, ..., n1_local, ...) along
+    (dim0 -> split, dim1 -> gathered) returns this rank's chunk of dim0 and the
+    full dim1. With even splits that has the same numel as the input, so a
+    reshape (free for contiguous input, differentiable) stands in for it.
+    """
+    import torch_harmonics.distributed.distributed_sht as dsht
+    from torch_harmonics.distributed.primitives import compute_split_shapes
+
+    def make(get_size):
+        class _Fake:
+            @staticmethod
+            def apply(x, dims, dim1_split_sizes):
+                comm = get_size()
+                d0, d1 = (d % x.dim() for d in dims)
+                shape = list(x.shape)
+                shape[d0] = compute_split_shapes(shape[d0], comm)[0]
+                shape[d1] = sum(dim1_split_sizes)
+                n = 1
+                for v in shape:
+                    n *= v
+                flat = x.reshape(-1)
+                if n != flat.numel():
+                    raise ValueError("uneven split; fake transpose needs even")
+                return flat.reshape(shape)
+
+        return _Fake
+
+    dsht.distributed_transpose_polar = make(dsht.polar_group_size)
+    dsht.distributed_transpose_azimuth = make(dsht.azimuth_group_size)
+
+
+def _shard_parameters(model) -> set[int]:
+    """Replace spectral weights / pos_embed by this rank's local slices.
+
+    SpectralConvS2 slices ``weight[:, l_slice]`` and the SFNO slices
+    ``pos_embed[..., h_slice, w_slice]`` in forward; storing only the slice and
+    making the forward slice a no-op gives the same local computation. Returns
+    the ids of the sharded parameters.
+    """
+    from fme.core.models.conditional_sfno.s2convolutions import SpectralConvS2
+
+    sharded = set()
+    for mod in model.modules():
+        if isinstance(mod, SpectralConvS2):
+            local = mod.weight.detach()[:, mod._l_slice].clone()
+            mod.weight = torch.nn.Parameter(local)
+            mod._l_slice = slice(None)
+            sharded.add(id(mod.weight))
+        pe = getattr(mod, "pos_embed", None)
+        if isinstance(pe, torch.nn.Parameter) and hasattr(mod, "_spatial_h_slice"):
+            local = pe.detach()[..., mod._spatial_h_slice, mod._spatial_w_slice]
+            mod.pos_embed = torch.nn.Parameter(local.clone())
+            mod._spatial_h_slice = mod._spatial_w_slice = slice(None)
+            sharded.add(id(mod.pos_embed))
+    return sharded
+
+
+def _sync_replicated_grads(model, sharded: set[int]):
+    """Sum replicated parameters' grads over all ranks in one flat buffer."""
+    grads = [
+        q.grad
+        for q in model.parameters()
+        if id(q) not in sharded and q.grad is not None
+    ]
+    if not grads or torch.distributed.get_world_size() == 1:
+        return
+    flat = torch.cat([g.reshape(-1) for g in grads])
+    torch.distributed.all_reduce(flat)
+    offset = 0
+    for g in grads:
+        n = g.numel()
+        g.copy_(flat[offset : offset + n].view_as(g))
+        offset += n
+
+
 def run(a):
+    if a.fake_transpose:
+        _install_fake_transposes()
     dist = Distributed.get_instance()
     dev = torch.device("cuda", torch.cuda.current_device())
     builder = NoiseConditionedSFNOBuilder(
@@ -75,8 +185,39 @@ def run(a):
     out = dict(vars(a))
     t0 = time.time()
     model = builder.build(a.n_in, a.n_out, DatasetInfo(img_shape=(a.nlat, a.nlon)))
+    sharded: set[int] = set()
+    if a.shard_params:
+        sharded = _shard_parameters(model)
     model = model.to(dev)
-    model = dist.wrap_module(model)
+    gb = 1e9
+    torch.cuda.synchronize()
+    out["mem_params_GB"] = torch.cuda.memory_allocated() / gb
+    if a.bucket_view and not a.no_grad_sync:
+        from torch.nn.parallel import DistributedDataParallel
+
+        from fme.core.distributed.model_torch_distributed import (
+            _sum_spatial_mean_data_hook,
+        )
+
+        model = DistributedDataParallel(
+            model,
+            device_ids=[dev.index],
+            output_device=[dev.index],
+            broadcast_buffers=False,
+            gradient_as_bucket_view=True,
+        )
+        model.register_comm_hook(
+            state=None,
+            hook=_sum_spatial_mean_data_hook(dist.total_data_parallel_ranks),
+        )
+    elif not a.no_grad_sync and not a.shard_params:
+        model = dist.wrap_module(model)
+    torch.cuda.synchronize()
+    out["mem_after_wrap_GB"] = torch.cuda.memory_allocated() / gb
+    ema = None
+    if a.ema:
+        ema = [q.detach().clone() for q in model.parameters()]
+        out["mem_after_ema_GB"] = torch.cuda.memory_allocated() / gb
     out["build_s"] = round(time.time() - t0, 1)
     n_total = sum(x.numel() for x in model.parameters())
     n_pos = sum(x.numel() for n, x in model.named_parameters() if "pos_embed" in n)
@@ -84,7 +225,20 @@ def run(a):
         x.numel() for n, x in model.named_parameters() if "filter" in n.lower()
     )
     out.update(params_M=n_total / 1e6, pos_embed_M=n_pos / 1e6, filter_M=n_spec / 1e6)
-    opt = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=0.01)
+    out["sharded_params_M"] = (
+        sum(q.numel() for q in model.parameters() if id(q) in sharded) / 1e6
+    )
+    if a.zero:
+        from torch.distributed.optim import ZeroRedundancyOptimizer
+
+        opt = ZeroRedundancyOptimizer(
+            model.parameters(),
+            optimizer_class=torch.optim.AdamW,
+            lr=1e-4,
+            weight_decay=0.01,
+        )
+    else:
+        opt = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=0.01)
     torch.cuda.synchronize()
     out["static_GB"] = torch.cuda.memory_allocated() / 1e9
 
@@ -114,13 +268,26 @@ def run(a):
             torch.cuda.synchronize()
             t1 = time.perf_counter()
         loss.backward()
+        if a.shard_params and not a.no_grad_sync:
+            _sync_replicated_grads(model, sharded)
         if a.phases:
             torch.cuda.synchronize()
             t2 = time.perf_counter()
+        if i == 0:
+            torch.cuda.synchronize()
+            out["mem_peak_fwd_bwd_step0_GB"] = torch.cuda.max_memory_allocated() / gb
+            out["mem_after_bwd_step0_GB"] = torch.cuda.memory_allocated() / gb
         opt.step()
+        if ema is not None:
+            with torch.no_grad():
+                torch._foreach_lerp_(
+                    ema, [q.detach() for q in model.parameters()], 0.001
+                )
         opt.zero_grad(set_to_none=True)
         torch.cuda.synchronize()
         t3 = time.perf_counter()
+        if i == 0:
+            out["mem_after_opt_step0_GB"] = torch.cuda.memory_allocated() / gb
         if i >= a.warmup:
             times.append(t3 - t)
             if a.phases:
@@ -159,7 +326,9 @@ def run(a):
         out["error"] = "OOM"
         out["peak_GB"] = torch.cuda.max_memory_allocated() / 1e9
         out["msg"] = str(e).splitlines()[0][:200]
-    out["grad_sync"] = os.environ.get("FME_SPATIAL_GRAD_SYNC", "ddp")
+    out["grad_sync"] = (
+        "none" if a.no_grad_sync else os.environ.get("FME_SPATIAL_GRAD_SYNC", "ddp")
+    )
     out["ofi"] = "Libfabric" in os.environ.get("NCCL_NET", "")
     out["fme_src"] = os.path.dirname(os.path.dirname(__import__("fme").__file__))
     out["host"] = os.uname().nodename
