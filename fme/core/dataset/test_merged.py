@@ -1,10 +1,15 @@
 import math
+import os
 
+import numpy as np
 import pytest
 import torch
+import xarray as xr
 
+from fme.core.dataset import merged
 from fme.core.dataset.merged import MergedXarrayDataset, TimePaddedMergedDataset
 from fme.core.dataset.testing import MockDataset, assert_dataset_item_length
+from fme.core.dataset.xarray import XarrayDataConfig
 
 
 def test_merged_contains_all_data():
@@ -315,3 +320,22 @@ def test_time_padded_merged_raises_on_different_epochs():
 def test_time_padded_merged_empty_raises():
     with pytest.raises(ValueError, match="at least one dataset"):
         TimePaddedMergedDataset([])
+
+
+def test_infer_available_variables_closes_the_file(tmp_path, monkeypatch):
+    xr.Dataset({"foo": (("lat", "lon"), np.zeros((2, 3)))}).to_netcdf(
+        tmp_path / "data.nc", format="NETCDF3_64BIT"
+    )
+    opened = []  # keeps the datasets alive, so only an explicit close frees the fd
+    open_dataset = xr.open_dataset
+
+    def open_and_keep(*args, **kwargs):
+        opened.append(open_dataset(*args, **kwargs))
+        return opened[-1]
+
+    monkeypatch.setattr(merged.xr, "open_dataset", open_and_keep)
+    n_fds = len(os.listdir("/proc/self/fd"))
+    config = XarrayDataConfig(data_path=str(tmp_path), engine="cdf5")
+    assert merged._infer_available_variables(config) == {"foo"}
+    assert len(opened) == 1
+    assert len(os.listdir("/proc/self/fd")) == n_fds

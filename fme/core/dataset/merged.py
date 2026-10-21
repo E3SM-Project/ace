@@ -457,16 +457,14 @@ def _infer_available_variables(config: XarrayDataConfig):
         raise ValueError(
             f"No files found matching '{config.data_path}/{config.file_pattern}'."
         )
-    dataset = xr.open_dataset(
+    with xr.open_dataset(
         raw_paths[0],
         decode_times=False,
         decode_timedelta=False,
         engine=get_xarray_engine(config.engine),
         chunks=None,
-    )
-    if config.rename:
-        dataset = dataset.rename(config.rename)
-    available = set(dataset.data_vars)
+    ) as dataset:
+        available = set(dataset.rename(config.rename).data_vars)
     # combine targets aren't on disk, but this config can produce them so long
     # as every source is present -- otherwise the merge would route the target
     # to a member that cannot build it.
