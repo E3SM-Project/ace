@@ -332,14 +332,13 @@ class PairedDataWriter(WriterABC[PrognosticState, PairedData]):
             gather_names: Under spatial parallelism, the variables to
                 assemble on the root for the sub-writers, or None for all.
             has_subwriters: Whether the root has sub-writers, i.e. whether
-                every rank takes part in assembling each batch. Defaults to
-                whether ``writers`` is non-empty.
+                every rank takes part in assembling each batch. Must agree
+                across ranks; defaults to whether the root's ``writers`` is
+                non-empty, broadcast to every rank (a collective).
         """
         self._writers = writers
         self._gather_names = gather_names
-        self._has_subwriters = (
-            bool(writers) if has_subwriters is None else has_subwriters
-        )
+        self._has_subwriters = _root_has_subwriters(writers, has_subwriters)
         self._step_diagnostics_writer = step_diagnostics_writer
         self.path = path
         self.coords = coords
@@ -400,6 +399,19 @@ class PairedDataWriter(WriterABC[PrognosticState, PairedData]):
             writer.finalize()
         if self._step_diagnostics_writer is not None:
             self._step_diagnostics_writer.finalize()
+
+
+def _root_has_subwriters(
+    writers: Sequence[object], has_subwriters: bool | None
+) -> bool:
+    """``has_subwriters`` or, if None, whether the root has sub-writers.
+
+    The other ranks of a spatial or data-parallel run have none, but must
+    still join the root in assembling each batch.
+    """
+    if has_subwriters is not None:
+        return has_subwriters
+    return Distributed.get_instance().scatter_object(bool(writers))
 
 
 def _write(
@@ -609,14 +621,13 @@ class DataWriter(WriterABC[PrognosticState, PairedData]):
             gather_names: Under spatial parallelism, the variables to
                 assemble on the root for the sub-writers, or None for all.
             has_subwriters: Whether the root has sub-writers, i.e. whether
-                every rank takes part in assembling each batch. Defaults to
-                whether ``writers`` is non-empty.
+                every rank takes part in assembling each batch. Must agree
+                across ranks; defaults to whether the root's ``writers`` is
+                non-empty, broadcast to every rank (a collective).
         """
         self._writers = writers
         self._gather_names = gather_names
-        self._has_subwriters = (
-            bool(writers) if has_subwriters is None else has_subwriters
-        )
+        self._has_subwriters = _root_has_subwriters(writers, has_subwriters)
         self._step_diagnostics_writer = step_diagnostics_writer
         self.path = path
         self.variable_metadata = variable_metadata

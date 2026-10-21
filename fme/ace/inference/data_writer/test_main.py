@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import os
 import tempfile
+from typing import Any
 
 import numpy as np
 import pytest
@@ -11,12 +12,18 @@ import xarray as xr
 from fme.ace.data_loading.batch_data import BatchData, PairedData
 from fme.ace.inference.data_writer.dataset_metadata import DatasetMetadata
 from fme.ace.inference.data_writer.file_writer import FileWriterConfig
-from fme.ace.inference.data_writer.main import DataWriterConfig, _write
+from fme.ace.inference.data_writer.main import (
+    DataWriter,
+    DataWriterConfig,
+    PairedDataWriter,
+    _write,
+)
 from fme.ace.inference.data_writer.raw import RawDataWriter
 from fme.ace.inference.data_writer.step_diagnostics import StepDiagnosticsWriter
 from fme.ace.inference.data_writer.time_coarsen import TimeCoarsenConfig
 from fme.core.dataset.data_typing import VariableMetadata
 from fme.core.device import get_device
+from fme.core.distributed import Distributed
 from fme.core.step.step_diagnostics import StepDiagnostics
 
 _WRITER_ENABLING_FIELDS = {
@@ -314,3 +321,40 @@ def test_step_diagnostics_writer_writes_one_file_per_named_dataset():
                 assert ds["a"].shape == (n_samples, n_times, n_lat, n_lon)
                 np.testing.assert_allclose(ds["a"].values, expected_value)
         assert not os.path.exists(os.path.join(tmpdir, "step_diagnostics", "empty.nc"))
+
+
+class _RecordingSubwriter:
+    def __init__(self):
+        self.n_batches = 0
+
+    def append_batch(self, **kwargs):
+        self.n_batches += 1
+
+
+@pytest.mark.parallel
+@pytest.mark.parametrize("paired", [True, False])
+def test_writer_default_has_subwriters_agrees_across_ranks(paired: bool):
+    """With sub-writers on the root only, every rank takes part in assembling
+    each batch: the default must not leave the root alone in the gather.
+    """
+    dist = Distributed.get_instance()
+    n_lat, n_lon = 4, 8
+    subwriter = _RecordingSubwriter()
+    writers: list = [subwriter] if dist.is_root() else []
+    kwargs: dict[str, Any] = dict(
+        path="unused",
+        variable_metadata={},
+        coords={},
+        dataset_metadata=DatasetMetadata(),
+    )
+    writer = (
+        PairedDataWriter(writers=writers, **kwargs)
+        if paired
+        else DataWriter(writers=writers, **kwargs)
+    )
+    tile = dist.get_local_slices((n_lat, n_lon))
+    data = {"a": torch.ones(1, 2, n_lat, n_lon, device=get_device())[..., *tile]}
+    time = xr.DataArray(np.zeros((1, 2)), dims=["sample", "time"])
+    writer.append_batch(PairedData(prediction=data, reference=data, time=time))
+    if dist.is_root():
+        assert subwriter.n_batches == 1
