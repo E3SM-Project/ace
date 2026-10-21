@@ -464,3 +464,69 @@ convolutions, whose rounding depends on the tile shape. It is not a
 decomposition error. The evaluator writes at most 2-3 GB of predictions per
 IC-year per variable at 0.25 deg; the video aggregator is impractical at
 this resolution (disable it).
+
+## 16. Scaling and memory on real 40 GB nodes (allocations 60063553 + 60063766, 2026-10-20/21)
+
+Seven A100-40GB nodes (nid001901/1904/1905/1908, nid002901/2904/2905) and
+one 80 GB node. Production config, full harmonics, both sharding flags,
+expandable_segments, 4x1 tiles per node, batch_size = N.
+
+### One run cannot span two allocations
+
+A 1 GiB all_reduce between one node of each job worked (70.5 GB/s), but
+at 8 nodes NCCL failed with `VNI_NOT_FOUND`: Slingshot gives each Slurm
+job its own VNI. 8+ nodes need one allocation.
+
+### The production config OOMed on 1-2 nodes: inference ICs held on the GPU
+
+With 8 inline-inference ICs, 1 and 2 nodes OOMed in the first backward
+(36.1 GiB allocated + 0.74 requested), while 4 nodes trained. The same nodes
+ran the earlier smoke config fine, and the old code snapshot failed the same
+way, so the cause was in the config. Bisected to the number of ICs: 1 IC
+fits, 4 ICs OOM; allocation before training grew ~1.15 GiB per IC.
+
+Cause: `BatchData.get_start` returned views. The inline-inference initial
+condition (`_get_initial_condition`) is `get_start` of the inference
+loader's first batch, so it kept that whole batch (21 timesteps of every
+variable, for every local IC) alive for the run. `get_end` did the same for
+the state carried between inference windows. Fixed in e035d4cbf (copy the
+slice), with a test.
+
+The earlier "fits" (sections 14-15) had at most 2 ICs per replica, and
+most had FME_GPU_MEM_CAP_GB=38.5 set on every rank.
+
+### After the fix
+
+| run | nodes | ICs per replica | training peak alloc / reserved (GiB) | outcome |
+|---|---|---|---|---|
+| fix-scale1 | 1 | 8 (not run) | 35.17 / 36.75 | trains |
+| fix-scale2 | 2 | 4 (not run) | 35.02 / 37.06 | trains |
+| fix-scale4 | 4 | 2 | 35.56 / 37.07 | full epoch cycle |
+
+fix-scale4, per phase (rank 0, alloc / reserved): training 34.95 / 36.96,
+validation 18.51 / 36.71, inference with 2 ICs 35.56 / 36.81, checkpoints
+19.04 / 36.52. Inference with 1 IC per replica: 26.1-26.4 allocated.
+
+Non-PyTorch memory (CUDA context, NCCL buffers): nvidia-smi minus allocator
+reserved = 2.5-2.6 GB per GPU. PyTorch can therefore use ~37.0 GiB of the
+39.49; the training peak leaves ~1.4 GiB. NCCL_BUFFSIZE=1 MiB saved only
+~0.25 GB.
+
+### Throughput (log every 5 steps, steps >= 20, median of 5-step intervals)
+
+| nodes | s/step | samples/s | per replica |
+|---|---|---|---|
+| 1 | 5.00 (4.8-5.8, n=42) | 0.200 | 0.200 |
+| 2 | 5.00 (4.8-5.4, n=20) | 0.400 | 0.200 |
+| 4 | 5.00 (4.8-5.4, n=7) | 0.800 | 0.200 |
+
+### Phase times
+
+- validation (365 daily samples, 1 year): 7.6 min at 2 nodes, 3.9 min at
+  4 (~15.5 min / N);
+- inline inference, 360 steps: 4.7 min with 1 IC per replica (1 and 2
+  nodes), 9.9 min with 2 ICs per replica (4 nodes); plus 3.8-4.3 min of
+  aggregator summaries (time_mean etc. at 0.25 deg) either way;
+- checkpoints: latest/epoch (32 GB, with optimizer state) 53-65 s each,
+  best/best_inference/EMA (8 GB) 12-16 s each; 2.5 min at an epoch end;
+- startup to the first step: ~6-8 min.

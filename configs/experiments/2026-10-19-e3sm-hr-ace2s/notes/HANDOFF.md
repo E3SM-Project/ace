@@ -4,6 +4,21 @@ Branch `e3sm/exps/hr-2026.10.0` (worktree `/pscratch/sd/m/mahf708/ace-hr`), not
 pushed. Status page: https://claude.ai/artifact/Bc2uTxmhi7Ct1VqXcNnb9u (built
 from `report/narrative.html` by `scripts/build_report.py`).
 
+## Current state (2026-10-21) -- read this first
+
+- Production-ready on 4x A100-40GB per replica, full harmonics, with commits
+  through e035d4cbf (prognostic states no longer view their batch; without
+  it 1-2 node runs and 2-IC inference OOM on 40 GB). README "Running on 40
+  GB A100s" has the requirements, the submit line and the per-epoch cost.
+- Throughput 5.00 s/step at 1, 2 and 4 nodes (0.200 samples/s per replica);
+  20 epochs ~70 h on 8 nodes. N must be 4 or 8 with the config's 8 ICs.
+- Open decisions for the user: hard_thresholding_fraction (config 0.5,
+  validated production setting is 1.0 via EXTRA), W&B logging (off), node
+  count (sets the global batch).
+- Not done: 8+ node measurement (needs one allocation); replica-count
+  invariant noise (not needed for training); porting the EMA and get_start
+  fixes to the hist branch / upstream (user: not now).
+
 ## Done
 - Data: all 193 `eam.h0` files copied to `$PSCRATCH/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0`.
 - Code on the branch (on top of v2026.10.0): 7 ported hist commits plus 5 new

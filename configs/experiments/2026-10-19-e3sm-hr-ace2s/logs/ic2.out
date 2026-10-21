@@ -1,0 +1,394 @@
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+[rank1]:[W1020 19:12:02.638053775 ProcessGroupNCCL.cpp:1553] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank1]:   File "<frozen runpy>", line 88, in _run_code
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/train/__main__.py", line 8, in <module>
+[rank1]:     with Distributed.context():
+[rank1]:          ~~~~~~~~~~~~~~~~~~~^^
+[rank1]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 141, in __enter__
+[rank1]:     return next(self.gen)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/distributed.py", line 116, in context
+[rank1]:     instance = cls.get_instance()
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/distributed.py", line 160, in get_instance
+[rank1]:     singleton = cls(spatial_parallelism=(h, w))
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/distributed.py", line 78, in __init__
+[rank1]:     self._distributed = ModelTorchDistributed(
+[rank1]:                         ~~~~~~~~~~~~~~~~~~~~~^
+[rank1]:         h_size=h_size,
+[rank1]:         ^^^^^^^^^^^^^^
+[rank1]:         w_size=w_size,
+[rank1]:         ^^^^^^^^^^^^^^
+[rank1]:         verbose=verbose,
+[rank1]:         ^^^^^^^^^^^^^^^^
+[rank1]:     )
+[rank1]:     ^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/model_torch_distributed.py", line 271, in __init__
+[rank1]:     mesh = self._dm.initialize_mesh(
+[rank1]:         mesh_shape=(-1, h_size, w_size),
+[rank1]:         mesh_dim_names=("data", "h", "w"),
+[rank1]:     )
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/external/pnd_manager.py", line 381, in initialize_mesh
+[rank1]:     self._global_mesh = dist.init_device_mesh(
+[rank1]:                         ~~~~~~~~~~~~~~~~~~~~~^
+[rank1]:         device_type,
+[rank1]:         ^^^^^^^^^^^^
+[rank1]:         mesh_shape,
+[rank1]:         ^^^^^^^^^^^
+[rank1]:         mesh_dim_names=mesh_dim_names,
+[rank1]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank1]:     )
+[rank1]:     ^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/device_mesh.py", line 1362, in init_device_mesh
+[rank1]:     device_mesh = DeviceMesh(
+[rank1]:         device_type=device_type,
+[rank1]:     ...<3 lines>...
+[rank1]:         backend_override=backend_override_tuple,
+[rank1]:     )
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/device_mesh.py", line 276, in __init__
+[rank1]:     self._dim_group_names = self._init_process_groups(
+[rank1]:                             ~~~~~~~~~~~~~~~~~~~~~~~~~^
+[rank1]:         self._layout,
+[rank1]:         ^^^^^^^^^^^^^
+[rank1]:     ...<2 lines>...
+[rank1]:         backend_override,
+[rank1]:         ^^^^^^^^^^^^^^^^^
+[rank1]:     )
+[rank1]:     ^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/device_mesh.py", line 485, in _init_process_groups
+[rank1]:     DeviceMesh._init_one_process_group(
+[rank1]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+[rank1]:         layout[dim], rank_map, dim_name, backend_override[dim]
+[rank1]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank1]:     )
+[rank1]:     ^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/device_mesh.py", line 437, in _init_one_process_group
+[rank1]:     dim_group = split_group(
+[rank1]:         parent_pg=default_group,
+[rank1]:     ...<3 lines>...
+[rank1]:         group_desc=group_desc,
+[rank1]:     )
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/c10d_logger.py", line 97, in wrapper
+[rank1]:     func_return = func(*args, **kwargs)
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/distributed_c10d.py", line 5259, in split_group
+[rank1]:     split_pg = parent_pg.split_group(
+[rank1]:         my_group,
+[rank1]:     ...<3 lines>...
+[rank1]:         group_desc=group_desc,
+[rank1]:     )
+[rank1]: torch.distributed.DistBackendError: NCCL error in: /pytorch/torch/csrc/distributed/c10d/NCCLUtils.cpp:253, unhandled cuda error (run with NCCL_DEBUG=INFO for details), NCCL version 2.27.5
+[rank1]: ncclUnhandledCudaError: Call to CUDA function failed.
+[rank1]: Last error:
+[rank1]: Failed to CUDA calloc async 4 bytes
+[rank2]:[W1020 19:12:03.444154227 ProcessGroupNCCL.cpp:1553] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[rank2]: Traceback (most recent call last):
+[rank2]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank2]:   File "<frozen runpy>", line 88, in _run_code
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/train/__main__.py", line 8, in <module>
+[rank2]:     with Distributed.context():
+[rank2]:          ~~~~~~~~~~~~~~~~~~~^^
+[rank2]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 141, in __enter__
+[rank2]:     return next(self.gen)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/distributed.py", line 116, in context
+[rank2]:     instance = cls.get_instance()
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/distributed.py", line 160, in get_instance
+[rank2]:     singleton = cls(spatial_parallelism=(h, w))
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/distributed.py", line 78, in __init__
+[rank2]:     self._distributed = ModelTorchDistributed(
+[rank2]:                         ~~~~~~~~~~~~~~~~~~~~~^
+[rank2]:         h_size=h_size,
+[rank2]:         ^^^^^^^^^^^^^^
+[rank2]:         w_size=w_size,
+[rank2]:         ^^^^^^^^^^^^^^
+[rank2]:         verbose=verbose,
+[rank2]:         ^^^^^^^^^^^^^^^^
+[rank2]:     )
+[rank2]:     ^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/model_torch_distributed.py", line 271, in __init__
+[rank2]:     mesh = self._dm.initialize_mesh(
+[rank2]:         mesh_shape=(-1, h_size, w_size),
+[rank2]:         mesh_dim_names=("data", "h", "w"),
+[rank2]:     )
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/external/pnd_manager.py", line 381, in initialize_mesh
+[rank2]:     self._global_mesh = dist.init_device_mesh(
+[rank2]:                         ~~~~~~~~~~~~~~~~~~~~~^
+[rank2]:         device_type,
+[rank2]:         ^^^^^^^^^^^^
+[rank2]:         mesh_shape,
+[rank2]:         ^^^^^^^^^^^
+[rank2]:         mesh_dim_names=mesh_dim_names,
+[rank2]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank2]:     )
+[rank2]:     ^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/device_mesh.py", line 1362, in init_device_mesh
+[rank2]:     device_mesh = DeviceMesh(
+[rank2]:         device_type=device_type,
+[rank2]:     ...<3 lines>...
+[rank2]:         backend_override=backend_override_tuple,
+[rank2]:     )
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/device_mesh.py", line 276, in __init__
+[rank2]:     self._dim_group_names = self._init_process_groups(
+[rank2]:                             ~~~~~~~~~~~~~~~~~~~~~~~~~^
+[rank2]:         self._layout,
+[rank2]:         ^^^^^^^^^^^^^
+[rank2]:     ...<2 lines>...
+[rank2]:         backend_override,
+[rank2]:         ^^^^^^^^^^^^^^^^^
+[rank2]:     )
+[rank2]:     ^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/device_mesh.py", line 485, in _init_process_groups
+[rank2]:     DeviceMesh._init_one_process_group(
+[rank2]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+[rank2]:         layout[dim], rank_map, dim_name, backend_override[dim]
+[rank2]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank2]:     )
+[rank2]:     ^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/device_mesh.py", line 437, in _init_one_process_group
+[rank2]:     dim_group = split_group(
+[rank2]:         parent_pg=default_group,
+[rank2]:     ...<3 lines>...
+[rank2]:         group_desc=group_desc,
+[rank2]:     )
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/c10d_logger.py", line 97, in wrapper
+[rank2]:     func_return = func(*args, **kwargs)
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/distributed_c10d.py", line 5259, in split_group
+[rank2]:     split_pg = parent_pg.split_group(
+[rank2]:         my_group,
+[rank2]:     ...<3 lines>...
+[rank2]:         group_desc=group_desc,
+[rank2]:     )
+[rank2]: torch.distributed.DistBackendError: NCCL error in: /pytorch/torch/csrc/distributed/c10d/NCCLUtils.cpp:253, remote process exited or there was a network error, NCCL version 2.27.5
+[rank2]: ncclRemoteError: A call failed possibly due to a network error or a remote process exiting prematurely.
+[rank2]: Last error:
+[rank2]: socketProgress: Connection closed by remote peer nid002901<45008>
+[rank3]:[W1020 19:12:03.947316460 ProcessGroupNCCL.cpp:1553] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank3]:   File "<frozen runpy>", line 88, in _run_code
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/train/__main__.py", line 8, in <module>
+[rank3]:     with Distributed.context():
+[rank3]:          ~~~~~~~~~~~~~~~~~~~^^
+[rank3]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 141, in __enter__
+[rank3]:     return next(self.gen)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/distributed.py", line 116, in context
+[rank3]:     instance = cls.get_instance()
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/distributed.py", line 160, in get_instance
+[rank3]:     singleton = cls(spatial_parallelism=(h, w))
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/distributed.py", line 78, in __init__
+[rank3]:     self._distributed = ModelTorchDistributed(
+[rank3]:                         ~~~~~~~~~~~~~~~~~~~~~^
+[rank3]:         h_size=h_size,
+[rank3]:         ^^^^^^^^^^^^^^
+[rank3]:         w_size=w_size,
+[rank3]:         ^^^^^^^^^^^^^^
+[rank3]:         verbose=verbose,
+[rank3]:         ^^^^^^^^^^^^^^^^
+[rank3]:     )
+[rank3]:     ^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/model_torch_distributed.py", line 271, in __init__
+[rank3]:     mesh = self._dm.initialize_mesh(
+[rank3]:         mesh_shape=(-1, h_size, w_size),
+[rank3]:         mesh_dim_names=("data", "h", "w"),
+[rank3]:     )
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/external/pnd_manager.py", line 381, in initialize_mesh
+[rank3]:     self._global_mesh = dist.init_device_mesh(
+[rank3]:                         ~~~~~~~~~~~~~~~~~~~~~^
+[rank3]:         device_type,
+[rank3]:         ^^^^^^^^^^^^
+[rank3]:         mesh_shape,
+[rank3]:         ^^^^^^^^^^^
+[rank3]:         mesh_dim_names=mesh_dim_names,
+[rank3]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank3]:     )
+[rank3]:     ^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/device_mesh.py", line 1362, in init_device_mesh
+[rank3]:     device_mesh = DeviceMesh(
+[rank3]:         device_type=device_type,
+[rank3]:     ...<3 lines>...
+[rank3]:         backend_override=backend_override_tuple,
+[rank3]:     )
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/device_mesh.py", line 276, in __init__
+[rank3]:     self._dim_group_names = self._init_process_groups(
+[rank3]:                             ~~~~~~~~~~~~~~~~~~~~~~~~~^
+[rank3]:         self._layout,
+[rank3]:         ^^^^^^^^^^^^^
+[rank3]:     ...<2 lines>...
+[rank3]:         backend_override,
+[rank3]:         ^^^^^^^^^^^^^^^^^
+[rank3]:     )
+[rank3]:     ^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/device_mesh.py", line 485, in _init_process_groups
+[rank3]:     DeviceMesh._init_one_process_group(
+[rank3]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+[rank3]:         layout[dim], rank_map, dim_name, backend_override[dim]
+[rank3]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank3]:     )
+[rank3]:     ^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/device_mesh.py", line 437, in _init_one_process_group
+[rank3]:     dim_group = split_group(
+[rank3]:         parent_pg=default_group,
+[rank3]:     ...<3 lines>...
+[rank3]:         group_desc=group_desc,
+[rank3]:     )
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/c10d_logger.py", line 97, in wrapper
+[rank3]:     func_return = func(*args, **kwargs)
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/distributed_c10d.py", line 5259, in split_group
+[rank3]:     split_pg = parent_pg.split_group(
+[rank3]:         my_group,
+[rank3]:     ...<3 lines>...
+[rank3]:         group_desc=group_desc,
+[rank3]:     )
+[rank3]: torch.distributed.DistBackendError: NCCL error in: /pytorch/torch/csrc/distributed/c10d/NCCLUtils.cpp:253, remote process exited or there was a network error, NCCL version 2.27.5
+[rank3]: ncclRemoteError: A call failed possibly due to a network error or a remote process exiting prematurely.
+[rank3]: Last error:
+[rank3]: socketProgress: Connection closed by remote peer nid002901<43562>
+[rank0]:[W1020 19:12:04.945358271 ProcessGroupNCCL.cpp:1553] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank0]:   File "<frozen runpy>", line 88, in _run_code
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/train/__main__.py", line 8, in <module>
+[rank0]:     with Distributed.context():
+[rank0]:          ~~~~~~~~~~~~~~~~~~~^^
+[rank0]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 141, in __enter__
+[rank0]:     return next(self.gen)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/distributed.py", line 116, in context
+[rank0]:     instance = cls.get_instance()
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/distributed.py", line 160, in get_instance
+[rank0]:     singleton = cls(spatial_parallelism=(h, w))
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/distributed.py", line 78, in __init__
+[rank0]:     self._distributed = ModelTorchDistributed(
+[rank0]:                         ~~~~~~~~~~~~~~~~~~~~~^
+[rank0]:         h_size=h_size,
+[rank0]:         ^^^^^^^^^^^^^^
+[rank0]:         w_size=w_size,
+[rank0]:         ^^^^^^^^^^^^^^
+[rank0]:         verbose=verbose,
+[rank0]:         ^^^^^^^^^^^^^^^^
+[rank0]:     )
+[rank0]:     ^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/model_torch_distributed.py", line 271, in __init__
+[rank0]:     mesh = self._dm.initialize_mesh(
+[rank0]:         mesh_shape=(-1, h_size, w_size),
+[rank0]:         mesh_dim_names=("data", "h", "w"),
+[rank0]:     )
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/distributed/external/pnd_manager.py", line 381, in initialize_mesh
+[rank0]:     self._global_mesh = dist.init_device_mesh(
+[rank0]:                         ~~~~~~~~~~~~~~~~~~~~~^
+[rank0]:         device_type,
+[rank0]:         ^^^^^^^^^^^^
+[rank0]:         mesh_shape,
+[rank0]:         ^^^^^^^^^^^
+[rank0]:         mesh_dim_names=mesh_dim_names,
+[rank0]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:     )
+[rank0]:     ^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/device_mesh.py", line 1362, in init_device_mesh
+[rank0]:     device_mesh = DeviceMesh(
+[rank0]:         device_type=device_type,
+[rank0]:     ...<3 lines>...
+[rank0]:         backend_override=backend_override_tuple,
+[rank0]:     )
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/device_mesh.py", line 276, in __init__
+[rank0]:     self._dim_group_names = self._init_process_groups(
+[rank0]:                             ~~~~~~~~~~~~~~~~~~~~~~~~~^
+[rank0]:         self._layout,
+[rank0]:         ^^^^^^^^^^^^^
+[rank0]:     ...<2 lines>...
+[rank0]:         backend_override,
+[rank0]:         ^^^^^^^^^^^^^^^^^
+[rank0]:     )
+[rank0]:     ^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/device_mesh.py", line 485, in _init_process_groups
+[rank0]:     DeviceMesh._init_one_process_group(
+[rank0]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+[rank0]:         layout[dim], rank_map, dim_name, backend_override[dim]
+[rank0]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:     )
+[rank0]:     ^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/device_mesh.py", line 437, in _init_one_process_group
+[rank0]:     dim_group = split_group(
+[rank0]:         parent_pg=default_group,
+[rank0]:     ...<3 lines>...
+[rank0]:         group_desc=group_desc,
+[rank0]:     )
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/c10d_logger.py", line 97, in wrapper
+[rank0]:     func_return = func(*args, **kwargs)
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/distributed_c10d.py", line 5259, in split_group
+[rank0]:     split_pg = parent_pg.split_group(
+[rank0]:         my_group,
+[rank0]:     ...<3 lines>...
+[rank0]:         group_desc=group_desc,
+[rank0]:     )
+[rank0]: torch.distributed.DistBackendError: NCCL error in: /pytorch/torch/csrc/distributed/c10d/NCCLUtils.cpp:253, remote process exited or there was a network error, NCCL version 2.27.5
+[rank0]: ncclRemoteError: A call failed possibly due to a network error or a remote process exiting prematurely.
+[rank0]: Last error:
+[rank0]: socketProgress: Connection closed by remote peer nid002901<44698>
+W1020 19:12:05.098000 741751 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 741790 closing signal SIGTERM
+W1020 19:12:05.099000 741751 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 741791 closing signal SIGTERM
+W1020 19:12:05.100000 741751 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 741793 closing signal SIGTERM
+E1020 19:12:05.515000 741751 torch/distributed/elastic/multiprocessing/api.py:984] failed (exitcode: 1) local_rank: 2 (pid: 741792) of binary: /pscratch/sd/m/mahf708/ace/.venv/bin/python3
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+    ~~~^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 317, in launch_agent
+    raise ChildFailedError(
+    ...<2 lines>...
+    )
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+fme.ace.train FAILED
+------------------------------------------------------------
+Failures:
+[1]:
+  time      : 2026-10-20_19:12:05
+  host      : nid002901-hsn0
+  rank      : 0 (local_rank: 0)
+  exitcode  : -15 (pid: 741790)
+  error_file: <N/A>
+  traceback : Signal 15 (SIGTERM) received by PID 741790
+[2]:
+  time      : 2026-10-20_19:12:05
+  host      : nid002901-hsn0
+  rank      : 1 (local_rank: 1)
+  exitcode  : 1 (pid: 741791)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[3]:
+  time      : 2026-10-20_19:12:05
+  host      : nid002901-hsn0
+  rank      : 3 (local_rank: 3)
+  exitcode  : -15 (pid: 741793)
+  error_file: <N/A>
+  traceback : Signal 15 (SIGTERM) received by PID 741793
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-10-20_19:12:05
+  host      : nid002901-hsn0
+  rank      : 2 (local_rank: 2)
+  exitcode  : 1 (pid: 741792)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
+srun: error: nid002901: task 0: Exited with exit code 1
+srun: Terminating StepId=60063766.35

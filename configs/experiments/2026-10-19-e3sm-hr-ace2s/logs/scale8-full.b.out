@@ -1,0 +1,333 @@
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 17:55:07.213000 721469 torch/distributed/elastic/agent/server/api.py:739] Received 15 death signal, shutting down workers
+W1020 17:55:07.215000 721469 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 721509 closing signal SIGTERM
+W1020 17:55:07.216000 721469 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 721510 closing signal SIGTERM
+W1020 17:55:07.216000 721469 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 721511 closing signal SIGTERM
+W1020 17:55:07.217000 721469 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 721512 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 17:55:07.221000 755404 torch/distributed/elastic/agent/server/api.py:739] Received 15 death signal, shutting down workers
+W1020 17:55:07.223000 755404 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 755444 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 17:55:07.224000 755404 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 755445 closing signal SIGTERM
+W1020 17:55:07.225000 755404 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 755446 closing signal SIGTERM
+W1020 17:55:07.225000 755404 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 755447 closing signal SIGTERM
+W1020 17:55:07.224000 700175 torch/distributed/elastic/agent/server/api.py:739] Received 15 death signal, shutting down workers
+W1020 17:55:07.226000 700175 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 700534 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 17:55:07.227000 700175 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 700535 closing signal SIGTERM
+W1020 17:55:07.228000 700175 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 700536 closing signal SIGTERM
+W1020 17:55:07.228000 700175 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 700537 closing signal SIGTERM
+W1020 17:55:07.227000 700355 torch/distributed/elastic/agent/server/api.py:739] Received 15 death signal, shutting down workers
+W1020 17:55:07.230000 700355 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 700713 closing signal SIGTERM
+W1020 17:55:07.230000 700355 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 700714 closing signal SIGTERM
+W1020 17:55:07.231000 700355 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 700715 closing signal SIGTERM
+W1020 17:55:07.232000 700355 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 700716 closing signal SIGTERM
+W1020 17:55:07.270000 721469 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 721509 closing signal SIGTERM
+W1020 17:55:07.270000 721469 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 721510 closing signal SIGTERM
+W1020 17:55:07.271000 721469 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 721511 closing signal SIGTERM
+W1020 17:55:07.272000 721469 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 721512 closing signal SIGTERM
+W1020 17:55:07.280000 755404 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 755444 closing signal SIGTERM
+W1020 17:55:07.280000 755404 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 755445 closing signal SIGTERM
+W1020 17:55:07.281000 755404 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 755446 closing signal SIGTERM
+W1020 17:55:07.281000 700175 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 700534 closing signal SIGTERM
+W1020 17:55:07.282000 755404 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 755447 closing signal SIGTERM
+W1020 17:55:07.281000 700355 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 700713 closing signal SIGTERM
+W1020 17:55:07.282000 700175 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 700535 closing signal SIGTERM
+W1020 17:55:07.282000 700355 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 700714 closing signal SIGTERM
+W1020 17:55:07.283000 700175 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 700536 closing signal SIGTERM
+W1020 17:55:07.283000 700355 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 700715 closing signal SIGTERM
+W1020 17:55:07.283000 700175 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 700537 closing signal SIGTERM
+W1020 17:55:07.284000 700355 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 700716 closing signal SIGTERM
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 731, in run
+    result = self._invoke_run(role)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 908, in _invoke_run
+    time.sleep(monitor_interval)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 700175 got signal: 15
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+    ~~~^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 308, in launch_agent
+    result = agent.run()
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/metrics/api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 740, in run
+    self._shutdown(e.sigval)
+    ~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/local_elastic_agent.py", line 413, in _shutdown
+    self._pcontext.close(death_sig)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 659, in close
+    self._close(death_sig=death_sig, timeout=timeout)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 1022, in _close
+    handler.proc.wait(time_to_wait)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/subprocess.py", line 1280, in wait
+    return self._wait(timeout=timeout)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/subprocess.py", line 2060, in _wait
+    time.sleep(delay)
+    ~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 700175 got signal: 15
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 731, in run
+    result = self._invoke_run(role)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 908, in _invoke_run
+    time.sleep(monitor_interval)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 755404 got signal: 15
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+    ~~~^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 308, in launch_agent
+    result = agent.run()
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/metrics/api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 740, in run
+    self._shutdown(e.sigval)
+    ~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/local_elastic_agent.py", line 413, in _shutdown
+    self._pcontext.close(death_sig)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 659, in close
+    self._close(death_sig=death_sig, timeout=timeout)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 1022, in _close
+    handler.proc.wait(time_to_wait)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/subprocess.py", line 1280, in wait
+    return self._wait(timeout=timeout)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/subprocess.py", line 2060, in _wait
+    time.sleep(delay)
+    ~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 755404 got signal: 15
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 731, in run
+    result = self._invoke_run(role)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 908, in _invoke_run
+    time.sleep(monitor_interval)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 721469 got signal: 15
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+    ~~~^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 308, in launch_agent
+    result = agent.run()
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/metrics/api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 740, in run
+    self._shutdown(e.sigval)
+    ~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/local_elastic_agent.py", line 413, in _shutdown
+    self._pcontext.close(death_sig)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 659, in close
+    self._close(death_sig=death_sig, timeout=timeout)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 1022, in _close
+    handler.proc.wait(time_to_wait)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/subprocess.py", line 1280, in wait
+    return self._wait(timeout=timeout)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/subprocess.py", line 2060, in _wait
+    time.sleep(delay)
+    ~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 721469 got signal: 15
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 731, in run
+    result = self._invoke_run(role)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 908, in _invoke_run
+    time.sleep(monitor_interval)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 700355 got signal: 15
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+    ~~~^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 308, in launch_agent
+    result = agent.run()
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/metrics/api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 740, in run
+    self._shutdown(e.sigval)
+    ~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/local_elastic_agent.py", line 413, in _shutdown
+    self._pcontext.close(death_sig)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 659, in close
+    self._close(death_sig=death_sig, timeout=timeout)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 1022, in _close
+    handler.proc.wait(time_to_wait)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/subprocess.py", line 1280, in wait
+    return self._wait(timeout=timeout)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/subprocess.py", line 2060, in _wait
+    time.sleep(delay)
+    ~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 700355 got signal: 15
+srun: error: nid002901: task 0: Exited with exit code 1
+srun: Terminating StepId=60063766.3
+srun: error: nid002904: task 1: Exited with exit code 1
+srun: error: nid200492: task 3: Exited with exit code 1
+srun: error: nid002905: task 2: Exited with exit code 1

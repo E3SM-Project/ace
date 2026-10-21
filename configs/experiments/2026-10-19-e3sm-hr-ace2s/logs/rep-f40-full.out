@@ -1,0 +1,147 @@
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+2026-10-20 18:46:06,912 - root - INFO - --------------- Versions ---------------
+2026-10-20 18:46:06,912 - root - INFO - Torch: 2.10.0+cu128
+2026-10-20 18:46:06,912 - root - INFO - ----------------------------------------
+2026-10-20 18:46:06,913 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 18:46:06,913 - root - INFO - Beaker ID: None
+2026-10-20 18:46:06,913 - root - INFO - Beaker URL: No beaker URL.
+2026-10-20 18:46:06,913 - root - WARNING - Environmental variable BEAKER_EXPERIMENT_ID not found.
+2026-10-20 18:46:06,913 - root - INFO - Environmental variable SLURM_JOB_ID=60063766.
+2026-10-20 18:46:06,913 - root - INFO - Environmental variable SLURM_JOB_USER=mahf708.
+2026-10-20 18:46:06,913 - root - WARNING - Environmental variable FME_TRAIN_DIR not found.
+2026-10-20 18:46:06,913 - root - WARNING - Environmental variable FME_VALID_DIR not found.
+2026-10-20 18:46:06,913 - root - WARNING - Environmental variable FME_STATS_DIR not found.
+2026-10-20 18:46:06,913 - root - WARNING - Environmental variable FME_CHECKPOINT_DIR not found.
+2026-10-20 18:46:06,913 - root - WARNING - Environmental variable FME_OUTPUT_DIR not found.
+2026-10-20 18:46:06,913 - root - WARNING - Environmental variable FME_IMAGE not found.
+2026-10-20 18:46:06,914 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 18:46:06,914 - root - INFO - Current device is cuda:0
+2026-10-20 18:46:06,914 - root - INFO - Initializing training data loader
+2026-10-20 18:46:06,915 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 18:46:11,011 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 18:46:11,018 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 18:46:11,035 - root - INFO - The required variables have been found in the dataset: ['STW_6', 'FSNS', 'V_2', 'V_6', 'STW_2', 'V_1', 'T_3', 'FLUT', 'V_4', 'T_2', 'U_3', 'TAUY', 'DTENDTTW', 'frozen_precipitation_rate', 'FLUS', 'PS', 'Qat2m', 'STW_3', 'STW_4', 'SOLIN', 'T_1', 'surface_precipitation_rate', 'U_1', 'U_7', 'V_5', 'T_5', 'Vat10m', 'FSUTOA', 'TS', 'T_0', 'LANDFRAC', 'STW_5', 'U_6', 'FLDS', 'T_6', 'STW_1', 'U_4', 'PHIS', 'TAUX', 'U_5', 'Uat10m', 'STW_7', 'U_2', 'SHFLX', 'OCNFRAC', 'ICEFRAC', 'T_4', 'V_0', 'STW_0', 'V_3', 'U_0', 'T_7', 'V_7', 'Tat2m', 'LHFLX'].
+2026-10-20 18:46:11,051 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 18:46:11,077 - root - INFO - Subsetting dataset samples according to slice(124, np.int64(237), None).
+2026-10-20 18:46:11,077 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 18:46:11,081 - root - INFO - Initializing validation data loaders
+2026-10-20 18:46:11,082 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 18:46:11,142 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 18:46:11,144 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 18:46:11,162 - root - INFO - The required variables have been found in the dataset: ['STW_6', 'FSNS', 'V_2', 'V_6', 'STW_2', 'V_1', 'T_3', 'FLUT', 'V_4', 'T_2', 'U_3', 'TAUY', 'DTENDTTW', 'frozen_precipitation_rate', 'FLUS', 'PS', 'Qat2m', 'STW_3', 'STW_4', 'SOLIN', 'T_1', 'surface_precipitation_rate', 'U_1', 'U_7', 'V_5', 'T_5', 'Vat10m', 'FSUTOA', 'TS', 'T_0', 'LANDFRAC', 'STW_5', 'U_6', 'FLDS', 'T_6', 'STW_1', 'U_4', 'PHIS', 'TAUX', 'U_5', 'Uat10m', 'STW_7', 'U_2', 'SHFLX', 'OCNFRAC', 'ICEFRAC', 'T_4', 'V_0', 'STW_0', 'V_3', 'U_0', 'T_7', 'V_7', 'Tat2m', 'LHFLX'].
+2026-10-20 18:46:11,175 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 18:46:11,195 - root - INFO - Subsetting dataset samples according to slice(18980, np.int64(19009), None).
+2026-10-20 18:46:11,196 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 18:46:11,196 - root - INFO - train data: 115 samples, 115 batches
+2026-10-20 18:46:11,196 - root - INFO - train data: pool_size=1, 5 sub-batches per window, coming from the following base loader:
+2026-10-20 18:46:11,196 - root - INFO - train (base loader) data: 23 samples, 23 batches
+2026-10-20 18:46:11,196 - root - INFO - train (base loader) data: first sample's initial time: 0001-02-01 00:00:00
+2026-10-20 18:46:11,197 - root - INFO - train (base loader) data: last sample's initial time: 0001-02-28 12:00:00
+2026-10-20 18:46:11,197 - root - INFO - val data: 29 samples, 29 batches
+2026-10-20 18:46:11,197 - root - INFO - val data: first sample's initial time: 0014-01-01 00:00:00
+2026-10-20 18:46:11,197 - root - INFO - val data: last sample's initial time: 0014-01-08 00:00:00
+2026-10-20 18:46:11,197 - root - INFO - Initializing inline inference data loaders
+2026-10-20 18:46:11,198 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 18:46:11,255 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 18:46:11,257 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 18:46:11,274 - root - INFO - The required variables have been found in the dataset: ['STW_6', 'FSNS', 'V_2', 'V_6', 'STW_2', 'V_1', 'T_3', 'FLUT', 'V_4', 'T_2', 'U_3', 'TAUY', 'DTENDTTW', 'frozen_precipitation_rate', 'FLUS', 'PS', 'Qat2m', 'STW_3', 'STW_4', 'SOLIN', 'T_1', 'surface_precipitation_rate', 'U_1', 'U_7', 'V_5', 'T_5', 'Vat10m', 'FSUTOA', 'TS', 'T_0', 'LANDFRAC', 'STW_5', 'U_6', 'FLDS', 'T_6', 'STW_1', 'U_4', 'PHIS', 'TAUX', 'U_5', 'Uat10m', 'STW_7', 'U_2', 'SHFLX', 'OCNFRAC', 'ICEFRAC', 'T_4', 'V_0', 'STW_0', 'V_3', 'U_0', 'T_7', 'V_7', 'Tat2m', 'LHFLX'].
+2026-10-20 18:46:11,286 - root - INFO - Dataset now has 23356 samples of length 5.
+2026-10-20 18:46:11,286 - root - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 18:46:11,300 - root - INFO - Multiprocessing inference context: fork
+2026-10-20 18:46:13,276 - root - INFO - Starting model initialization
+2026-10-20 18:46:13,277 - root - INFO - Initializing stepper from provided config
+2026-10-20 18:46:13,277 - root - INFO - Initializing stepper from provided config
+2026-10-20 18:46:44,291 - root - INFO - Current device is cuda:0
+2026-10-20 18:46:44,326 - root - INFO - Number of trainable model parameters: 530873088
+2026-10-20 18:46:44,327 - root - INFO - Starting Training Loop...
+2026-10-20 18:46:44,623 - root - INFO - Beginning epoch after 0 complete epochs
+2026-10-20 18:46:44,623 - root - INFO - Starting training step for model trained for 0 complete epochs
+2026-10-20 18:46:44,667 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 18:46:44,684 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 18:46:54,194 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 18:46:54,197 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 18:47:27,798 - root - INFO - Step 5: {'batch_loss': tensor(4.1949, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.14875679331972227, 'lr': 0.0001}
+2026-10-20 18:47:51,895 - root - INFO - Step 10: {'batch_loss': tensor(2.6561, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20682752579177666, 'lr': 0.0001}
+2026-10-20 18:48:16,341 - root - INFO - Step 15: {'batch_loss': tensor(2.0228, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20453345136701148, 'lr': 0.0001}
+2026-10-20 18:48:40,381 - root - INFO - Step 20: {'batch_loss': tensor(1.6589, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2079897771259981, 'lr': 0.0001}
+[rank2]:[W1020 18:48:40.638703966 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 3 PG GUID d82a5263aec3e448a6be3764efa7aefb8ed376e7 Rank 2] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 4.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank1]:[W1020 18:48:40.638719917 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 3 PG GUID d82a5263aec3e448a6be3764efa7aefb8ed376e7 Rank 1] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 4.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank3]:[W1020 18:48:40.638723173 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 3 PG GUID d82a5263aec3e448a6be3764efa7aefb8ed376e7 Rank 3] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 4.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank0]:[W1020 18:48:40.643977536 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 3 PG GUID d82a5263aec3e448a6be3764efa7aefb8ed376e7 Rank 0] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 4.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+2026-10-20 18:48:48,564 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 20 additional batches, or 20 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-20 18:50:10,078 - root - INFO - Step 25: {'batch_loss': tensor(1.4734, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.05575611472631389, 'lr': 0.0001}
+2026-10-20 18:50:34,778 - root - INFO - Step 30: {'batch_loss': tensor(1.3439, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2022636513415652, 'lr': 0.0001}
+2026-10-20 18:50:59,287 - root - INFO - Step 35: {'batch_loss': tensor(1.1508, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20399917176697346, 'lr': 0.0001}
+2026-10-20 18:51:23,752 - root - INFO - Step 40: {'batch_loss': tensor(1.1670, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20438935304747485, 'lr': 0.0001}
+2026-10-20 18:51:28,180 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 40 additional batches, or 40 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-20 18:52:55,703 - root - INFO - Step 45: {'batch_loss': tensor(1.0842, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.05438778633359874, 'lr': 0.0001}
+2026-10-20 18:53:20,311 - root - INFO - Step 50: {'batch_loss': tensor(1.0141, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20301820595717762, 'lr': 0.0001}
+2026-10-20 18:53:44,842 - root - INFO - Step 55: {'batch_loss': tensor(0.9269, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20382635494270007, 'lr': 0.0001}
+2026-10-20 18:54:08,832 - root - INFO - Step 60: {'batch_loss': tensor(0.8900, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20843912318153526, 'lr': 0.0001}
+2026-10-20 18:54:11,290 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 60 additional batches, or 60 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-20 18:55:37,786 - root - INFO - Step 65: {'batch_loss': tensor(0.8271, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.056221129982002606, 'lr': 0.0001}
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 18:55:55.688000 714376 torch/distributed/elastic/agent/server/api.py:739] Received 15 death signal, shutting down workers
+W1020 18:55:55.692000 714376 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 714420 closing signal SIGTERM
+W1020 18:55:55.693000 714376 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 714421 closing signal SIGTERM
+W1020 18:55:55.694000 714376 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 714422 closing signal SIGTERM
+W1020 18:55:55.695000 714376 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 714423 closing signal SIGTERM
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+W1020 18:56:25.696000 714376 torch/distributed/elastic/multiprocessing/api.py:1029] Unable to shutdown process 714422 via 15, forcefully exiting via 9
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+    ~~~^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 308, in launch_agent
+    result = agent.run()
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/metrics/api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 731, in run
+    result = self._invoke_run(role)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 908, in _invoke_run
+    time.sleep(monitor_interval)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 714376 got signal: 15
+srun: error: nid002905: task 0: Exited with exit code 1
+srun: Terminating StepId=60063766.23

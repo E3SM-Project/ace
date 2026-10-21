@@ -1,0 +1,183 @@
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+2026-10-20 19:24:05,748 - root - INFO - --------------- Versions ---------------
+2026-10-20 19:24:05,748 - root - INFO - Torch: 2.10.0+cu128
+2026-10-20 19:24:05,748 - root - INFO - ----------------------------------------
+2026-10-20 19:24:05,748 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 19:24:05,748 - root - INFO - Beaker ID: None
+2026-10-20 19:24:05,748 - root - INFO - Beaker URL: No beaker URL.
+2026-10-20 19:24:05,748 - root - WARNING - Environmental variable BEAKER_EXPERIMENT_ID not found.
+2026-10-20 19:24:05,749 - root - INFO - Environmental variable SLURM_JOB_ID=60063766.
+2026-10-20 19:24:05,749 - root - INFO - Environmental variable SLURM_JOB_USER=mahf708.
+2026-10-20 19:24:05,749 - root - WARNING - Environmental variable FME_TRAIN_DIR not found.
+2026-10-20 19:24:05,749 - root - WARNING - Environmental variable FME_VALID_DIR not found.
+2026-10-20 19:24:05,749 - root - WARNING - Environmental variable FME_STATS_DIR not found.
+2026-10-20 19:24:05,749 - root - WARNING - Environmental variable FME_CHECKPOINT_DIR not found.
+2026-10-20 19:24:05,749 - root - WARNING - Environmental variable FME_OUTPUT_DIR not found.
+2026-10-20 19:24:05,749 - root - WARNING - Environmental variable FME_IMAGE not found.
+2026-10-20 19:24:05,749 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 19:24:05,749 - root - INFO - Current device is cuda:0
+2026-10-20 19:24:05,749 - root - INFO - Initializing training data loader
+2026-10-20 19:24:05,750 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 19:24:09,798 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 19:24:09,801 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 19:24:09,819 - root - INFO - The required variables have been found in the dataset: ['PHIS', 'STW_3', 'STW_7', 'V_1', 'T_4', 'frozen_precipitation_rate', 'DTENDTTW', 'U_3', 'V_0', 'STW_2', 'V_6', 'U_0', 'U_4', 'FLUS', 'T_0', 'Uat10m', 'T_6', 'STW_5', 'U_7', 'V_5', 'Tat2m', 'SHFLX', 'T_3', 'LHFLX', 'V_7', 'V_2', 'SOLIN', 'T_7', 'Qat2m', 'TAUX', 'U_5', 'U_2', 'STW_4', 'PS', 'FLDS', 'surface_precipitation_rate', 'OCNFRAC', 'V_4', 'LANDFRAC', 'T_2', 'T_1', 'STW_6', 'V_3', 'FLUT', 'FSUTOA', 'Vat10m', 'STW_0', 'TS', 'U_1', 'TAUY', 'FSNS', 'ICEFRAC', 'STW_1', 'U_6', 'T_5'].
+2026-10-20 19:24:09,832 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:24:09,863 - root - INFO - Subsetting dataset samples according to slice(124, np.int64(360), None).
+2026-10-20 19:24:09,863 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 19:24:09,865 - root - INFO - Initializing validation data loaders
+2026-10-20 19:24:09,865 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 19:24:09,924 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 19:24:09,926 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 19:24:09,943 - root - INFO - The required variables have been found in the dataset: ['PHIS', 'STW_3', 'STW_7', 'V_1', 'T_4', 'frozen_precipitation_rate', 'DTENDTTW', 'U_3', 'V_0', 'STW_2', 'V_6', 'U_0', 'U_4', 'FLUS', 'T_0', 'Uat10m', 'T_6', 'STW_5', 'U_7', 'V_5', 'Tat2m', 'SHFLX', 'T_3', 'LHFLX', 'V_7', 'V_2', 'SOLIN', 'T_7', 'Qat2m', 'TAUX', 'U_5', 'U_2', 'STW_4', 'PS', 'FLDS', 'surface_precipitation_rate', 'OCNFRAC', 'V_4', 'LANDFRAC', 'T_2', 'T_1', 'STW_6', 'V_3', 'FLUT', 'FSUTOA', 'Vat10m', 'STW_0', 'TS', 'U_1', 'TAUY', 'FSNS', 'ICEFRAC', 'STW_1', 'U_6', 'T_5'].
+2026-10-20 19:24:09,956 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 19:24:09,977 - root - INFO - Subsetting dataset samples according to slice(18980, np.int64(20440), 4).
+2026-10-20 19:24:09,977 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 19:24:09,977 - root - INFO - train data: 120 samples, 120 batches
+2026-10-20 19:24:09,978 - root - INFO - train data: pool_size=1, 5 sub-batches per window, coming from the following base loader:
+2026-10-20 19:24:09,978 - root - INFO - train (base loader) data: 24 samples, 24 batches
+2026-10-20 19:24:09,978 - root - INFO - train (base loader) data: first sample's initial time: 0001-02-01 00:00:00
+2026-10-20 19:24:09,978 - root - INFO - train (base loader) data: last sample's initial time: 0001-03-31 18:00:00
+2026-10-20 19:24:09,978 - root - INFO - val data: 183 samples, 183 batches
+2026-10-20 19:24:09,978 - root - INFO - val data: first sample's initial time: 0014-01-01 00:00:00
+2026-10-20 19:24:09,978 - root - INFO - val data: last sample's initial time: 0014-12-31 00:00:00
+2026-10-20 19:24:09,978 - root - INFO - Initializing inline inference data loaders
+2026-10-20 19:24:09,979 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 19:24:10,039 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 19:24:10,042 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 19:24:10,059 - root - INFO - The required variables have been found in the dataset: ['PHIS', 'STW_3', 'STW_7', 'V_1', 'T_4', 'frozen_precipitation_rate', 'DTENDTTW', 'U_3', 'V_0', 'STW_2', 'V_6', 'U_0', 'U_4', 'FLUS', 'T_0', 'Uat10m', 'T_6', 'STW_5', 'U_7', 'V_5', 'Tat2m', 'SHFLX', 'T_3', 'LHFLX', 'V_7', 'V_2', 'SOLIN', 'T_7', 'Qat2m', 'TAUX', 'U_5', 'U_2', 'STW_4', 'PS', 'FLDS', 'surface_precipitation_rate', 'OCNFRAC', 'V_4', 'LANDFRAC', 'T_2', 'T_1', 'STW_6', 'V_3', 'FLUT', 'FSUTOA', 'Vat10m', 'STW_0', 'TS', 'U_1', 'TAUY', 'FSNS', 'ICEFRAC', 'STW_1', 'U_6', 'T_5'].
+2026-10-20 19:24:10,072 - root - INFO - Dataset now has 23340 samples of length 21.
+2026-10-20 19:24:10,072 - root - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 19:24:10,087 - root - INFO - Multiprocessing inference context: fork
+2026-10-20 19:24:59,737 - root - INFO - Starting model initialization
+2026-10-20 19:24:59,738 - root - INFO - Initializing stepper from provided config
+2026-10-20 19:24:59,738 - root - INFO - Initializing stepper from provided config
+2026-10-20 19:25:33,388 - root - INFO - Current device is cuda:0
+2026-10-20 19:25:33,463 - root - INFO - Number of trainable model parameters: 530873088
+2026-10-20 19:25:33,463 - root - INFO - Starting Training Loop...
+2026-10-20 19:25:33,750 - root - INFO - Beginning epoch after 0 complete epochs
+2026-10-20 19:25:33,750 - root - INFO - Starting training step for model trained for 0 complete epochs
+2026-10-20 19:25:33,855 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:25:33,856 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:25:33,856 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:25:33,859 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:25:52,521 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:25:52,521 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:25:52,521 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:25:52,524 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:34:16,574 - root - INFO - Step 100: {'batch_loss': tensor(1.3059, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.19837305653715684, 'lr': 0.0001}
+2026-10-20 19:36:15,660 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:36:15,660 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:36:15,660 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:36:15,682 - root - INFO - Dataset now has 23355 samples of length 6.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 19:38:00.609000 720748 torch/distributed/elastic/agent/server/api.py:739] Received 15 death signal, shutting down workers
+W1020 19:38:00.612000 720748 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 720791 closing signal SIGTERM
+W1020 19:38:00.613000 720748 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 720792 closing signal SIGTERM
+W1020 19:38:00.614000 720748 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 720793 closing signal SIGTERM
+W1020 19:38:00.615000 720748 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 720794 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 19:38:00.787000 743725 torch/distributed/elastic/agent/server/api.py:739] Received 15 death signal, shutting down workers
+W1020 19:38:00.790000 743725 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 743769 closing signal SIGTERM
+W1020 19:38:00.791000 743725 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 743770 closing signal SIGTERM
+W1020 19:38:00.792000 743725 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 743771 closing signal SIGTERM
+W1020 19:38:00.793000 743725 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 743772 closing signal SIGTERM
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+    ~~~^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 308, in launch_agent
+    result = agent.run()
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/metrics/api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 731, in run
+    result = self._invoke_run(role)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 908, in _invoke_run
+    time.sleep(monitor_interval)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 743725 got signal: 15
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+    ~~~^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 308, in launch_agent
+    result = agent.run()
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/metrics/api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 731, in run
+    result = self._invoke_run(role)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 908, in _invoke_run
+    time.sleep(monitor_interval)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 720748 got signal: 15
+srun: error: nid002901: task 0: Exited with exit code 1
+srun: Terminating StepId=60063766.38
+srun: error: nid002904: task 1: Exited with exit code 1

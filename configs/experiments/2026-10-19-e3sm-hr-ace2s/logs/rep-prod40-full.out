@@ -1,0 +1,585 @@
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+2026-10-20 18:46:10,476 - root - INFO - --------------- Versions ---------------
+2026-10-20 18:46:10,477 - root - INFO - Torch: 2.10.0+cu128
+2026-10-20 18:46:10,477 - root - INFO - ----------------------------------------
+2026-10-20 18:46:10,477 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 18:46:10,477 - root - INFO - Beaker ID: None
+2026-10-20 18:46:10,477 - root - INFO - Beaker URL: No beaker URL.
+2026-10-20 18:46:10,477 - root - WARNING - Environmental variable BEAKER_EXPERIMENT_ID not found.
+2026-10-20 18:46:10,477 - root - INFO - Environmental variable SLURM_JOB_ID=60063766.
+2026-10-20 18:46:10,477 - root - INFO - Environmental variable SLURM_JOB_USER=mahf708.
+2026-10-20 18:46:10,477 - root - WARNING - Environmental variable FME_TRAIN_DIR not found.
+2026-10-20 18:46:10,477 - root - WARNING - Environmental variable FME_VALID_DIR not found.
+2026-10-20 18:46:10,477 - root - WARNING - Environmental variable FME_STATS_DIR not found.
+2026-10-20 18:46:10,478 - root - WARNING - Environmental variable FME_CHECKPOINT_DIR not found.
+2026-10-20 18:46:10,478 - root - WARNING - Environmental variable FME_OUTPUT_DIR not found.
+2026-10-20 18:46:10,478 - root - WARNING - Environmental variable FME_IMAGE not found.
+2026-10-20 18:46:10,478 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 18:46:10,478 - root - INFO - Current device is cuda:0
+2026-10-20 18:46:10,478 - root - INFO - Initializing training data loader
+2026-10-20 18:46:10,479 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 18:46:14,501 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 18:46:14,508 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 18:46:14,525 - root - INFO - The required variables have been found in the dataset: ['V_6', 'T_5', 'STW_2', 'STW_6', 'STW_7', 'V_0', 'U_2', 'surface_precipitation_rate', 'T_2', 'STW_0', 'V_5', 'T_0', 'SHFLX', 'LANDFRAC', 'FSNS', 'LHFLX', 'ICEFRAC', 'T_3', 'TAUY', 'U_4', 'U_0', 'V_2', 'FLUS', 'T_6', 'Uat10m', 'U_3', 'U_5', 'TAUX', 'T_1', 'SOLIN', 'PHIS', 'U_1', 'T_7', 'V_4', 'STW_3', 'U_6', 'STW_1', 'FLDS', 'frozen_precipitation_rate', 'Qat2m', 'PS', 'STW_5', 'V_3', 'FLUT', 'DTENDTTW', 'Vat10m', 'STW_4', 'V_1', 'OCNFRAC', 'U_7', 'Tat2m', 'TS', 'FSUTOA', 'V_7', 'T_4'].
+2026-10-20 18:46:14,542 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 18:46:14,570 - root - INFO - Subsetting dataset samples according to slice(124, np.int64(361), None).
+2026-10-20 18:46:14,570 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 18:46:14,575 - root - INFO - Initializing validation data loaders
+2026-10-20 18:46:14,576 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 18:46:14,632 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 18:46:14,634 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 18:46:14,651 - root - INFO - The required variables have been found in the dataset: ['V_6', 'T_5', 'STW_2', 'STW_6', 'STW_7', 'V_0', 'U_2', 'surface_precipitation_rate', 'T_2', 'STW_0', 'V_5', 'T_0', 'SHFLX', 'LANDFRAC', 'FSNS', 'LHFLX', 'ICEFRAC', 'T_3', 'TAUY', 'U_4', 'U_0', 'V_2', 'FLUS', 'T_6', 'Uat10m', 'U_3', 'U_5', 'TAUX', 'T_1', 'SOLIN', 'PHIS', 'U_1', 'T_7', 'V_4', 'STW_3', 'U_6', 'STW_1', 'FLDS', 'frozen_precipitation_rate', 'Qat2m', 'PS', 'STW_5', 'V_3', 'FLUT', 'DTENDTTW', 'Vat10m', 'STW_4', 'V_1', 'OCNFRAC', 'U_7', 'Tat2m', 'TS', 'FSUTOA', 'V_7', 'T_4'].
+2026-10-20 18:46:14,663 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 18:46:14,681 - root - INFO - Subsetting dataset samples according to slice(18980, np.int64(20440), 4).
+2026-10-20 18:46:14,681 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 18:46:14,682 - root - INFO - train data: 120 samples, 120 batches
+2026-10-20 18:46:14,682 - root - INFO - train data: pool_size=1, 5 sub-batches per window, coming from the following base loader:
+2026-10-20 18:46:14,682 - root - INFO - train (base loader) data: 24 samples, 24 batches
+2026-10-20 18:46:14,682 - root - INFO - train (base loader) data: first sample's initial time: 0001-02-01 00:00:00
+2026-10-20 18:46:14,682 - root - INFO - train (base loader) data: last sample's initial time: 0001-03-31 18:00:00
+2026-10-20 18:46:14,682 - root - INFO - val data: 183 samples, 183 batches
+2026-10-20 18:46:14,682 - root - INFO - val data: first sample's initial time: 0014-01-01 00:00:00
+2026-10-20 18:46:14,682 - root - INFO - val data: last sample's initial time: 0014-12-31 00:00:00
+2026-10-20 18:46:14,682 - root - INFO - Initializing inline inference data loaders
+2026-10-20 18:46:14,684 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 18:46:14,739 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 18:46:14,742 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 18:46:14,758 - root - INFO - The required variables have been found in the dataset: ['V_6', 'T_5', 'STW_2', 'STW_6', 'STW_7', 'V_0', 'U_2', 'surface_precipitation_rate', 'T_2', 'STW_0', 'V_5', 'T_0', 'SHFLX', 'LANDFRAC', 'FSNS', 'LHFLX', 'ICEFRAC', 'T_3', 'TAUY', 'U_4', 'U_0', 'V_2', 'FLUS', 'T_6', 'Uat10m', 'U_3', 'U_5', 'TAUX', 'T_1', 'SOLIN', 'PHIS', 'U_1', 'T_7', 'V_4', 'STW_3', 'U_6', 'STW_1', 'FLDS', 'frozen_precipitation_rate', 'Qat2m', 'PS', 'STW_5', 'V_3', 'FLUT', 'DTENDTTW', 'Vat10m', 'STW_4', 'V_1', 'OCNFRAC', 'U_7', 'Tat2m', 'TS', 'FSUTOA', 'V_7', 'T_4'].
+2026-10-20 18:46:14,770 - root - INFO - Dataset now has 23340 samples of length 21.
+2026-10-20 18:46:14,770 - root - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 18:46:14,788 - root - INFO - Multiprocessing inference context: fork
+2026-10-20 18:46:23,898 - root - INFO - Starting model initialization
+2026-10-20 18:46:23,900 - root - INFO - Initializing stepper from provided config
+2026-10-20 18:46:23,900 - root - INFO - Initializing stepper from provided config
+2026-10-20 18:46:55,334 - root - INFO - Current device is cuda:0
+2026-10-20 18:46:55,388 - root - INFO - Number of trainable model parameters: 530873088
+2026-10-20 18:46:55,388 - root - INFO - Starting Training Loop...
+2026-10-20 18:46:55,666 - root - INFO - Beginning epoch after 0 complete epochs
+2026-10-20 18:46:55,666 - root - INFO - Starting training step for model trained for 0 complete epochs
+2026-10-20 18:46:55,717 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 18:46:55,727 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 18:47:03,370 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 18:47:03,386 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 18:55:30,674 - root - INFO - Step 100: {'batch_loss': tensor(1.3059, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.19712240320050153, 'lr': 0.0001}
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 18:55:55.398000 713333 torch/distributed/elastic/agent/server/api.py:739] Received 15 death signal, shutting down workers
+W1020 18:55:55.401000 713333 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 713379 closing signal SIGTERM
+W1020 18:55:55.402000 713333 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 713380 closing signal SIGTERM
+W1020 18:55:55.402000 713333 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 713381 closing signal SIGTERM
+W1020 18:55:55.403000 713333 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 713382 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Main thread reached a loop boundary for termination; draining local device work.
+Main thread parked at a loop boundary for termination.
+Main thread reached a loop boundary for termination; draining local device work.
+Main thread parked at a loop boundary for termination.
+Main thread reached a loop boundary for termination; draining local device work.
+W1020 18:55:55.519000 735477 torch/distributed/elastic/agent/server/api.py:739] Received 15 death signal, shutting down workers
+Main thread parked at a loop boundary for termination.
+Main thread reached a loop boundary for termination; draining local device work.
+W1020 18:55:55.525000 735477 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 735529 closing signal SIGTERM
+Main thread parked at a loop boundary for termination.
+W1020 18:55:55.527000 735477 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 735530 closing signal SIGTERM
+W1020 18:55:55.527000 735477 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 735531 closing signal SIGTERM
+W1020 18:55:55.528000 735477 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 735532 closing signal SIGTERM
+[rank2]: Traceback (most recent call last):
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+[rank2]:     yield
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/distributed.py", line 126, in context
+[rank2]:     yield
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/__main__.py", line 9, in <module>
+[rank2]:     main(args.yaml_config, override_dotlist=args.override)
+[rank2]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/train.py", line 107, in main
+[rank2]:     run_train(config)
+[rank2]:     ~~~~~~~~~^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/train.py", line 91, in run_train
+[rank2]:     trainer.train()
+[rank2]:     ~~~~~~~~~~~~~^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/generics/trainer.py", line 495, in train
+[rank2]:     train_summary = self.train_one_epoch()
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/generics/trainer.py", line 622, in train_one_epoch
+[rank2]:     dist.park_if_terminating()
+[rank2]:     ~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/distributed.py", line 701, in park_if_terminating
+[rank2]:     park_if_terminating()
+[rank2]:     ~~~~~~~~~~~~~~~~~~~^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/shutdown.py", line 251, in park_if_terminating
+[rank2]:     threading.Event().wait()
+[rank2]:     ~~~~~~~~~~~~~~~~~~~~~~^^
+[rank2]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 659, in wait
+[rank2]:     signaled = self._cond.wait(timeout)
+[rank2]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 359, in wait
+[rank2]:     waiter.acquire()
+[rank2]:     ~~~~~~~~~~~~~~^^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank2]:     _error_if_any_worker_fails()
+[rank2]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank2]: RuntimeError: DataLoader worker (pid 735866) is killed by signal: Terminated. 
+
+[rank2]: During handling of the above exception, another exception occurred:
+
+[rank2]: Traceback (most recent call last):
+[rank2]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank2]:   File "<frozen runpy>", line 88, in _run_code
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/__main__.py", line 8, in <module>
+[rank2]:     with Distributed.context():
+[rank2]:          ~~~~~~~~~~~~~~~~~~~^^
+[rank2]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank2]:     self.gen.throw(value)
+[rank2]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/distributed.py", line 118, in context
+[rank2]:     with contextlib.ExitStack() as stack:
+[rank2]:          ~~~~~~~~~~~~~~~~~~~~^^
+[rank2]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 619, in __exit__
+[rank2]:     raise exc
+[rank2]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 604, in __exit__
+[rank2]:     if cb(*exc_details):
+[rank2]:        ~~^^^^^^^^^^^^^^
+[rank2]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank2]:     self.gen.throw(value)
+[rank2]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/shutdown.py", line 487, in abort_and_exit_on_termination
+[rank2]:     listener.block_until_process_exit()
+[rank2]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/_signal_listener.py", line 174, in block_until_process_exit
+[rank2]:     self._thread.join()
+[rank2]:     ~~~~~~~~~~~~~~~~~^^
+[rank2]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 1094, in join
+[rank2]:     self._handle.join(timeout)
+[rank2]:     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank2]:     _error_if_any_worker_fails()
+[rank2]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank2]: RuntimeError: DataLoader worker (pid 735910) is killed by signal: Terminated. 
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+[rank1]:     yield
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/distributed.py", line 126, in context
+[rank1]:     yield
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/__main__.py", line 9, in <module>
+[rank1]:     main(args.yaml_config, override_dotlist=args.override)
+[rank1]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/train.py", line 107, in main
+[rank1]:     run_train(config)
+[rank1]:     ~~~~~~~~~^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/train.py", line 91, in run_train
+[rank1]:     trainer.train()
+[rank1]:     ~~~~~~~~~~~~~^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/generics/trainer.py", line 495, in train
+[rank1]:     train_summary = self.train_one_epoch()
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/generics/trainer.py", line 622, in train_one_epoch
+[rank1]:     dist.park_if_terminating()
+[rank1]:     ~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/distributed.py", line 701, in park_if_terminating
+[rank1]:     park_if_terminating()
+[rank1]:     ~~~~~~~~~~~~~~~~~~~^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/shutdown.py", line 251, in park_if_terminating
+[rank1]:     threading.Event().wait()
+[rank1]:     ~~~~~~~~~~~~~~~~~~~~~~^^
+[rank1]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 659, in wait
+[rank1]:     signaled = self._cond.wait(timeout)
+[rank1]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 359, in wait
+[rank1]:     waiter.acquire()
+[rank1]:     ~~~~~~~~~~~~~~^^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank1]:     _error_if_any_worker_fails()
+[rank1]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank1]: RuntimeError: DataLoader worker (pid 735914) is killed by signal: Terminated. 
+
+[rank1]: During handling of the above exception, another exception occurred:
+
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank1]:   File "<frozen runpy>", line 88, in _run_code
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/__main__.py", line 8, in <module>
+[rank1]:     with Distributed.context():
+[rank1]:          ~~~~~~~~~~~~~~~~~~~^^
+[rank1]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank1]:     self.gen.throw(value)
+[rank1]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/distributed.py", line 118, in context
+[rank1]:     with contextlib.ExitStack() as stack:
+[rank1]:          ~~~~~~~~~~~~~~~~~~~~^^
+[rank1]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 619, in __exit__
+[rank1]:     raise exc
+[rank1]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 604, in __exit__
+[rank1]:     if cb(*exc_details):
+[rank1]:        ~~^^^^^^^^^^^^^^
+[rank1]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank1]:     self.gen.throw(value)
+[rank1]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/shutdown.py", line 487, in abort_and_exit_on_termination
+[rank1]:     listener.block_until_process_exit()
+[rank1]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/_signal_listener.py", line 174, in block_until_process_exit
+[rank1]:     self._thread.join()
+[rank1]:     ~~~~~~~~~~~~~~~~~^^
+[rank1]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 1094, in join
+[rank1]:     self._handle.join(timeout)
+[rank1]:     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank1]:     _error_if_any_worker_fails()
+[rank1]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank1]: RuntimeError: DataLoader worker (pid 735872) is killed by signal: Terminated. 
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+[rank3]:     yield
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/distributed.py", line 126, in context
+[rank3]:     yield
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/__main__.py", line 9, in <module>
+[rank3]:     main(args.yaml_config, override_dotlist=args.override)
+[rank3]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/train.py", line 107, in main
+[rank3]:     run_train(config)
+[rank3]:     ~~~~~~~~~^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/train.py", line 91, in run_train
+[rank3]:     trainer.train()
+[rank3]:     ~~~~~~~~~~~~~^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/generics/trainer.py", line 495, in train
+[rank3]:     train_summary = self.train_one_epoch()
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/generics/trainer.py", line 622, in train_one_epoch
+[rank3]:     dist.park_if_terminating()
+[rank3]:     ~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/distributed.py", line 701, in park_if_terminating
+[rank3]:     park_if_terminating()
+[rank3]:     ~~~~~~~~~~~~~~~~~~~^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/shutdown.py", line 251, in park_if_terminating
+[rank3]:     threading.Event().wait()
+[rank3]:     ~~~~~~~~~~~~~~~~~~~~~~^^
+[rank3]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 659, in wait
+[rank3]:     signaled = self._cond.wait(timeout)
+[rank3]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 359, in wait
+[rank3]:     waiter.acquire()
+[rank3]:     ~~~~~~~~~~~~~~^^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank3]:     _error_if_any_worker_fails()
+[rank3]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank3]: RuntimeError: DataLoader worker (pid 735861) is killed by signal: Terminated. 
+
+[rank3]: During handling of the above exception, another exception occurred:
+
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank3]:   File "<frozen runpy>", line 88, in _run_code
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/__main__.py", line 8, in <module>
+[rank3]:     with Distributed.context():
+[rank3]:          ~~~~~~~~~~~~~~~~~~~^^
+[rank3]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank3]:     self.gen.throw(value)
+[rank3]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/distributed.py", line 118, in context
+[rank3]:     with contextlib.ExitStack() as stack:
+[rank3]:          ~~~~~~~~~~~~~~~~~~~~^^
+[rank3]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 619, in __exit__
+[rank3]:     raise exc
+[rank3]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 604, in __exit__
+[rank3]:     if cb(*exc_details):
+[rank3]:        ~~^^^^^^^^^^^^^^
+[rank3]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank3]:     self.gen.throw(value)
+[rank3]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/shutdown.py", line 487, in abort_and_exit_on_termination
+[rank3]:     listener.block_until_process_exit()
+[rank3]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/_signal_listener.py", line 174, in block_until_process_exit
+[rank3]:     self._thread.join()
+[rank3]:     ~~~~~~~~~~~~~~~~~^^
+[rank3]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 1094, in join
+[rank3]:     self._handle.join(timeout)
+[rank3]:     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank3]:     _error_if_any_worker_fails()
+[rank3]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank3]: RuntimeError: DataLoader worker (pid 735908) is killed by signal: Terminated. 
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+[rank0]:     yield
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/distributed.py", line 126, in context
+[rank0]:     yield
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/__main__.py", line 9, in <module>
+[rank0]:     main(args.yaml_config, override_dotlist=args.override)
+[rank0]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/train.py", line 107, in main
+[rank0]:     run_train(config)
+[rank0]:     ~~~~~~~~~^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/train.py", line 91, in run_train
+[rank0]:     trainer.train()
+[rank0]:     ~~~~~~~~~~~~~^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/generics/trainer.py", line 495, in train
+[rank0]:     train_summary = self.train_one_epoch()
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/generics/trainer.py", line 622, in train_one_epoch
+[rank0]:     dist.park_if_terminating()
+[rank0]:     ~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/distributed.py", line 701, in park_if_terminating
+[rank0]:     park_if_terminating()
+[rank0]:     ~~~~~~~~~~~~~~~~~~~^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/shutdown.py", line 251, in park_if_terminating
+[rank0]:     threading.Event().wait()
+[rank0]:     ~~~~~~~~~~~~~~~~~~~~~~^^
+[rank0]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 659, in wait
+[rank0]:     signaled = self._cond.wait(timeout)
+[rank0]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 359, in wait
+[rank0]:     waiter.acquire()
+[rank0]:     ~~~~~~~~~~~~~~^^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank0]:     _error_if_any_worker_fails()
+[rank0]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank0]: RuntimeError: DataLoader worker (pid 735856) is killed by signal: Terminated. 
+
+[rank0]: During handling of the above exception, another exception occurred:
+
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank0]:   File "<frozen runpy>", line 88, in _run_code
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/ace/train/__main__.py", line 8, in <module>
+[rank0]:     with Distributed.context():
+[rank0]:          ~~~~~~~~~~~~~~~~~~~^^
+[rank0]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank0]:     self.gen.throw(value)
+[rank0]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/distributed.py", line 118, in context
+[rank0]:     with contextlib.ExitStack() as stack:
+[rank0]:          ~~~~~~~~~~~~~~~~~~~~^^
+[rank0]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 619, in __exit__
+[rank0]:     raise exc
+[rank0]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 604, in __exit__
+[rank0]:     if cb(*exc_details):
+[rank0]:        ~~^^^^^^^^^^^^^^
+[rank0]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank0]:     self.gen.throw(value)
+[rank0]:     ~~~~~~~~~~~~~~^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/shutdown.py", line 487, in abort_and_exit_on_termination
+[rank0]:     listener.block_until_process_exit()
+[rank0]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/6e504e325/fme/core/distributed/_signal_listener.py", line 174, in block_until_process_exit
+[rank0]:     self._thread.join()
+[rank0]:     ~~~~~~~~~~~~~~~~~^^
+[rank0]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 1094, in join
+[rank0]:     self._handle.join(timeout)
+[rank0]:     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank0]:     _error_if_any_worker_fails()
+[rank0]:     ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank0]: RuntimeError: DataLoader worker (pid 735911) is killed by signal: Terminated. 
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+    ~~~^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 308, in launch_agent
+    result = agent.run()
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/metrics/api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 731, in run
+    result = self._invoke_run(role)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 908, in _invoke_run
+    time.sleep(monitor_interval)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 735477 got signal: 15
+[rank6]:[W1020 18:56:02.572581679 TCPStore.cpp:125] [c10d] recvValue failed on SocketImpl(fd=46, addr=[nid002904-hsn0]:53414, remote=[nid002901-hsn0]:37095): Failed to recv, got 0 bytes. Connection was likely closed. Did the remote server shutdown or crash?
+Exception raised from recvBytes at /pytorch/torch/csrc/distributed/c10d/Utils.hpp:682 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7fc8da972fdd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0x6a3325d (0x7fc80037f25d in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #2: c10d::TCPStore::check(std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > const&) + 0x273 (0x7fc80037d1f3 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #3: c10d::ProcessGroupNCCL::HeartbeatMonitor::runLoop() + 0x44c (0x7fc7bd45feec in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cuda.so)
+frame #4: <unknown function> + 0xeef64 (0x7fc89b288f64 in /usr/lib64/libstdc++.so.6)
+frame #5: <unknown function> + 0xa644c (0x7fc8db65144c in /lib64/libc.so.6)
+frame #6: <unknown function> + 0x12d898 (0x7fc8db6d8898 in /lib64/libc.so.6)
+
+[rank4]:[W1020 18:56:02.572608852 TCPStore.cpp:125] [c10d] recvValue failed on SocketImpl(fd=46, addr=[nid002904-hsn0]:53436, remote=[nid002901-hsn0]:37095): Failed to recv, got 0 bytes. Connection was likely closed. Did the remote server shutdown or crash?
+Exception raised from recvBytes at /pytorch/torch/csrc/distributed/c10d/Utils.hpp:682 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7fa4551c6fdd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0x6a3325d (0x7fa3b2b7f25d in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #2: c10d::TCPStore::check(std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > const&) + 0x273 (0x7fa3b2b7d1f3 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #3: c10d::ProcessGroupNCCL::HeartbeatMonitor::runLoop() + 0x44c (0x7fa36fc5feec in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cuda.so)
+frame #4: <unknown function> + 0xeef64 (0x7fa44da88f64 in /usr/lib64/libstdc++.so.6)
+frame #5: <unknown function> + 0xa644c (0x7fa48dd5b44c in /lib64/libc.so.6)
+frame #6: <unknown function> + 0x12d898 (0x7fa48dde2898 in /lib64/libc.so.6)
+
+[rank5]:[W1020 18:56:02.572578523 TCPStore.cpp:125] [c10d] recvValue failed on SocketImpl(fd=46, addr=[nid002904-hsn0]:53430, remote=[nid002901-hsn0]:37095): Failed to recv, got 0 bytes. Connection was likely closed. Did the remote server shutdown or crash?
+Exception raised from recvBytes at /pytorch/torch/csrc/distributed/c10d/Utils.hpp:682 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7faa3cd72fdd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0x6a3325d (0x7fa96277f25d in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #2: c10d::TCPStore::check(std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > const&) + 0x273 (0x7fa96277d1f3 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #3: c10d::ProcessGroupNCCL::HeartbeatMonitor::runLoop() + 0x44c (0x7fa91f85feec in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cuda.so)
+frame #4: <unknown function> + 0xeef64 (0x7fa9fd688f64 in /usr/lib64/libstdc++.so.6)
+frame #5: <unknown function> + 0xa644c (0x7faa3da6344c in /lib64/libc.so.6)
+frame #6: <unknown function> + 0x12d898 (0x7faa3daea898 in /lib64/libc.so.6)
+
+[rank6]:[W1020 18:56:02.575174269 ProcessGroupNCCL.cpp:1802] [PG ID 0 PG GUID 0(default_pg) Rank 6] Failed to check the "should dump" flag on TCPStore, (maybe TCPStore server has shut down too early), with error: Failed to recv, got 0 bytes. Connection was likely closed. Did the remote server shutdown or crash?
+[rank5]:[W1020 18:56:02.575177345 ProcessGroupNCCL.cpp:1802] [PG ID 0 PG GUID 0(default_pg) Rank 5] Failed to check the "should dump" flag on TCPStore, (maybe TCPStore server has shut down too early), with error: Failed to recv, got 0 bytes. Connection was likely closed. Did the remote server shutdown or crash?
+[rank4]:[W1020 18:56:02.575185772 ProcessGroupNCCL.cpp:1802] [PG ID 0 PG GUID 0(default_pg) Rank 4] Failed to check the "should dump" flag on TCPStore, (maybe TCPStore server has shut down too early), with error: Failed to recv, got 0 bytes. Connection was likely closed. Did the remote server shutdown or crash?
+[rank7]:[W1020 18:56:02.575131647 TCPStore.cpp:125] [c10d] recvValue failed on SocketImpl(fd=46, addr=[nid002904-hsn0]:53444, remote=[nid002901-hsn0]:37095): Failed to recv, got 0 bytes. Connection was likely closed. Did the remote server shutdown or crash?
+Exception raised from recvBytes at /pytorch/torch/csrc/distributed/c10d/Utils.hpp:682 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7fe5474ddfdd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0x6a3325d (0x7fe46cf7f25d in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #2: c10d::TCPStore::check(std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > const&) + 0x273 (0x7fe46cf7d1f3 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #3: c10d::ProcessGroupNCCL::HeartbeatMonitor::runLoop() + 0x44c (0x7fe42a05feec in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cuda.so)
+frame #4: <unknown function> + 0xeef64 (0x7fe507e88f64 in /usr/lib64/libstdc++.so.6)
+frame #5: <unknown function> + 0xa644c (0x7fe5481a144c in /lib64/libc.so.6)
+frame #6: <unknown function> + 0x12d898 (0x7fe548228898 in /lib64/libc.so.6)
+
+[rank7]:[W1020 18:56:02.577158289 ProcessGroupNCCL.cpp:1802] [PG ID 0 PG GUID 0(default_pg) Rank 7] Failed to check the "should dump" flag on TCPStore, (maybe TCPStore server has shut down too early), with error: Failed to recv, got 0 bytes. Connection was likely closed. Did the remote server shutdown or crash?
+srun: error: nid002901: task 0: Exited with exit code 1
+srun: Terminating StepId=60063766.22
+[rank5]:[W1020 18:56:03.575294596 TCPStore.cpp:106] [c10d] sendBytes failed on SocketImpl(fd=46, addr=[nid002904-hsn0]:53430, remote=[nid002901-hsn0]:37095): Broken pipe
+Exception raised from sendBytes at /pytorch/torch/csrc/distributed/c10d/Utils.hpp:653 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7faa3cd72fdd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0x6a326d1 (0x7fa96277e6d1 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #2: c10d::TCPStore::check(std::vector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, std::allocator<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > const&) + 0x24d (0x7fa96277d1cd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #3: c10d::ProcessGroupNCCL::HeartbeatMonitor::runLoop() + 0x44c (0x7fa91f85feec in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cuda.so)
+frame #4: <unknown function> + 0xeef64 (0x7fa9fd688f64 in /usr/lib64/libstdc++.so.6)
+frame #5: <unknown function> + 0xa644c (0x7faa3da6344c in /lib64/libc.so.6)
+frame #6: <unknown function> + 0x12d898 (0x7faa3daea898 in /lib64/libc.so.6)
+
+[rank5]:[W1020 18:56:03.576927705 ProcessGroupNCCL.cpp:1802] [PG ID 0 PG GUID 0(default_pg) Rank 5] Failed to check the "should dump" flag on TCPStore, (maybe TCPStore server has shut down too early), with error: Broken pipe
+W1020 18:56:04.150000 713333 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 713379 closing signal SIGTERM
+W1020 18:56:04.151000 713333 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 713380 closing signal SIGTERM
+W1020 18:56:04.151000 713333 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 713381 closing signal SIGTERM
+W1020 18:56:04.152000 713333 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 713382 closing signal SIGTERM
+[W1020 18:56:04.866051404 TCPStore.cpp:138] [c10d] recvValueWithTimeout failed on SocketImpl(fd=47, addr=[nid002904-hsn0]:42292, remote=[nid002901-hsn0]:29992): Failed to recv, got 0 bytes. Connection was likely closed. Did the remote server shutdown or crash?
+Exception raised from recvBytes at /pytorch/torch/csrc/distributed/c10d/Utils.hpp:682 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7faaa61c6fdd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0x6a334ed (0x7faa03b7f4ed in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #2: c10d::TCPStore::doWait(c10::ArrayRef<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::chrono::duration<long, std::ratio<1l, 1000l> >) + 0x16b (0x7faa03b7919b in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #3: c10d::TCPStore::doGet(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) + 0x2a (0x7faa03b7962a in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #4: c10d::TCPStore::get(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) + 0x112 (0x7faa03b797c2 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #5: <unknown function> + 0xeb7f36 (0x7faa1346df36 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_python.so)
+frame #6: <unknown function> + 0x40fad0 (0x7faa129c5ad0 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_python.so)
+frame #7: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16179b8]
+frame #8: _PyObject_MakeTpCall + 0x118 (0x1662218 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #9: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x193feb1]
+frame #10: _PyEval_EvalFrameDefault + 0xf2c9 (0x16296c9 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #11: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x160572a]
+frame #12: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x17f8990]
+frame #13: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x17f88f5]
+frame #14: <unknown function> + 0xa644c (0x7faaded9244c in /lib64/libc.so.6)
+frame #15: <unknown function> + 0x12d898 (0x7faadee19898 in /lib64/libc.so.6)
+
+W1020 18:56:04.992000 713333 torch/distributed/elastic/rendezvous/dynamic_rendezvous.py:1341] The node 'nid002904-hsn0_713333_0' has failed to send a keep-alive heartbeat to the rendezvous 'train29992' due to an error of type RendezvousConnectionError.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+[W1020 18:56:09.873912875 TCPStore.cpp:106] [c10d] sendBytes failed on SocketImpl(fd=47, addr=[nid002904-hsn0]:42292, remote=[nid002901-hsn0]:29992): Broken pipe
+Exception raised from sendBytes at /pytorch/torch/csrc/distributed/c10d/Utils.hpp:653 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7faaa61c6fdd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0x6a326d1 (0x7faa03b7e6d1 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #2: <unknown function> + 0x6a3377c (0x7faa03b7f77c in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #3: <unknown function> + 0x6a338dd (0x7faa03b7f8dd in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #4: c10d::TCPStore::doWait(c10::ArrayRef<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::chrono::duration<long, std::ratio<1l, 1000l> >) + 0xc8 (0x7faa03b790f8 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #5: c10d::TCPStore::doGet(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) + 0x2a (0x7faa03b7962a in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #6: c10d::TCPStore::get(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) + 0x112 (0x7faa03b797c2 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_cpu.so)
+frame #7: <unknown function> + 0xeb7f36 (0x7faa1346df36 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_python.so)
+frame #8: <unknown function> + 0x40fad0 (0x7faa129c5ad0 in /pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/lib/libtorch_python.so)
+frame #9: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x16179b8]
+frame #10: _PyObject_MakeTpCall + 0x118 (0x1662218 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #11: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x193feb1]
+frame #12: _PyEval_EvalFrameDefault + 0xf2c9 (0x16296c9 in /pscratch/sd/m/mahf708/ace/.venv/bin/python3)
+frame #13: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x160572a]
+frame #14: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x17f8990]
+frame #15: /pscratch/sd/m/mahf708/ace/.venv/bin/python3() [0x17f88f5]
+frame #16: <unknown function> + 0xa644c (0x7faaded9244c in /lib64/libc.so.6)
+frame #17: <unknown function> + 0x12d898 (0x7faadee19898 in /lib64/libc.so.6)
+
+W1020 18:56:10.007000 713333 torch/distributed/elastic/rendezvous/dynamic_rendezvous.py:1341] The node 'nid002904-hsn0_713333_0' has failed to send a keep-alive heartbeat to the rendezvous 'train29992' due to an error of type RendezvousConnectionError.
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 731, in run
+    result = self._invoke_run(role)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 908, in _invoke_run
+    time.sleep(monitor_interval)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 713333 got signal: 15
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+    ~~~^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 308, in launch_agent
+    result = agent.run()
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/metrics/api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 740, in run
+    self._shutdown(e.sigval)
+    ~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/local_elastic_agent.py", line 413, in _shutdown
+    self._pcontext.close(death_sig)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 659, in close
+    self._close(death_sig=death_sig, timeout=timeout)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 1022, in _close
+    handler.proc.wait(time_to_wait)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/subprocess.py", line 1280, in wait
+    return self._wait(timeout=timeout)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/subprocess.py", line 2060, in _wait
+    time.sleep(delay)
+    ~~~~~~~~~~^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 713333 got signal: 15
+srun: error: nid002904: task 1: Exited with exit code 1

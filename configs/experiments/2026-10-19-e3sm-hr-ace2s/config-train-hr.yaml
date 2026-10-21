@@ -7,16 +7,21 @@
 # parameters (1.7 B in the per-mode spectral weights, which scale with lmax=720,
 # and 0.4 B in the positional embedding) and DOES NOT FIT on one A100-80GB at
 # any batch size -- see README.md "Memory". It is trained with the spatial
-# backend:
+# backend, 4x1 tiles per node (one sample split over the node's 4 GPUs by
+# latitude band; notes/comm-and-memory.md), with parameters and optimizer
+# state sharded over the tiles (both flags below):
 #
-#   FME_DISTRIBUTED_BACKEND=model FME_DISTRIBUTED_H=2 FME_DISTRIBUTED_W=2
+#   FME_DISTRIBUTED_BACKEND=model FME_DISTRIBUTED_H=4 FME_DISTRIBUTED_W=1
 #
-# so each sample is split over a 2x2 tile grid of 4 GPUs (one node), and
-# `batch_size` is divided over the DATA-parallel ranks only (world / (H*W)).
-# On N nodes with 2x2 tiles there are N data-parallel ranks, so batch_size
-# must be a multiple of N; this file is written for local batch 1:
+# `batch_size` is divided over the DATA-parallel ranks only (world / (H*W)),
+# i.e. one replica per node. On 40 GB cards a replica holds one sample, so
 #
-#     batch_size = n_nodes   (2x2 tiles, 4 GPUs/node)
+#     batch_size = n_nodes   (scripts/sbatch-train-hr.sh sets it)
+#
+# and the global batch, hence the optimization, depends on the node count:
+# keep N fixed for a run. The inline inference splits its 8 ICs over the
+# replicas: N must divide 8, and on 40 GB at most 2 ICs per replica fit, so
+# N is 4 or 8 with this file (16 nodes needs 16 ICs).
 #
 # Data: the raw EAM history files, one per month, 124 6-hourly snapshots each
 # (73.5 GB), read directly. Same three E3SM-vs-FME fixes as the LR campaign:

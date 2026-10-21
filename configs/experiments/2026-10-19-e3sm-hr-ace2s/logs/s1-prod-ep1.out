@@ -1,0 +1,347 @@
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+2026-10-20 19:00:37,599 - root - INFO - --------------- Versions ---------------
+2026-10-20 19:00:37,600 - root - INFO - Torch: 2.10.0+cu128
+2026-10-20 19:00:37,600 - root - INFO - ----------------------------------------
+2026-10-20 19:00:37,600 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 19:00:37,600 - root - INFO - Beaker ID: None
+2026-10-20 19:00:37,600 - root - INFO - Beaker URL: No beaker URL.
+2026-10-20 19:00:37,600 - root - WARNING - Environmental variable BEAKER_EXPERIMENT_ID not found.
+2026-10-20 19:00:37,600 - root - INFO - Environmental variable SLURM_JOB_ID=60063766.
+2026-10-20 19:00:37,601 - root - INFO - Environmental variable SLURM_JOB_USER=mahf708.
+2026-10-20 19:00:37,601 - root - WARNING - Environmental variable FME_TRAIN_DIR not found.
+2026-10-20 19:00:37,601 - root - WARNING - Environmental variable FME_VALID_DIR not found.
+2026-10-20 19:00:37,601 - root - WARNING - Environmental variable FME_STATS_DIR not found.
+2026-10-20 19:00:37,601 - root - WARNING - Environmental variable FME_CHECKPOINT_DIR not found.
+2026-10-20 19:00:37,601 - root - WARNING - Environmental variable FME_OUTPUT_DIR not found.
+2026-10-20 19:00:37,601 - root - WARNING - Environmental variable FME_IMAGE not found.
+2026-10-20 19:00:37,601 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 19:00:37,601 - root - INFO - Current device is cuda:0
+2026-10-20 19:00:37,601 - root - INFO - Initializing training data loader
+2026-10-20 19:00:37,602 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 19:00:41,676 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 19:00:41,680 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 19:00:41,697 - root - INFO - The required variables have been found in the dataset: ['T_5', 'Uat10m', 'FLUS', 'DTENDTTW', 'U_5', 'Vat10m', 'PHIS', 'U_2', 'V_6', 'T_6', 'U_0', 'SOLIN', 'STW_7', 'V_3', 'TS', 'LANDFRAC', 'STW_6', 'surface_precipitation_rate', 'frozen_precipitation_rate', 'FSUTOA', 'V_0', 'V_7', 'STW_5', 'T_0', 'PS', 'T_4', 'V_1', 'FLUT', 'V_4', 'ICEFRAC', 'U_4', 'OCNFRAC', 'T_1', 'STW_4', 'V_2', 'SHFLX', 'FSNS', 'TAUY', 'STW_1', 'LHFLX', 'TAUX', 'STW_3', 'Tat2m', 'STW_0', 'U_1', 'FLDS', 'Qat2m', 'T_3', 'T_2', 'U_3', 'T_7', 'STW_2', 'U_7', 'V_5', 'U_6'].
+2026-10-20 19:00:41,712 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:00:41,740 - root - INFO - Subsetting dataset samples according to slice(124, np.int64(18980), None).
+2026-10-20 19:00:41,741 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 19:00:41,806 - root - INFO - Initializing validation data loaders
+2026-10-20 19:00:41,807 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 19:00:41,865 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 19:00:41,867 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 19:00:41,883 - root - INFO - The required variables have been found in the dataset: ['T_5', 'Uat10m', 'FLUS', 'DTENDTTW', 'U_5', 'Vat10m', 'PHIS', 'U_2', 'V_6', 'T_6', 'U_0', 'SOLIN', 'STW_7', 'V_3', 'TS', 'LANDFRAC', 'STW_6', 'surface_precipitation_rate', 'frozen_precipitation_rate', 'FSUTOA', 'V_0', 'V_7', 'STW_5', 'T_0', 'PS', 'T_4', 'V_1', 'FLUT', 'V_4', 'ICEFRAC', 'U_4', 'OCNFRAC', 'T_1', 'STW_4', 'V_2', 'SHFLX', 'FSNS', 'TAUY', 'STW_1', 'LHFLX', 'TAUX', 'STW_3', 'Tat2m', 'STW_0', 'U_1', 'FLDS', 'Qat2m', 'T_3', 'T_2', 'U_3', 'T_7', 'STW_2', 'U_7', 'V_5', 'U_6'].
+2026-10-20 19:00:41,895 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 19:00:41,915 - root - INFO - Subsetting dataset samples according to slice(18980, np.int64(20440), 4).
+2026-10-20 19:00:41,915 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 19:00:41,916 - root - INFO - train data: 18860 samples, 18860 batches
+2026-10-20 19:00:41,916 - root - INFO - train data: pool_size=1, 5 sub-batches per window, coming from the following base loader:
+2026-10-20 19:00:41,916 - root - INFO - train (base loader) data: 3772 samples, 3772 batches
+2026-10-20 19:00:41,916 - root - INFO - train (base loader) data: first sample's initial time: 0001-02-01 00:00:00
+2026-10-20 19:00:41,916 - root - INFO - train (base loader) data: last sample's initial time: 0013-12-31 18:00:00
+2026-10-20 19:00:41,916 - root - INFO - val data: 365 samples, 365 batches
+2026-10-20 19:00:41,917 - root - INFO - val data: first sample's initial time: 0014-01-01 00:00:00
+2026-10-20 19:00:41,917 - root - INFO - val data: last sample's initial time: 0014-12-31 00:00:00
+2026-10-20 19:00:41,917 - root - INFO - Initializing inline inference data loaders
+2026-10-20 19:00:41,918 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 19:00:41,976 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 19:00:41,979 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 19:00:41,996 - root - INFO - The required variables have been found in the dataset: ['T_5', 'Uat10m', 'FLUS', 'DTENDTTW', 'U_5', 'Vat10m', 'PHIS', 'U_2', 'V_6', 'T_6', 'U_0', 'SOLIN', 'STW_7', 'V_3', 'TS', 'LANDFRAC', 'STW_6', 'surface_precipitation_rate', 'frozen_precipitation_rate', 'FSUTOA', 'V_0', 'V_7', 'STW_5', 'T_0', 'PS', 'T_4', 'V_1', 'FLUT', 'V_4', 'ICEFRAC', 'U_4', 'OCNFRAC', 'T_1', 'STW_4', 'V_2', 'SHFLX', 'FSNS', 'TAUY', 'STW_1', 'LHFLX', 'TAUX', 'STW_3', 'Tat2m', 'STW_0', 'U_1', 'FLDS', 'Qat2m', 'T_3', 'T_2', 'U_3', 'T_7', 'STW_2', 'U_7', 'V_5', 'U_6'].
+2026-10-20 19:00:42,009 - root - INFO - Dataset now has 23340 samples of length 21.
+2026-10-20 19:00:42,009 - root - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 19:00:42,024 - root - INFO - Multiprocessing inference context: fork
+2026-10-20 19:02:13,508 - root - INFO - Starting model initialization
+2026-10-20 19:02:13,510 - root - INFO - Initializing stepper from provided config
+2026-10-20 19:02:13,510 - root - INFO - Initializing stepper from provided config
+2026-10-20 19:02:55,869 - root - INFO - Current device is cuda:0
+2026-10-20 19:02:55,919 - root - INFO - Number of trainable model parameters: 530873088
+2026-10-20 19:02:55,919 - root - INFO - Starting Training Loop...
+2026-10-20 19:02:56,253 - root - INFO - Beginning epoch after 0 complete epochs
+2026-10-20 19:02:56,253 - root - INFO - Starting training step for model trained for 0 complete epochs
+2026-10-20 19:02:56,413 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:02:56,413 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:02:56,414 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:02:56,415 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:03:13,635 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:03:13,635 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:03:13,635 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:03:13,640 - root - INFO - Dataset now has 23355 samples of length 6.
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank0]:   File "<frozen runpy>", line 88, in _run_code
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/train/__main__.py", line 9, in <module>
+[rank0]:     main(args.yaml_config, override_dotlist=args.override)
+[rank0]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/train/train.py", line 107, in main
+[rank0]:     run_train(config)
+[rank0]:     ~~~~~~~~~^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/train/train.py", line 91, in run_train
+[rank0]:     trainer.train()
+[rank0]:     ~~~~~~~~~~~~~^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/generics/trainer.py", line 495, in train
+[rank0]:     train_summary = self.train_one_epoch()
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/generics/trainer.py", line 624, in train_one_epoch
+[rank0]:     stepped = self.stepper.train_on_batch(batch, self.optimization)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/stepper/single_module.py", line 1740, in train_on_batch
+[rank0]:     optimization.step_weights()
+[rank0]:     ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/optimization.py", line 346, in step_weights
+[rank0]:     self._backward(self._accumulated_loss)
+[rank0]:     ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/optimization.py", line 290, in _backward
+[rank0]:     loss.backward()
+[rank0]:     ~~~~~~~~~~~~~^^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_tensor.py", line 630, in backward
+[rank0]:     torch.autograd.backward(
+[rank0]:     ~~~~~~~~~~~~~~~~~~~~~~~^
+[rank0]:         self, gradient, retain_graph, create_graph, inputs=inputs
+[rank0]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:     )
+[rank0]:     ^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/autograd/__init__.py", line 364, in backward
+[rank0]:     _engine_run_backward(
+[rank0]:     ~~~~~~~~~~~~~~~~~~~~^
+[rank0]:         tensors,
+[rank0]:         ^^^^^^^^
+[rank0]:     ...<5 lines>...
+[rank0]:         accumulate_grad=True,
+[rank0]:         ^^^^^^^^^^^^^^^^^^^^^
+[rank0]:     )
+[rank0]:     ^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/autograd/graph.py", line 865, in _engine_run_backward
+[rank0]:     return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+[rank0]:            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:         t_outputs, *args, **kwargs
+[rank0]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:     )  # Calls into the C++ engine to run the backward pass
+[rank0]:     ^
+[rank0]: torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 760.00 MiB. GPU 0 has a total capacity of 39.49 GiB of which 368.25 MiB is free. Including non-PyTorch memory, this process has 39.07 GiB memory in use. Of the allocated memory 36.08 GiB is allocated by PyTorch, and 338.94 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank1]:   File "<frozen runpy>", line 88, in _run_code
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/train/__main__.py", line 9, in <module>
+[rank1]:     main(args.yaml_config, override_dotlist=args.override)
+[rank1]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/train/train.py", line 107, in main
+[rank1]:     run_train(config)
+[rank1]:     ~~~~~~~~~^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/train/train.py", line 91, in run_train
+[rank1]:     trainer.train()
+[rank1]:     ~~~~~~~~~~~~~^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/generics/trainer.py", line 495, in train
+[rank1]:     train_summary = self.train_one_epoch()
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/generics/trainer.py", line 624, in train_one_epoch
+[rank1]:     stepped = self.stepper.train_on_batch(batch, self.optimization)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/stepper/single_module.py", line 1740, in train_on_batch
+[rank1]:     optimization.step_weights()
+[rank1]:     ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/optimization.py", line 346, in step_weights
+[rank1]:     self._backward(self._accumulated_loss)
+[rank1]:     ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/optimization.py", line 290, in _backward
+[rank1]:     loss.backward()
+[rank1]:     ~~~~~~~~~~~~~^^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_tensor.py", line 630, in backward
+[rank1]:     torch.autograd.backward(
+[rank1]:     ~~~~~~~~~~~~~~~~~~~~~~~^
+[rank1]:         self, gradient, retain_graph, create_graph, inputs=inputs
+[rank1]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank1]:     )
+[rank1]:     ^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/autograd/__init__.py", line 364, in backward
+[rank1]:     _engine_run_backward(
+[rank1]:     ~~~~~~~~~~~~~~~~~~~~^
+[rank1]:         tensors,
+[rank1]:         ^^^^^^^^
+[rank1]:     ...<5 lines>...
+[rank1]:         accumulate_grad=True,
+[rank1]:         ^^^^^^^^^^^^^^^^^^^^^
+[rank1]:     )
+[rank1]:     ^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/autograd/graph.py", line 865, in _engine_run_backward
+[rank1]:     return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+[rank1]:            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank1]:         t_outputs, *args, **kwargs
+[rank1]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank1]:     )  # Calls into the C++ engine to run the backward pass
+[rank1]:     ^
+[rank1]: torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 760.00 MiB. GPU 1 has a total capacity of 39.49 GiB of which 366.25 MiB is free. Including non-PyTorch memory, this process has 39.07 GiB memory in use. Of the allocated memory 36.08 GiB is allocated by PyTorch, and 338.94 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank3]:   File "<frozen runpy>", line 88, in _run_code
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/train/__main__.py", line 9, in <module>
+[rank3]:     main(args.yaml_config, override_dotlist=args.override)
+[rank3]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/train/train.py", line 107, in main
+[rank3]:     run_train(config)
+[rank3]:     ~~~~~~~~~^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/train/train.py", line 91, in run_train
+[rank3]:     trainer.train()
+[rank3]:     ~~~~~~~~~~~~~^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/generics/trainer.py", line 495, in train
+[rank3]:     train_summary = self.train_one_epoch()
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/generics/trainer.py", line 624, in train_one_epoch
+[rank3]:     stepped = self.stepper.train_on_batch(batch, self.optimization)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/stepper/single_module.py", line 1740, in train_on_batch
+[rank3]:     optimization.step_weights()
+[rank3]:     ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/optimization.py", line 346, in step_weights
+[rank3]:     self._backward(self._accumulated_loss)
+[rank3]:     ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/optimization.py", line 290, in _backward
+[rank3]:     loss.backward()
+[rank3]:     ~~~~~~~~~~~~~^^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_tensor.py", line 630, in backward
+[rank3]:     torch.autograd.backward(
+[rank3]:     ~~~~~~~~~~~~~~~~~~~~~~~^
+[rank3]:         self, gradient, retain_graph, create_graph, inputs=inputs
+[rank3]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank3]:     )
+[rank3]:     ^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/autograd/__init__.py", line 364, in backward
+[rank3]:     _engine_run_backward(
+[rank3]:     ~~~~~~~~~~~~~~~~~~~~^
+[rank3]:         tensors,
+[rank3]:         ^^^^^^^^
+[rank3]:     ...<5 lines>...
+[rank3]:         accumulate_grad=True,
+[rank3]:         ^^^^^^^^^^^^^^^^^^^^^
+[rank3]:     )
+[rank3]:     ^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/autograd/graph.py", line 865, in _engine_run_backward
+[rank3]:     return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+[rank3]:            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank3]:         t_outputs, *args, **kwargs
+[rank3]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank3]:     )  # Calls into the C++ engine to run the backward pass
+[rank3]:     ^
+[rank3]: torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 760.00 MiB. GPU 3 has a total capacity of 39.49 GiB of which 376.25 MiB is free. Including non-PyTorch memory, this process has 39.05 GiB memory in use. Of the allocated memory 36.08 GiB is allocated by PyTorch, and 318.94 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[rank2]: Traceback (most recent call last):
+[rank2]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank2]:   File "<frozen runpy>", line 88, in _run_code
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/train/__main__.py", line 9, in <module>
+[rank2]:     main(args.yaml_config, override_dotlist=args.override)
+[rank2]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/train/train.py", line 107, in main
+[rank2]:     run_train(config)
+[rank2]:     ~~~~~~~~~^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/train/train.py", line 91, in run_train
+[rank2]:     trainer.train()
+[rank2]:     ~~~~~~~~~~~~~^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/generics/trainer.py", line 495, in train
+[rank2]:     train_summary = self.train_one_epoch()
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/generics/trainer.py", line 624, in train_one_epoch
+[rank2]:     stepped = self.stepper.train_on_batch(batch, self.optimization)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/ace/stepper/single_module.py", line 1740, in train_on_batch
+[rank2]:     optimization.step_weights()
+[rank2]:     ~~~~~~~~~~~~~~~~~~~~~~~~~^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/optimization.py", line 346, in step_weights
+[rank2]:     self._backward(self._accumulated_loss)
+[rank2]:     ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26/fme/core/optimization.py", line 290, in _backward
+[rank2]:     loss.backward()
+[rank2]:     ~~~~~~~~~~~~~^^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_tensor.py", line 630, in backward
+[rank2]:     torch.autograd.backward(
+[rank2]:     ~~~~~~~~~~~~~~~~~~~~~~~^
+[rank2]:         self, gradient, retain_graph, create_graph, inputs=inputs
+[rank2]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank2]:     )
+[rank2]:     ^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/autograd/__init__.py", line 364, in backward
+[rank2]:     _engine_run_backward(
+[rank2]:     ~~~~~~~~~~~~~~~~~~~~^
+[rank2]:         tensors,
+[rank2]:         ^^^^^^^^
+[rank2]:     ...<5 lines>...
+[rank2]:         accumulate_grad=True,
+[rank2]:         ^^^^^^^^^^^^^^^^^^^^^
+[rank2]:     )
+[rank2]:     ^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/autograd/graph.py", line 865, in _engine_run_backward
+[rank2]:     return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+[rank2]:            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank2]:         t_outputs, *args, **kwargs
+[rank2]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank2]:     )  # Calls into the C++ engine to run the backward pass
+[rank2]:     ^
+[rank2]: torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 760.00 MiB. GPU 2 has a total capacity of 39.49 GiB of which 414.25 MiB is free. Including non-PyTorch memory, this process has 39.03 GiB memory in use. Of the allocated memory 36.08 GiB is allocated by PyTorch, and 298.94 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+W1020 19:03:40.190000 715910 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 715957 closing signal SIGTERM
+W1020 19:03:40.193000 715910 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 715958 closing signal SIGTERM
+W1020 19:03:40.194000 715910 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 715960 closing signal SIGTERM
+E1020 19:03:49.627000 715910 torch/distributed/elastic/multiprocessing/api.py:984] failed (exitcode: 1) local_rank: 2 (pid: 715959) of binary: /pscratch/sd/m/mahf708/ace/.venv/bin/python3
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+    ~~~^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 317, in launch_agent
+    raise ChildFailedError(
+    ...<2 lines>...
+    )
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+fme.ace.train FAILED
+------------------------------------------------------------
+Failures:
+[1]:
+  time      : 2026-10-20_19:03:49
+  host      : nid002904-hsn0
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 715957)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[2]:
+  time      : 2026-10-20_19:03:49
+  host      : nid002904-hsn0
+  rank      : 1 (local_rank: 1)
+  exitcode  : 1 (pid: 715958)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[3]:
+  time      : 2026-10-20_19:03:49
+  host      : nid002904-hsn0
+  rank      : 3 (local_rank: 3)
+  exitcode  : 1 (pid: 715960)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-10-20_19:03:40
+  host      : nid002904-hsn0
+  rank      : 2 (local_rank: 2)
+  exitcode  : 1 (pid: 715959)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
+srun: error: nid002904: task 0: Exited with exit code 1
+srun: Terminating StepId=60063766.28

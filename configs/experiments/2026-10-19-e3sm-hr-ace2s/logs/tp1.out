@@ -1,0 +1,474 @@
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+2026-10-20 19:38:47,403 - root - INFO - --------------- Versions ---------------
+2026-10-20 19:38:47,403 - root - INFO - Torch: 2.10.0+cu128
+2026-10-20 19:38:47,403 - root - INFO - ----------------------------------------
+2026-10-20 19:38:47,403 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 19:38:47,403 - root - INFO - Beaker ID: None
+2026-10-20 19:38:47,404 - root - INFO - Beaker URL: No beaker URL.
+2026-10-20 19:38:47,404 - root - WARNING - Environmental variable BEAKER_EXPERIMENT_ID not found.
+2026-10-20 19:38:47,404 - root - INFO - Environmental variable SLURM_JOB_ID=60063766.
+2026-10-20 19:38:47,404 - root - INFO - Environmental variable SLURM_JOB_USER=mahf708.
+2026-10-20 19:38:47,404 - root - WARNING - Environmental variable FME_TRAIN_DIR not found.
+2026-10-20 19:38:47,404 - root - WARNING - Environmental variable FME_VALID_DIR not found.
+2026-10-20 19:38:47,404 - root - WARNING - Environmental variable FME_STATS_DIR not found.
+2026-10-20 19:38:47,404 - root - WARNING - Environmental variable FME_CHECKPOINT_DIR not found.
+2026-10-20 19:38:47,404 - root - WARNING - Environmental variable FME_OUTPUT_DIR not found.
+2026-10-20 19:38:47,404 - root - WARNING - Environmental variable FME_IMAGE not found.
+2026-10-20 19:38:47,404 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 19:38:47,404 - root - INFO - Current device is cuda:0
+2026-10-20 19:38:47,405 - root - INFO - Initializing training data loader
+2026-10-20 19:38:47,405 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 19:38:51,493 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 19:38:51,496 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 19:38:51,514 - root - INFO - The required variables have been found in the dataset: ['T_2', 'V_2', 'STW_3', 'U_7', 'Qat2m', 'V_1', 'LHFLX', 'STW_1', 'U_0', 'Uat10m', 'SOLIN', 'TS', 'ICEFRAC', 'STW_2', 'U_3', 'V_5', 'T_5', 'Tat2m', 'DTENDTTW', 'LANDFRAC', 'PHIS', 'FLUS', 'STW_0', 'surface_precipitation_rate', 'U_2', 'V_6', 'U_4', 'V_4', 'T_0', 'OCNFRAC', 'V_0', 'U_1', 'Vat10m', 'T_4', 'T_7', 'SHFLX', 'FSNS', 'T_1', 'V_7', 'FLDS', 'U_6', 'FLUT', 'PS', 'V_3', 'STW_6', 'frozen_precipitation_rate', 'U_5', 'STW_5', 'TAUX', 'STW_7', 'TAUY', 'FSUTOA', 'T_6', 'STW_4', 'T_3'].
+2026-10-20 19:38:51,527 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:38:51,554 - root - INFO - Subsetting dataset samples according to slice(124, np.int64(360), None).
+2026-10-20 19:38:51,554 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 19:38:51,556 - root - INFO - Initializing validation data loaders
+2026-10-20 19:38:51,557 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 19:38:51,614 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 19:38:51,616 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 19:38:51,634 - root - INFO - The required variables have been found in the dataset: ['T_2', 'V_2', 'STW_3', 'U_7', 'Qat2m', 'V_1', 'LHFLX', 'STW_1', 'U_0', 'Uat10m', 'SOLIN', 'TS', 'ICEFRAC', 'STW_2', 'U_3', 'V_5', 'T_5', 'Tat2m', 'DTENDTTW', 'LANDFRAC', 'PHIS', 'FLUS', 'STW_0', 'surface_precipitation_rate', 'U_2', 'V_6', 'U_4', 'V_4', 'T_0', 'OCNFRAC', 'V_0', 'U_1', 'Vat10m', 'T_4', 'T_7', 'SHFLX', 'FSNS', 'T_1', 'V_7', 'FLDS', 'U_6', 'FLUT', 'PS', 'V_3', 'STW_6', 'frozen_precipitation_rate', 'U_5', 'STW_5', 'TAUX', 'STW_7', 'TAUY', 'FSUTOA', 'T_6', 'STW_4', 'T_3'].
+2026-10-20 19:38:51,646 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 19:38:51,665 - root - INFO - Subsetting dataset samples according to slice(18980, np.int64(20440), 4).
+2026-10-20 19:38:51,665 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 19:38:51,666 - root - INFO - train data: 240 samples, 240 batches
+2026-10-20 19:38:51,666 - root - INFO - train data: pool_size=1, 5 sub-batches per window, coming from the following base loader:
+2026-10-20 19:38:51,666 - root - INFO - train (base loader) data: 48 samples, 48 batches
+2026-10-20 19:38:51,666 - root - INFO - train (base loader) data: first sample's initial time: 0001-02-01 00:00:00
+2026-10-20 19:38:51,666 - root - INFO - train (base loader) data: last sample's initial time: 0001-03-31 18:00:00
+2026-10-20 19:38:51,666 - root - INFO - val data: 365 samples, 365 batches
+2026-10-20 19:38:51,666 - root - INFO - val data: first sample's initial time: 0014-01-01 00:00:00
+2026-10-20 19:38:51,666 - root - INFO - val data: last sample's initial time: 0014-12-31 00:00:00
+2026-10-20 19:38:51,666 - root - INFO - Initializing inline inference data loaders
+2026-10-20 19:38:51,667 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 19:38:51,722 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 19:38:51,724 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 19:38:51,741 - root - INFO - The required variables have been found in the dataset: ['T_2', 'V_2', 'STW_3', 'U_7', 'Qat2m', 'V_1', 'LHFLX', 'STW_1', 'U_0', 'Uat10m', 'SOLIN', 'TS', 'ICEFRAC', 'STW_2', 'U_3', 'V_5', 'T_5', 'Tat2m', 'DTENDTTW', 'LANDFRAC', 'PHIS', 'FLUS', 'STW_0', 'surface_precipitation_rate', 'U_2', 'V_6', 'U_4', 'V_4', 'T_0', 'OCNFRAC', 'V_0', 'U_1', 'Vat10m', 'T_4', 'T_7', 'SHFLX', 'FSNS', 'T_1', 'V_7', 'FLDS', 'U_6', 'FLUT', 'PS', 'V_3', 'STW_6', 'frozen_precipitation_rate', 'U_5', 'STW_5', 'TAUX', 'STW_7', 'TAUY', 'FSUTOA', 'T_6', 'STW_4', 'T_3'].
+2026-10-20 19:38:51,752 - root - INFO - Dataset now has 23340 samples of length 21.
+2026-10-20 19:38:51,753 - root - INFO - Loading only this rank's spatial tile (slice(0, 180, None), slice(0, 1440, None)) of the data.
+2026-10-20 19:38:51,767 - root - INFO - Multiprocessing inference context: fork
+2026-10-20 19:40:39,817 - root - INFO - Starting model initialization
+2026-10-20 19:40:39,823 - root - INFO - Initializing stepper from provided config
+2026-10-20 19:40:39,823 - root - INFO - Initializing stepper from provided config
+2026-10-20 19:41:22,025 - root - INFO - Current device is cuda:0
+2026-10-20 19:41:22,123 - root - INFO - Number of trainable model parameters: 530873088
+2026-10-20 19:41:22,123 - root - INFO - Starting Training Loop...
+2026-10-20 19:41:22,462 - root - INFO - Beginning epoch after 0 complete epochs
+2026-10-20 19:41:22,463 - root - INFO - Starting training step for model trained for 0 complete epochs
+2026-10-20 19:41:22,551 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:41:22,551 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:41:22,551 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:41:22,557 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:41:46,646 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:41:46,646 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:41:46,646 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:41:46,651 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 19:42:30,980 - root - INFO - Step 5: {'batch_loss': tensor(4.1588, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.11276220278875182, 'lr': 0.0001}
+2026-10-20 19:42:55,500 - root - INFO - Step 10: {'batch_loss': tensor(2.5824, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20320880756509094, 'lr': 0.0001}
+2026-10-20 19:43:20,133 - root - INFO - Step 15: {'batch_loss': tensor(2.0998, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20299796289804983, 'lr': 0.0001}
+2026-10-20 19:43:44,659 - root - INFO - Step 20: {'batch_loss': tensor(1.7824, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20405462472340657, 'lr': 0.0001}
+2026-10-20 19:44:08,822 - root - INFO - Step 25: {'batch_loss': tensor(1.5362, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2067193732304941, 'lr': 0.0001}
+2026-10-20 19:44:36,660 - root - INFO - Step 30: {'batch_loss': tensor(1.3015, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.17971995558727913, 'lr': 0.0001}
+2026-10-20 19:45:01,460 - root - INFO - Step 35: {'batch_loss': tensor(1.2916, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20146742578932378, 'lr': 0.0001}
+2026-10-20 19:45:26,068 - root - INFO - Step 40: {'batch_loss': tensor(1.2181, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20336460732112663, 'lr': 0.0001}
+2026-10-20 19:45:51,796 - root - INFO - Step 45: {'batch_loss': tensor(1.0700, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.19433113504564245, 'lr': 0.0001}
+2026-10-20 19:46:18,471 - root - INFO - Step 50: {'batch_loss': tensor(1.1161, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.18744232454824356, 'lr': 0.0001}
+2026-10-20 19:46:42,615 - root - INFO - Step 55: {'batch_loss': tensor(1.1581, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20692286287312953, 'lr': 0.0001}
+2026-10-20 19:47:08,048 - root - INFO - Step 60: {'batch_loss': tensor(1.0199, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.19673091624690284, 'lr': 0.0001}
+2026-10-20 19:47:34,039 - root - INFO - Step 65: {'batch_loss': tensor(0.9674, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.1923730962543921, 'lr': 0.0001}
+2026-10-20 19:48:00,435 - root - INFO - Step 70: {'batch_loss': tensor(0.9697, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.1894339914830797, 'lr': 0.0001}
+2026-10-20 19:48:24,848 - root - INFO - Step 75: {'batch_loss': tensor(0.9033, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2046400969461226, 'lr': 0.0001}
+2026-10-20 19:48:50,639 - root - INFO - Step 80: {'batch_loss': tensor(0.8249, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.19401574472139185, 'lr': 0.0001}
+2026-10-20 19:49:16,361 - root - INFO - Step 85: {'batch_loss': tensor(0.8431, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.1943773065918216, 'lr': 0.0001}
+2026-10-20 19:49:41,162 - root - INFO - Step 90: {'batch_loss': tensor(0.8265, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2016223529586402, 'lr': 0.0001}
+2026-10-20 19:50:07,300 - root - INFO - Step 95: {'batch_loss': tensor(0.7916, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.19128951310687878, 'lr': 0.0001}
+2026-10-20 19:50:32,725 - root - INFO - Step 100: {'batch_loss': tensor(0.7532, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.19666277427006124, 'lr': 0.0001}
+2026-10-20 19:50:57,166 - root - INFO - Step 105: {'batch_loss': tensor(0.7165, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20455668342079392, 'lr': 0.0001}
+2026-10-20 19:51:22,245 - root - INFO - Step 110: {'batch_loss': tensor(0.7666, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.19940723957079454, 'lr': 0.0001}
+2026-10-20 19:51:46,738 - root - INFO - Step 115: {'batch_loss': tensor(0.7366, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20394296157008945, 'lr': 0.0001}
+2026-10-20 19:52:11,753 - root - INFO - Step 120: {'batch_loss': tensor(0.7467, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20005088956287576, 'lr': 0.0001}
+2026-10-20 19:52:36,622 - root - INFO - Step 125: {'batch_loss': tensor(0.6750, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2008923860895564, 'lr': 0.0001}
+2026-10-20 19:53:01,307 - root - INFO - Step 130: {'batch_loss': tensor(0.6873, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20271289456444713, 'lr': 0.0001}
+2026-10-20 19:53:27,598 - root - INFO - Step 135: {'batch_loss': tensor(0.6708, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.19015972703638395, 'lr': 0.0001}
+2026-10-20 19:53:51,576 - root - INFO - Step 140: {'batch_loss': tensor(0.6442, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2083761622786278, 'lr': 0.0001}
+2026-10-20 19:54:18,767 - root - INFO - Step 145: {'batch_loss': tensor(0.6665, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.18402548518220466, 'lr': 0.0001}
+2026-10-20 19:54:43,803 - root - INFO - Step 150: {'batch_loss': tensor(0.6310, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20588136573624688, 'lr': 0.0001}
+2026-10-20 19:55:08,398 - root - INFO - Step 155: {'batch_loss': tensor(0.6015, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.1972720763742233, 'lr': 0.0001}
+2026-10-20 19:55:33,706 - root - INFO - Step 160: {'batch_loss': tensor(0.6279, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.19765053802806767, 'lr': 0.0001}
+2026-10-20 19:55:59,782 - root - INFO - Step 165: {'batch_loss': tensor(0.5930, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.19172028251835127, 'lr': 0.0001}
+2026-10-20 19:56:23,928 - root - INFO - Step 170: {'batch_loss': tensor(0.6698, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20698824781829522, 'lr': 0.0001}
+2026-10-20 19:56:48,049 - root - INFO - Step 175: {'batch_loss': tensor(0.6119, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2071244541871149, 'lr': 0.0001}
+2026-10-20 19:57:12,352 - root - INFO - Step 180: {'batch_loss': tensor(0.5905, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2057598657549997, 'lr': 0.0001}
+2026-10-20 19:57:37,245 - root - INFO - Step 185: {'batch_loss': tensor(0.6453, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20099228555128826, 'lr': 0.0001}
+2026-10-20 19:58:06,419 - root - INFO - Step 190: {'batch_loss': tensor(0.6093, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.17204213570113533, 'lr': 0.0001}
+2026-10-20 19:58:30,644 - root - INFO - Step 195: {'batch_loss': tensor(0.6494, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20528963582926882, 'lr': 0.0001}
+2026-10-20 19:58:54,690 - root - INFO - Step 200: {'batch_loss': tensor(0.6382, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20794901828503895, 'lr': 0.0001}
+2026-10-20 19:59:19,127 - root - INFO - Step 205: {'batch_loss': tensor(0.5983, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2046072535731574, 'lr': 0.0001}
+2026-10-20 19:59:43,483 - root - INFO - Step 210: {'batch_loss': tensor(0.5627, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20530610159479756, 'lr': 0.0001}
+2026-10-20 20:00:08,032 - root - INFO - Step 215: {'batch_loss': tensor(0.5425, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20364892417507602, 'lr': 0.0001}
+2026-10-20 20:00:32,597 - root - INFO - Step 220: {'batch_loss': tensor(0.5846, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2035363690994284, 'lr': 0.0001}
+2026-10-20 20:00:56,640 - root - INFO - Step 225: {'batch_loss': tensor(0.5788, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20795935549013217, 'lr': 0.0001}
+2026-10-20 20:01:21,676 - root - INFO - Step 230: {'batch_loss': tensor(0.5364, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.1997247464862873, 'lr': 0.0001}
+2026-10-20 20:01:46,200 - root - INFO - Step 235: {'batch_loss': tensor(0.5600, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.20387708388084264, 'lr': 0.0001}
+2026-10-20 20:02:10,324 - root - INFO - Step 240: {'batch_loss': tensor(0.5541, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2072560018376355, 'lr': 0.0001}
+2026-10-20 20:02:27,241 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:02:27,241 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:02:27,241 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:02:27,253 - root - INFO - Dataset now has 23355 samples of length 6.
+[rank2]:[W1020 20:10:47.393137515 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 3 PG GUID d82a5263aec3e448a6be3764efa7aefb8ed376e7 Rank 2] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 4.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank1]:[W1020 20:10:47.393146432 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 3 PG GUID d82a5263aec3e448a6be3764efa7aefb8ed376e7 Rank 1] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 4.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank3]:[W1020 20:10:47.393155229 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 3 PG GUID d82a5263aec3e448a6be3764efa7aefb8ed376e7 Rank 3] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 4.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+[rank0]:[W1020 20:10:47.394207102 ProcessGroupNCCL.cpp:4025] Warning: [PG ID 3 PG GUID d82a5263aec3e448a6be3764efa7aefb8ed376e7 Rank 0] An unbatched P2P op (send/recv) was called on this ProcessGroup with size 4.  In eager initialization mode, unbatched P2P ops are treated as independent collective ops, and are thus serialized with all other ops on this ProcessGroup, including other P2P ops. To avoid serialization, either create additional independent ProcessGroups for the P2P ops or use batched P2P ops. You can squash this warning by setting the environment variable TORCH_NCCL_SHOW_EAGER_INIT_P2P_SERIALIZATION_WARNING to false. (function operator())
+2026-10-20 20:10:53,665 - root - INFO - Saving latest checkpoint model trained for 0 complete epochs and 240 additional batches, or 240 total batches, with best_validation_loss inf and best_inference_error inf
+2026-10-20 20:11:54,159 - root - INFO - Starting validation step for model trained for 1 epochs
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 20:11:58.138000 726295 torch/distributed/elastic/agent/server/api.py:739] Received 15 death signal, shutting down workers
+W1020 20:11:58.143000 726295 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 726328 closing signal SIGTERM
+W1020 20:11:58.144000 726295 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 726329 closing signal SIGTERM
+W1020 20:11:58.145000 726295 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 726330 closing signal SIGTERM
+W1020 20:11:58.146000 726295 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 726331 closing signal SIGTERM
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+[rank3]:     yield
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/distributed.py", line 126, in context
+[rank3]:     yield
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/__main__.py", line 9, in <module>
+[rank3]:     main(args.yaml_config, override_dotlist=args.override)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train.py", line 107, in main
+[rank3]:     run_train(config)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train.py", line 91, in run_train
+[rank3]:     trainer.train()
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/generics/trainer.py", line 502, in train
+[rank3]:     valid_logs, valid_loss = validation_callback(self._epochs_trained)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/generics/trainer.py", line 921, in validation_callback
+[rank3]:     aggregator = task.aggregator_factory()
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train_config.py", line 111, in factory
+[rank3]:     return self.aggregator.build(
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/one_step/main.py", line 310, in build
+[rank3]:     return build_one_step_aggregator(
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/one_step/main.py", line 178, in build_one_step_aggregator
+[rank3]:     result: OneStepMetricBuildResult = metric.build(ctx)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/one_step/spectrum.py", line 127, in build
+[rank3]:     agg = SpectrumAggregator(ctx.ops, nan_fill_fn=flood_fill)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/one_step/spectrum.py", line 66, in __init__
+[rank3]:     self._wrapped = _InferencePairedSpectrumAgg(
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/inference/spectrum.py", line 169, in __init__
+[rank3]:     self._gen_aggregator = SphericalPowerSpectrumAggregator(
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/inference/spectrum.py", line 58, in __init__
+[rank3]:     self._real_sht = gridded_operations.get_real_sht()
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/gridded_ops.py", line 413, in get_real_sht
+[rank3]:     .get_sht(nlat, nlon, grid=self._grid)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/distributed.py", line 586, in get_sht
+[rank3]:     sht = self._distributed.get_sht(nlat, nlon, lmax, mmax, grid)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/model_torch_distributed.py", line 808, in get_sht
+[rank3]:     return thd.DistributedRealSHT(
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch_harmonics/distributed/distributed_sht.py", line 124, in __init__
+[rank3]:     pct = _precompute_legpoly(self.mmax, self.lmax, tq, norm=self.norm, csphase=self.csphase)
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch_harmonics/cache.py", line 67, in wrapper
+[rank3]:     res = cached_func(*args, **kwargs)
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch_harmonics/legendre.py", line 149, in _precompute_legpoly
+[rank3]:     return legpoly(mmax, lmax, torch.cos(t), norm=norm, inverse=inverse, csphase=csphase)
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch_harmonics/legendre.py", line 95, in legpoly
+[rank3]:     vdm[m, l, :] = x * math.sqrt((2*l - 1) / (l - m) * (2*l + 1) / (l + m)) * vdm[m, l-1, :] \
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank3]:     _error_if_any_worker_fails()
+[rank3]: RuntimeError: DataLoader worker (pid 730054) is killed by signal: Terminated. 
+
+[rank3]: During handling of the above exception, another exception occurred:
+
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank3]:   File "<frozen runpy>", line 88, in _run_code
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/__main__.py", line 8, in <module>
+[rank3]:     with Distributed.context():
+[rank3]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank3]:     self.gen.throw(value)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/distributed.py", line 118, in context
+[rank3]:     with contextlib.ExitStack() as stack:
+[rank3]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 619, in __exit__
+[rank3]:     raise exc
+[rank3]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 604, in __exit__
+[rank3]:     if cb(*exc_details):
+[rank3]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank3]:     self.gen.throw(value)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/shutdown.py", line 487, in abort_and_exit_on_termination
+[rank3]:     listener.block_until_process_exit()
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/_signal_listener.py", line 174, in block_until_process_exit
+[rank3]:     self._thread.join()
+[rank3]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 1094, in join
+[rank3]:     self._handle.join(timeout)
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank3]:     _error_if_any_worker_fails()
+[rank3]: RuntimeError: DataLoader worker (pid 726663) is killed by signal: Terminated. 
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+[rank1]:     yield
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/distributed.py", line 126, in context
+[rank1]:     yield
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/__main__.py", line 9, in <module>
+[rank1]:     main(args.yaml_config, override_dotlist=args.override)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train.py", line 107, in main
+[rank1]:     run_train(config)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train.py", line 91, in run_train
+[rank1]:     trainer.train()
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/generics/trainer.py", line 502, in train
+[rank1]:     valid_logs, valid_loss = validation_callback(self._epochs_trained)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/generics/trainer.py", line 921, in validation_callback
+[rank1]:     aggregator = task.aggregator_factory()
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train_config.py", line 111, in factory
+[rank1]:     return self.aggregator.build(
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/one_step/main.py", line 310, in build
+[rank1]:     return build_one_step_aggregator(
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/one_step/main.py", line 178, in build_one_step_aggregator
+[rank1]:     result: OneStepMetricBuildResult = metric.build(ctx)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/one_step/spectrum.py", line 127, in build
+[rank1]:     agg = SpectrumAggregator(ctx.ops, nan_fill_fn=flood_fill)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/one_step/spectrum.py", line 66, in __init__
+[rank1]:     self._wrapped = _InferencePairedSpectrumAgg(
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/inference/spectrum.py", line 169, in __init__
+[rank1]:     self._gen_aggregator = SphericalPowerSpectrumAggregator(
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/inference/spectrum.py", line 58, in __init__
+[rank1]:     self._real_sht = gridded_operations.get_real_sht()
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/gridded_ops.py", line 413, in get_real_sht
+[rank1]:     .get_sht(nlat, nlon, grid=self._grid)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/distributed.py", line 586, in get_sht
+[rank1]:     sht = self._distributed.get_sht(nlat, nlon, lmax, mmax, grid)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/model_torch_distributed.py", line 808, in get_sht
+[rank1]:     return thd.DistributedRealSHT(
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch_harmonics/distributed/distributed_sht.py", line 124, in __init__
+[rank1]:     pct = _precompute_legpoly(self.mmax, self.lmax, tq, norm=self.norm, csphase=self.csphase)
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch_harmonics/cache.py", line 67, in wrapper
+[rank1]:     res = cached_func(*args, **kwargs)
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch_harmonics/legendre.py", line 149, in _precompute_legpoly
+[rank1]:     return legpoly(mmax, lmax, torch.cos(t), norm=norm, inverse=inverse, csphase=csphase)
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch_harmonics/legendre.py", line 95, in legpoly
+[rank1]:     vdm[m, l, :] = x * math.sqrt((2*l - 1) / (l - m) * (2*l + 1) / (l + m)) * vdm[m, l-1, :] \
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank1]:     _error_if_any_worker_fails()
+[rank1]: RuntimeError: DataLoader worker (pid 730030) is killed by signal: Terminated. 
+
+[rank1]: During handling of the above exception, another exception occurred:
+
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank1]:   File "<frozen runpy>", line 88, in _run_code
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/__main__.py", line 8, in <module>
+[rank1]:     with Distributed.context():
+[rank1]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank1]:     self.gen.throw(value)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/distributed.py", line 118, in context
+[rank1]:     with contextlib.ExitStack() as stack:
+[rank1]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 619, in __exit__
+[rank1]:     raise exc
+[rank1]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 604, in __exit__
+[rank1]:     if cb(*exc_details):
+[rank1]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank1]:     self.gen.throw(value)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/shutdown.py", line 487, in abort_and_exit_on_termination
+[rank1]:     listener.block_until_process_exit()
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/_signal_listener.py", line 174, in block_until_process_exit
+[rank1]:     self._thread.join()
+[rank1]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 1094, in join
+[rank1]:     self._handle.join(timeout)
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank1]:     _error_if_any_worker_fails()
+[rank1]: RuntimeError: DataLoader worker (pid 726726) is killed by signal: Terminated. 
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+[rank0]:     yield
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/distributed.py", line 126, in context
+[rank0]:     yield
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/__main__.py", line 9, in <module>
+[rank0]:     main(args.yaml_config, override_dotlist=args.override)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train.py", line 107, in main
+[rank0]:     run_train(config)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train.py", line 91, in run_train
+[rank0]:     trainer.train()
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/generics/trainer.py", line 502, in train
+[rank0]:     valid_logs, valid_loss = validation_callback(self._epochs_trained)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/generics/trainer.py", line 921, in validation_callback
+[rank0]:     aggregator = task.aggregator_factory()
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train_config.py", line 111, in factory
+[rank0]:     return self.aggregator.build(
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/one_step/main.py", line 310, in build
+[rank0]:     return build_one_step_aggregator(
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/one_step/main.py", line 178, in build_one_step_aggregator
+[rank0]:     result: OneStepMetricBuildResult = metric.build(ctx)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/one_step/spectrum.py", line 127, in build
+[rank0]:     agg = SpectrumAggregator(ctx.ops, nan_fill_fn=flood_fill)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/one_step/spectrum.py", line 66, in __init__
+[rank0]:     self._wrapped = _InferencePairedSpectrumAgg(
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/inference/spectrum.py", line 169, in __init__
+[rank0]:     self._gen_aggregator = SphericalPowerSpectrumAggregator(
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/inference/spectrum.py", line 58, in __init__
+[rank0]:     self._real_sht = gridded_operations.get_real_sht()
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/gridded_ops.py", line 413, in get_real_sht
+[rank0]:     .get_sht(nlat, nlon, grid=self._grid)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/distributed.py", line 586, in get_sht
+[rank0]:     sht = self._distributed.get_sht(nlat, nlon, lmax, mmax, grid)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/model_torch_distributed.py", line 808, in get_sht
+[rank0]:     return thd.DistributedRealSHT(
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch_harmonics/distributed/distributed_sht.py", line 124, in __init__
+[rank0]:     pct = _precompute_legpoly(self.mmax, self.lmax, tq, norm=self.norm, csphase=self.csphase)
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch_harmonics/cache.py", line 67, in wrapper
+[rank0]:     res = cached_func(*args, **kwargs)
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch_harmonics/legendre.py", line 149, in _precompute_legpoly
+[rank0]:     return legpoly(mmax, lmax, torch.cos(t), norm=norm, inverse=inverse, csphase=csphase)
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch_harmonics/legendre.py", line 96, in legpoly
+[rank0]:     - math.sqrt((l + m - 1) / (l - m) * (2*l + 1) / (2*l - 3) * (l - m - 1) / (l + m)) * vdm[m, l-2, :]
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank0]:     _error_if_any_worker_fails()
+[rank0]: RuntimeError: DataLoader worker (pid 730039) is killed by signal: Terminated. 
+
+[rank0]: During handling of the above exception, another exception occurred:
+
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank0]:   File "<frozen runpy>", line 88, in _run_code
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/__main__.py", line 8, in <module>
+[rank0]:     with Distributed.context():
+[rank0]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank0]:     self.gen.throw(value)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/distributed.py", line 118, in context
+[rank0]:     with contextlib.ExitStack() as stack:
+[rank0]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 619, in __exit__
+[rank0]:     raise exc
+[rank0]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 604, in __exit__
+[rank0]:     if cb(*exc_details):
+[rank0]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank0]:     self.gen.throw(value)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/shutdown.py", line 487, in abort_and_exit_on_termination
+[rank0]:     listener.block_until_process_exit()
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/_signal_listener.py", line 174, in block_until_process_exit
+[rank0]:     self._thread.join()
+[rank0]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 1094, in join
+[rank0]:     self._handle.join(timeout)
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank0]:     _error_if_any_worker_fails()
+[rank0]: RuntimeError: DataLoader worker (pid 726729) is killed by signal: Terminated. 
+[rank2]: Traceback (most recent call last):
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/shutdown.py", line 451, in abort_and_exit_on_termination
+[rank2]:     yield
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/distributed.py", line 126, in context
+[rank2]:     yield
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/__main__.py", line 9, in <module>
+[rank2]:     main(args.yaml_config, override_dotlist=args.override)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train.py", line 107, in main
+[rank2]:     run_train(config)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train.py", line 91, in run_train
+[rank2]:     trainer.train()
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/generics/trainer.py", line 502, in train
+[rank2]:     valid_logs, valid_loss = validation_callback(self._epochs_trained)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/generics/trainer.py", line 921, in validation_callback
+[rank2]:     aggregator = task.aggregator_factory()
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train_config.py", line 111, in factory
+[rank2]:     return self.aggregator.build(
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/one_step/main.py", line 310, in build
+[rank2]:     return build_one_step_aggregator(
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/one_step/main.py", line 178, in build_one_step_aggregator
+[rank2]:     result: OneStepMetricBuildResult = metric.build(ctx)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/one_step/spectrum.py", line 127, in build
+[rank2]:     agg = SpectrumAggregator(ctx.ops, nan_fill_fn=flood_fill)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/one_step/spectrum.py", line 66, in __init__
+[rank2]:     self._wrapped = _InferencePairedSpectrumAgg(
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/inference/spectrum.py", line 169, in __init__
+[rank2]:     self._gen_aggregator = SphericalPowerSpectrumAggregator(
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/aggregator/inference/spectrum.py", line 58, in __init__
+[rank2]:     self._real_sht = gridded_operations.get_real_sht()
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/gridded_ops.py", line 413, in get_real_sht
+[rank2]:     .get_sht(nlat, nlon, grid=self._grid)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/distributed.py", line 586, in get_sht
+[rank2]:     sht = self._distributed.get_sht(nlat, nlon, lmax, mmax, grid)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/model_torch_distributed.py", line 808, in get_sht
+[rank2]:     return thd.DistributedRealSHT(
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch_harmonics/distributed/distributed_sht.py", line 124, in __init__
+[rank2]:     pct = _precompute_legpoly(self.mmax, self.lmax, tq, norm=self.norm, csphase=self.csphase)
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch_harmonics/cache.py", line 67, in wrapper
+[rank2]:     res = cached_func(*args, **kwargs)
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch_harmonics/legendre.py", line 149, in _precompute_legpoly
+[rank2]:     return legpoly(mmax, lmax, torch.cos(t), norm=norm, inverse=inverse, csphase=csphase)
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch_harmonics/legendre.py", line 96, in legpoly
+[rank2]:     - math.sqrt((l + m - 1) / (l - m) * (2*l + 1) / (2*l - 3) * (l - m - 1) / (l + m)) * vdm[m, l-2, :]
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank2]:     _error_if_any_worker_fails()
+[rank2]: RuntimeError: DataLoader worker (pid 730051) is killed by signal: Terminated. 
+
+[rank2]: During handling of the above exception, another exception occurred:
+
+[rank2]: Traceback (most recent call last):
+[rank2]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank2]:   File "<frozen runpy>", line 88, in _run_code
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/__main__.py", line 8, in <module>
+[rank2]:     with Distributed.context():
+[rank2]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank2]:     self.gen.throw(value)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/distributed.py", line 118, in context
+[rank2]:     with contextlib.ExitStack() as stack:
+[rank2]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 619, in __exit__
+[rank2]:     raise exc
+[rank2]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 604, in __exit__
+[rank2]:     if cb(*exc_details):
+[rank2]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/contextlib.py", line 162, in __exit__
+[rank2]:     self.gen.throw(value)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/shutdown.py", line 487, in abort_and_exit_on_termination
+[rank2]:     listener.block_until_process_exit()
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/distributed/_signal_listener.py", line 174, in block_until_process_exit
+[rank2]:     self._thread.join()
+[rank2]:   File "/global/homes/m/mahf708/.local/share/uv/python/cpython-3.13.9-linux-x86_64-gnu/lib/python3.13/threading.py", line 1094, in join
+[rank2]:     self._handle.join(timeout)
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+[rank2]:     _error_if_any_worker_fails()
+[rank2]: RuntimeError: DataLoader worker (pid 726735) is killed by signal: Terminated. 
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+    ~~~^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 308, in launch_agent
+    result = agent.run()
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/metrics/api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 731, in run
+    result = self._invoke_run(role)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 908, in _invoke_run
+    time.sleep(monitor_interval)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 726295 got signal: 15
+srun: error: nid002905: task 0: Exited with exit code 1
+srun: Terminating StepId=60063766.41

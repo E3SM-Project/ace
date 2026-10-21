@@ -185,7 +185,7 @@ spatial), `scripts/sweep.sh` (single GPU), `scripts/sweep_spatial.sh` (one node)
 `scripts/read_bench.py`. Results go to `logs/*.jsonl`
 (`python scripts/summarize.py logs/<x>.jsonl`), with per-run logs in `logs/runs/`.
 
-## Running on 40 GB A100s (validated 2026-10-20)
+## Running on 40 GB A100s (validated 2026-10-20/21)
 
 The full-harmonics model trains on one node of 4x A100-40GB per replica.
 What makes it fit:
@@ -196,34 +196,70 @@ What makes it fit:
    `scripts/sbatch-train-hr.sh`. Without it the run OOMs at the first steps.
 3. The EMA fix (37a2b9a44). Without it, memory grows by one parameter copy
    at the first epoch boundary.
-4. At most 2 inline-inference ICs per replica (each adds ~10 GiB of
-   inference memory).
+4. The prognostic-state fix (e035d4cbf). Before it, the inline-inference
+   initial conditions kept their whole first inference window on the GPU for
+   the entire run (~1 GiB per IC per GPU): with 8 ICs on 1-2 nodes the first
+   training step OOMed, and 2 ICs per replica OOMed in inference.
+5. At most 2 inline-inference ICs per replica: inference peaks at 26 GiB
+   allocated with 1 IC and 35.6 with 2.
 
-Measured on a real 40 GB node, production config (1-year validation,
-360-step inference): training peaks at 35.6 GiB allocated / 37.1 GiB
-reserved, and the epoch-end phases stay below it, across 2 epochs. With
-4x1 tiles, each node is one replica.
+Measured on real 40 GB nodes (allocations 60063553/60063766), production
+config, full harmonics: training peaks at 35.6 GiB allocated / 37.1
+reserved at 1, 2 and 4 nodes. CUDA context and NCCL buffers take another
+~2.5 GB per GPU, so PyTorch can use ~37.0 GiB: the margin is ~1.4 GiB, and
+the peak is the same every epoch. A full epoch cycle (training, 1-year
+validation, 360-step inference with 2 ICs per replica, checkpoints) completed
+on 4 nodes.
 
-Throughput, samples/s per replica (one node):
+Throughput, full harmonics, 40 GB, 4x1 tiles per node (steady state):
 
-| | 40 GB | 80 GB |
-|---|---|---|
-| full harmonics | 0.206 | 0.253 |
-| modes x0.5 | 0.387 | 0.42 |
+| nodes | s/step | samples/s | per replica |
+|---|---|---|---|
+| 1 | 5.00 | 0.200 | 0.200 |
+| 2 | 5.00 | 0.400 | 0.200 |
+| 4 | 5.00 | 0.800 | 0.200 |
 
-40 GB cards are ~19% slower per GPU (lower HBM bandwidth). A 13-year epoch
-(~19,000 samples) at full harmonics on 8 x 40 GB nodes takes ~3.2 h of
-training plus ~13 min of validation, inference and checkpoints, so 20 epochs
-is ~68 h (two 48 h jobs; requeue works). On 16 nodes it is ~36 h.
+Data parallelism costs nothing measurable up to 4 nodes. 8+ nodes are
+extrapolated: one run cannot span two Slurm allocations (Slingshot gives each
+job its own VNI; NCCL fails with VNI_NOT_FOUND).
 
-Submit (40 GB):
+Per-epoch cost (13-year epoch, 18,856 samples, N nodes):
+
+| phase | cost | N=4 | N=8 | N=16 |
+|---|---|---|---|---|
+| training | 26.2 h / N | 6.55 h | 3.27 h | 1.64 h |
+| periodic checkpoints (every 400 steps, ~60 s) | +3% of training | 12 min | 6 min | 3 min |
+| validation (1 year, daily) | 15.5 min / N | 3.9 min | 1.9 min | 1.0 min |
+| epoch-end checkpoints (5 files, 88 GB) | 2.5 min | 2.5 | 2.5 | 2.5 |
+| inline inference, every 2nd epoch, incl. ~4 min of summaries | 14 min (2 IC/replica), 8.5 min (1 IC/replica) | 7 min/epoch | 4.3 | 4.3 |
+| **epoch** | | **6.97 h** | **3.51 h** | **1.82 h** |
+| **20 epochs** | | **~139 h** | **~70 h** | **~36 h** |
+
+Add per 48 h segment ~5 min startup and up to one checkpoint interval
+(400 steps = 33 min) of lost work on requeue. Node-hours are 560-580 per
+20-epoch run at any N; the fixed per-epoch costs make 16 nodes ~4% less
+efficient than 4.
+
+Constraints on N:
+- `batch_size = N` (one sample per replica on 40 GB), so the global batch,
+  and the optimization, change with N. Pick N once for a run.
+- The 8 inline-inference ICs must divide over the N replicas with at most 2
+  per replica: N = 4 or 8 with this config. N = 16 needs 16 ICs.
+
+Submit (40 GB, 8 nodes, full harmonics):
 
 ```bash
 cd configs/experiments/2026-10-19-e3sm-hr-ace2s
-RUN=hr-full-e01 sbatch -N 8 -C "gpu&hbm40g" scripts/sbatch-train-hr.sh \
-  # plus EXTRA="stepper.step.config.builder.config.hard_thresholding_fraction=1.0"
-  # for full harmonics (the config's default is 0.5)
+RUN=hr-full-e01 \
+EXTRA="stepper.step.config.builder.config.hard_thresholding_fraction=1.0" \
+  sbatch -N 8 -C "gpu&hbm40g" scripts/sbatch-train-hr.sh
 ```
+
+The config's default is still `hard_thresholding_fraction: 0.5`; full
+harmonics is the override above.
+
+Disk: each epoch keeps `ckpt_NNNN.tar` (32 GB, with optimizer state) and
+`ema_ckpt_NNNN.tar` (8 GB), so 20 epochs is ~850 GB on scratch.
 
 Walltime handling has been tested through the real queue: USR1 at T-5 min,
 the job requeues itself and resumes from the last `checkpoint_every_n_batches`

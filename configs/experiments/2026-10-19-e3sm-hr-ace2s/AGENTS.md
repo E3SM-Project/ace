@@ -231,3 +231,20 @@ Newest last. Times are PDT on 2026-10-19 unless noted.
   its samples, so a stochastic rollout depends on the number of replicas
   (not a writer or tiling bug). Pick one replica count for runs that
   must be reproducible against each other.
+
+## 2026-10-20/21: 40 GB scaling and an OOM fix (allocations 60063553, 60063766)
+
+- Two 4-node allocations (7 x 40 GB + 1 x 80 GB). Cross-allocation NCCL
+  fails at 8 nodes (VNI_NOT_FOUND); 8+ nodes need one allocation.
+- The production config OOMed on 40 GB at 1-2 nodes (first backward) and
+  in inference with 2 ICs per replica. Cause: `BatchData.get_start/get_end`
+  returned views, so the inline-inference IC kept its whole first window
+  on the GPU for the run (~1.15 GiB per IC). Fixed in e035d4cbf (+ test).
+  Bisection and numbers: notes/comm-and-memory.md section 16.
+- After the fix: training peak 35.6 / 37.1 GiB at 1, 2, 4 nodes; a full
+  4-node epoch cycle completes; 5.00 s/step at 1, 2 and 4 nodes (flat).
+- README "Running on 40 GB" now has the per-epoch accounting: 20 epochs is
+  ~139 h on 4 nodes, ~70 h on 8, ~36 h on 16 (16 needs 16 ICs).
+- Correction: earlier 40 GB results that fit had <= 2 ICs per replica and
+  mostly FME_GPU_MEM_CAP_GB=38.5 on every rank; the "~2 GiB margin" was
+  over-stated; the margin is ~1.4 GiB.

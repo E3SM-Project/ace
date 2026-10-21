@@ -10,14 +10,14 @@
 # 1-4 nodes, on 80 GB and 40 GB cards.
 #
 # Environment knobs (all optional):
-#   CKPT_EVERY  checkpoint_every_n_batches (default 400, ~17 min)
+#   CKPT_EVERY  checkpoint_every_n_batches (default 400, ~33 min at 5 s/step)
 #   EXTRA       extra space-separated k=v overrides passed to fme
 #
 # Requeue: the spatial backend does not save a restart checkpoint on SIGTERM
 # (fme/core/generics/trainer.py skips it when has_spatial_parallelism), so a
 # requeued job resumes from the last `checkpoint_every_n_batches` save. This
 # script requeues itself at T-5 min and relies on that interval: 400 batches
-# at ~2.5 s is ~17 min lost at most.
+# at 5.0 s (full harmonics, 40 GB) is ~33 min lost at most.
 #SBATCH -A e3sm_g
 #SBATCH -q regular
 #SBATCH -C gpu&hbm80g          # 40 GB cards also work with the sharding flags
