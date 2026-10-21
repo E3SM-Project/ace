@@ -19,18 +19,20 @@ is trained with spatial parallelism.
 
 ## Layout
 
-Each node runs one 4x1 spatial group (one sample split by latitude band over
-its 4 GPUs) and nodes are data-parallel replicas (`FME_DISTRIBUTED_BACKEND=model`,
-`H=4`, `W=1`, set by `scripts/train.sh`). Parameters are sharded over the tiles
+By default each node runs one 4x1 spatial group (one sample split by latitude
+band over its 4 GPUs) and nodes are data-parallel replicas
+(`FME_DISTRIBUTED_BACKEND=model`, `H=4`, `W=1`, set by `scripts/train.sh`).
+`LAYOUT=HxW` gives each sample H*W GPUs; a group wider than a node spans
+consecutive nodes. Parameters are sharded over the tiles
 (`shard_spatial_parameters: true`); checkpoints keep the unsharded format and
 load in serial and unsharded runs.
 
-- Global batch = number of replicas (one sample per replica). `BATCH` must be
-  a multiple of the node count. It sets the optimization, so keep the node
+- Global batch = number of replicas = 4 N / (H W) (one sample per replica).
+  `BATCH` must be a multiple of the replica count. It sets the optimization, so keep the node
   count fixed for a whole run.
 - The inline-inference initial conditions are split over the replicas: their
   number must be divisible by the replica count, at most 2 per replica on
-  40 GB cards. The config's 8 ICs allow 4 or 8 nodes; 16 nodes need 16 ICs.
+  40 GB cards. The config's 8 ICs allow 4 or 8 replicas; 16 need 16 ICs.
 - One run cannot span two Slurm jobs, so all nodes come from one allocation.
 
 ## Requirements
@@ -53,11 +55,19 @@ cd configs/experiments/hr-ace2s
 RUN=hr-e01 sbatch -N 8 -C "gpu&hbm40g" scripts/sbatch-train-hr.sh   # or gpu&hbm80g
 ```
 
-For 80 GB cards add
+For 80 GB cards, or any layout with 8 or more GPUs per sample, add
 `EXTRA="stepper.step.config.builder.config.uncheckpointed_filter_blocks=8"`.
 
-Knobs: `RUN` (required), `EXPDIR` (default `$PSCRATCH/hr-runs/$RUN`), `BATCH`
-(default N), `CKPT_EVERY` (`checkpoint_every_n_batches`, default 400),
+To strong-scale at a fixed global batch, keep the replicas fixed and grow the
+tile group, e.g. batch 8 as `-N 8` (4x1), `-N 16 LAYOUT=8x1` or
+`-N 32 LAYOUT=16x1`. H must divide 720 (8, 16, 24, ...) and be at most 32.
+`FME_SHT_POLAR_CHUNKS=4` pipelines the SHT transposes with the Legendre
+contraction (bitwise identical; 4-6% faster per step on A100 at 4x1 and 8x1);
+`FME_SHT_POLAR_MIN_CHUNK_MB` (default 4) is the smallest per-peer message a
+chunk may send.
+
+Knobs: `RUN` (required), `EXPDIR` (default `$PSCRATCH/hr-runs/$RUN`), `LAYOUT`
+(default 4x1), `BATCH` (default: the replica count), `CKPT_EVERY` (`checkpoint_every_n_batches`, default 400),
 `CONFIG`, and `EXTRA` (space-separated `k=v` overrides). The first launch
 copies `fme/` and the config to `$EXPDIR/src`, and every requeue runs that
 copy. The job requeues itself 5 min before its walltime and resumes from the

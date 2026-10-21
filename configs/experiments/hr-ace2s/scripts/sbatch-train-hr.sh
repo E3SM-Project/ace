@@ -1,13 +1,17 @@
 #!/bin/bash
-# Train the HR ACE2S config on N nodes: 4x1 spatial tiles per node, one
-# data-parallel replica per node. Submit from this folder:
+# Train the HR ACE2S config on N nodes with HxW spatial tiles per sample
+# (default 4x1, one replica per node). Submit from this folder:
 #
 #   cd configs/experiments/hr-ace2s
 #   RUN=<name> sbatch -N 8 -C "gpu&hbm40g" scripts/sbatch-train-hr.sh
+#   RUN=<name> LAYOUT=8x1 sbatch -N 16 -C "gpu&hbm40g" scripts/sbatch-train-hr.sh
 #
 # Knobs (environment, all optional except RUN):
 #   RUN         run name; the run lives in EXPDIR (default $PSCRATCH/hr-runs/$RUN)
-#   BATCH       global batch size (default N, one sample per replica)
+#   LAYOUT      HxW tiles per sample (default 4x1); a tile group wider than a
+#               node spans consecutive nodes. Replicas = 4 N / (H W).
+#   BATCH       global batch size (default: the number of replicas, one sample
+#               per replica)
 #   CKPT_EVERY  checkpoint_every_n_batches (default 400)
 #   CONFIG      training config (default config-train-hr.yaml)
 #   EXTRA       extra space-separated k=v overrides passed to fme
@@ -38,9 +42,17 @@ repo=$(cd "$here/../../.." && pwd)
 run=${RUN:?set RUN=<name>}
 expdir=${EXPDIR:-$PSCRATCH/hr-runs/$run}
 n=$SLURM_NNODES
-batch=${BATCH:-$n}
-if (( batch % n != 0 )); then
-  echo "BATCH=$batch must be a multiple of the $n replicas" >&2
+layout=${LAYOUT:-4x1}
+h=${layout%x*}
+w=${layout#*x}
+if (( 4 * n % (h * w) != 0 )); then
+  echo "LAYOUT=$layout does not divide the $((4 * n)) GPUs" >&2
+  exit 1
+fi
+replicas=$((4 * n / (h * w)))
+batch=${BATCH:-$replicas}
+if (( batch % replicas != 0 )); then
+  echo "BATCH=$batch must be a multiple of the $replicas replicas" >&2
   exit 1
 fi
 
@@ -67,7 +79,7 @@ trap requeue USR1
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True  # needed on 40 GB cards
 # shellcheck disable=SC2086
 srun --ntasks-per-node 1 --gpus-per-node 4 --export=ALL,ACE_SRC="$ACE_SRC" \
-  "$here/scripts/train.sh" 4 1 "$ACE_SRC/config.yaml" "$expdir" \
+  "$here/scripts/train.sh" "$h" "$w" "$ACE_SRC/config.yaml" "$expdir" \
   train_loader.batch_size="$batch" validation.loader.batch_size="$batch" \
   checkpoint_every_n_batches="${CKPT_EVERY:-400}" ${EXTRA:-} &
 # in the background so the USR1 trap runs; the job's exit status is srun's
