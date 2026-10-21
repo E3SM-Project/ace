@@ -154,6 +154,7 @@ def test_cdf5_reads_only_the_latitude_band(tmp_path, monkeypatch):
 def test_scatter_spatial_rejects_unexpected_shape():
     dist = Distributed.get_instance()
     data = {"a": torch.zeros(2, 3, 4, 5)}
-    assert dist.scatter_spatial(data, (4, 5))["a"].shape == (2, 3, 4, 5)
+    local = data["a"][(..., *dist.get_local_slices((4, 5)))]
+    assert dist.scatter_spatial(data, (4, 5))["a"].shape == local.shape
     with pytest.raises(ValueError, match="match neither"):
         dist.scatter_spatial(data, (4, 6))
