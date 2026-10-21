@@ -251,3 +251,36 @@ Newest last. Times are PDT on 2026-10-19 unless noted.
 - Tile layouts at full harmonics on 40 GB (section 16): 8x1 over 2 nodes
   3.20 s/step (20.8 GiB), 4x2 3.80 s (22.3 GiB); 2x2, 1x4 and 2x1 OOM.
 - Scaling-study plan for one large allocation: notes/scaling-study-plan.md, sweeps/scaling-matrix.tsv (66 rows), scripts/scaling_run.sh + step_time.py (smoke-tested: 4x1 steps, 2x1 single replica OOMs on 40 GB).
+
+## 2026-10-21: review, optimization, clean branch (allocation 60076914: 1x40 GB + 3x80 GB)
+
+Clean production branch: `e3sm/exps/hr-ace2s` (pushed; 54 commits on
+v2026.10.0, code + tests + slim configs/experiments/hr-ace2s). Built by a
+multi-agent review (33 agents, adversarially verified) and implementation
+(6 areas in separate worktrees + restructure, each verified).
+
+Measured (production config, full harmonics, local batch 1, 4x1 unless noted):
+
+| run | before | after |
+|---|---|---|
+| 40 GB 4x1 | 5.00 s, 35.2 GiB | 3.80 s, 34.0 GiB |
+| 80 GB 4x1 | 4.00 s, 37.4 GiB | 3.40 s, 34.0 GiB |
+| 80 GB 4x1, uncheckpointed_filter_blocks=8 | - | 2.60 s, 47.3 GiB |
+| 80 GB 8x1 (2 nodes), uncheckpointed=8 | 3.00 s | 2.00 s, 24.1 GiB |
+| inline-inference summaries | ~4 min | ~0 s |
+| epoch-end checkpoints | 2.5 min | ~1 min |
+
+Layouts on 80 GB (fp32, before optimizations): 4x1 4.00, 1x4 4.40, 2x2
+5.20 s, 2x1 OOM; local batch 2 gives no throughput gain (8.1 s).
+TF32 globally: 2.80 s on 80 GB but Legendre-transform error 1.2% at l=360
+and 5% at l=700 (fp32: 1e-5) at 384 channels -> rejected; TF32 only for the
+per-mode channel mixing (tf32_channel_mixing) gives -5%.
+bf16 autocast fails (view_as_complex). ZeRO saves ~40 MB with parameter
+sharding -> off in the config.
+Dropped from the clean branch: SIGUSR1 restart save (launcher wiring
+fragile: torchrun dies on USR1) and checkpoint mmap loading (torch.save of
+mmap'd tensors to the same path segfaults).
+Tests: CPU parallel matrix (8 configs) passes with fme/core/test_writer.py
+ignored (zarrs missing in the venv); serial suite failures are load
+timeouts or missing optional packages, and the same set fails on the old
+branch.
