@@ -124,13 +124,14 @@ def _register_mean_hooks(
         pending.clear()
 
     def hook(param: torch.Tensor) -> None:
-        if not pending:
-            torch.autograd.Variable._execution_engine.queue_callback(wait_for_all)
         assert param.grad is not None
         param.grad.div_(size)
         pending.append(
             torch.distributed.all_reduce(param.grad, group=group, async_op=True)
         )
+        # queued by every hook, not only the first of a backward: one that
+        # raised drops its callbacks and leaves `pending` non-empty
+        torch.autograd.Variable._execution_engine.queue_callback(wait_for_all)
 
     for param in params:
         param.register_post_accumulate_grad_hook(hook)
