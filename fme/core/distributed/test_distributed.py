@@ -609,3 +609,25 @@ def test_collective_timeout_defaults_to_thirty_minutes(monkeypatch, set_launcher
     torch_distributed.TorchDistributed()
 
     assert timeouts == [timedelta(minutes=30)]
+
+
+def test_get_sht_releases_torch_harmonics_legendre_cache():
+    """The memoized float64 Legendre tables (~3 GB each at lmax 720) must not
+    outlive the transform that needed them."""
+    import torch_harmonics.legendre
+
+    def cached_entries() -> int:
+        total = 0
+        for value in vars(torch_harmonics.legendre).values():
+            for cell in getattr(value, "__closure__", None) or ():
+                info = getattr(cell.cell_contents, "cache_info", None)
+                if callable(info):
+                    total += info().currsize
+        return total
+
+    dist = Distributed.get_instance()
+    sht = dist.get_sht(8, 16)
+    isht = dist.get_isht(8, 16)
+    assert cached_entries() == 0
+    x = torch.randn(1, 8, 16, device=get_device())
+    assert isht(sht(x)).shape == x.shape

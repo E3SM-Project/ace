@@ -467,10 +467,17 @@ def get_lat_lon_sfnonet(
     itrans_up = dist.get_isht(
         *img_shape, lmax=modes_lat, mmax=modes_lon, grid=data_grid
     )
-    trans = dist.get_sht(
-        *img_shape, lmax=modes_lat, mmax=modes_lon, grid="legendre-gauss"
-    )
-    itrans = dist.get_isht(h, w, lmax=modes_lat, mmax=modes_lon, grid="legendre-gauss")
+    if data_grid == "legendre-gauss":
+        # Identical transforms: share them. Each holds its own Legendre table,
+        # 1.5 GB at 720x1440, so duplicates cost 3 GB per GPU.
+        trans, itrans = trans_down, itrans_up
+    else:
+        trans = dist.get_sht(
+            *img_shape, lmax=modes_lat, mmax=modes_lon, grid="legendre-gauss"
+        )
+        itrans = dist.get_isht(
+            h, w, lmax=modes_lat, mmax=modes_lon, grid="legendre-gauss"
+        )
 
     def get_pos_embed():
         pos_embed = nn.Parameter(torch.zeros(1, params.embed_dim, h, w))

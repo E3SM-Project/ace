@@ -802,3 +802,23 @@ def test_checkpointing_gradients_match_uncheckpointed(checkpointing):
     assert set(actual) == set(reference)
     for name, grad in reference.items():
         torch.testing.assert_close(actual[name], grad, msg=f"gradient for {name}")
+
+
+@pytest.mark.parametrize("data_grid", ["legendre-gauss", "equiangular"])
+def test_identical_transforms_are_shared(data_grid: str):
+    """On a Legendre-Gauss input grid the input/output transforms equal the
+    internal ones; sharing them avoids a duplicate Legendre table per
+    transform (1.5 GB each at 720x1440)."""
+    model = get_lat_lon_sfnonet(
+        params=SFNONetConfig(embed_dim=8, num_layers=2),
+        img_shape=(8, 16),
+        in_chans=2,
+        out_chans=2,
+        data_grid=data_grid,
+        context_config=ContextConfig(
+            embed_dim_scalar=0, embed_dim_noise=0, embed_dim_labels=0, embed_dim_pos=0
+        ),
+    )
+    shared = data_grid == "legendre-gauss"
+    assert (model.trans is model.trans_down) == shared
+    assert (model.itrans is model.itrans_up) == shared
