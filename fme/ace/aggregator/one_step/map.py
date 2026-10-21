@@ -1,6 +1,7 @@
 import dataclasses
 from collections.abc import Mapping
 
+import numpy as np
 import torch
 import xarray as xr
 
@@ -9,7 +10,7 @@ from fme.core.distributed import Distributed
 from fme.core.typing_ import TensorDict, TensorMapping
 from fme.core.wandb import Image
 
-from ..plotting import plot_paneled_data
+from ..plotting import gather_map_to_root, images_enabled, plot_paneled_data
 from .build_context import OneStepBuildContext, OneStepMetricBuildResult
 
 
@@ -84,28 +85,20 @@ class MapAggregator:
                 )
         self._n_batches += 1
 
-    def _get_data(self) -> tuple[TensorMapping, TensorMapping]:
+    def _get_data(self) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:
+        """The global mean maps on the root; empty elsewhere."""
         dist = Distributed.get_instance()
-        gen, target = {}, {}
+        gen: dict[str, np.ndarray] = {}
+        target: dict[str, np.ndarray] = {}
         # divide before reducing so the reduction acts on a new tensor; reducing
         # the running totals directly would overwrite them with the cross-rank sum
-        # then assemble the global maps from the spatial tiles
-        for name in sorted(list(self._gen_data.keys())):
-            gen[name] = (
-                dist.gather_spatial_tile(
-                    dist.reduce_mean(self._gen_data[name] / self._n_batches)
+        for out, totals in ((gen, self._gen_data), (target, self._target_data)):
+            for name in sorted(totals):
+                global_map = gather_map_to_root(
+                    dist.reduce_mean(totals[name] / self._n_batches)
                 )
-                .cpu()
-                .numpy()
-            )
-        for name in sorted(list(self._target_data.keys())):
-            target[name] = (
-                dist.gather_spatial_tile(
-                    dist.reduce_mean(self._target_data[name] / self._n_batches)
-                )
-                .cpu()
-                .numpy()
-            )
+                if global_map is not None:
+                    out[name] = global_map
         return gen, target
 
     @torch.no_grad()
@@ -116,6 +109,8 @@ class MapAggregator:
         Args:
             label: Label to prepend to all log keys.
         """
+        if not images_enabled():
+            return {}
         gen, target = self._get_data()
         image_logs = {}
         for name in gen.keys():
@@ -145,6 +140,7 @@ class MapAggregator:
         return caption
 
     def get_dataset(self) -> xr.Dataset:
+        """The mean maps on the root; an empty dataset elsewhere."""
         gen, target = self._get_data()
         ds = xr.Dataset()
         for name in gen:

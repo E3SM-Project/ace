@@ -6,7 +6,11 @@ from typing import Literal
 import torch
 import xarray as xr
 
-from fme.ace.aggregator.plotting import plot_paneled_data
+from fme.ace.aggregator.plotting import (
+    gather_map_to_root,
+    images_enabled,
+    plot_gathered_panels,
+)
 from fme.core.dataset.data_typing import VariableMetadata
 from fme.core.distributed import Distributed
 from fme.core.ensemble import get_crps
@@ -293,6 +297,7 @@ class _EnsembleAggregator:
             raise ValueError("No batches have been recorded.")
         data: dict[str, torch.Tensor] = {}
         all_variable_names: set[str] = set()
+        log_mean_maps = self._log_mean_maps and images_enabled()
         for metric in sorted(self._variable_metrics):
             for key in sorted(self._variable_metrics[metric]):
                 all_variable_names.add(key)
@@ -304,13 +309,14 @@ class _EnsembleAggregator:
                     .cpu()
                     .numpy()
                 )
-                if self._log_mean_maps:
-                    global_map = self._dist.gather_spatial_tile(metric_value)
-                    data[f"{metric}/mean_map/{key}"] = plot_paneled_data(
-                        [[global_map.cpu().numpy()]],
+                if log_mean_maps:
+                    image = plot_gathered_panels(
+                        [[gather_map_to_root(metric_value)]],
                         diverging=metric in self._diverging_metrics,
                         caption=self._get_caption(key),
                     )
+                    if image is not None:
+                        data[f"{metric}/mean_map/{key}"] = image
             if self._target == "norm":
                 all_keys = list(self._variable_metrics[metric].keys())
                 if self._channel_mean_names is None:

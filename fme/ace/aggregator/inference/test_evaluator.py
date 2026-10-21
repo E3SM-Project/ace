@@ -7,6 +7,8 @@ import pytest
 import torch
 import xarray as xr
 
+import fme.ace.aggregator.inference.spectrum as spectrum
+import fme.ace.aggregator.plotting as plotting
 from fme.ace.aggregator.inference import (
     AnnualMetricConfig,
     EnsembleMetricConfig,
@@ -35,6 +37,7 @@ from fme.ace.data_loading.batch_data import BatchData, PairedData
 from fme.core.coordinates import HEALPixCoordinates, LatLonCoordinates
 from fme.core.dataset_info import DatasetInfo
 from fme.core.device import get_device
+from fme.core.testing.wandb import mock_wandb
 from fme.core.wandb import Image
 
 TIMESTEP = datetime.timedelta(hours=6)
@@ -1050,3 +1053,81 @@ class TestRaiseOnUnsupported:
         assert "enso_index" not in agg._aggregators
         assert "enso_coefficient" not in agg._aggregators
         assert "ipo_index" not in agg._aggregators
+
+
+def _summarize(
+    output_dir: pathlib.Path, log_to_wandb: bool, monkeypatch
+) -> tuple[dict, int]:
+    """The summary logs of a short inference, and how many images were drawn,
+    with wandb logging on or off. Writes the diagnostics to ``output_dir``.
+    """
+    n_rendered = 0
+    real_plot_imshow = plotting.plot_imshow
+    real_plot_spectrum_pair = spectrum._plot_spectrum_pair
+
+    def counting_plot_imshow(*args, **kwargs):
+        nonlocal n_rendered
+        n_rendered += 1
+        return real_plot_imshow(*args, **kwargs)
+
+    def counting_plot_spectrum_pair(*args, **kwargs):
+        nonlocal n_rendered
+        n_rendered += 1
+        return real_plot_spectrum_pair(*args, **kwargs)
+
+    monkeypatch.setattr(plotting, "plot_imshow", counting_plot_imshow)
+    monkeypatch.setattr(spectrum, "_plot_spectrum_pair", counting_plot_spectrum_pair)
+    torch.manual_seed(0)
+    n_sample, n_time, nx, ny = 2, 8, 16, 8
+    with mock_wandb() as wandb:
+        wandb.configure(log_to_wandb=log_to_wandb)
+        agg = build_inference_evaluator_aggregator(
+            metrics=[
+                MeanMetricConfig(target="denorm"),
+                PowerSpectrumMetricConfig(),
+                ZonalMeanMetricConfig(),
+                TimeMeanMetricConfig(target="denorm"),
+                TimeMeanMetricConfig(target="norm"),
+            ],
+            dataset_info=get_ds_info(nx, ny),
+            n_ic_steps=1,
+            n_forward_steps=n_time - 1,
+            initial_time=get_zero_time(shape=[n_sample, 0], dims=["sample", "time"]),
+            normalize=lambda x, apply_mean=True: dict(x),
+            output_dir=str(output_dir),
+        )
+        agg.record_batch(
+            data=PairedData.new_on_device(
+                prediction={"a": torch.randn(n_sample, n_time, ny, nx)},
+                reference={"a": torch.randn(n_sample, n_time, ny, nx)},
+                time=xr.DataArray(
+                    np.zeros((n_sample, n_time)), dims=["sample", "time"]
+                ),
+                labels=None,
+            ),
+        )
+        logs = agg.get_summary_logs()
+        agg.flush_diagnostics()
+    monkeypatch.undo()
+    return logs, n_rendered
+
+
+def test_no_images_rendered_when_wandb_logging_is_off(tmp_path, monkeypatch):
+    on_logs, n_on = _summarize(tmp_path / "on", True, monkeypatch)
+    off_logs, n_off = _summarize(tmp_path / "off", False, monkeypatch)
+    assert n_on > 0
+    assert n_off == 0
+    images = {k for k, v in on_logs.items() if isinstance(v, Image | plt.Figure)}
+    assert "time_mean/gen_map/a" in images
+    assert set(off_logs) == set(on_logs) - images
+    for key, value in off_logs.items():
+        np.testing.assert_equal(value, on_logs[key], err_msg=key)
+    files = sorted(p.name for p in (tmp_path / "on").glob("*.nc"))
+    assert "time_mean_diagnostics.nc" in files
+    assert sorted(p.name for p in (tmp_path / "off").glob("*.nc")) == files
+    for name in files:
+        with (
+            xr.open_dataset(tmp_path / "on" / name, decode_timedelta=False) as on,
+            xr.open_dataset(tmp_path / "off" / name, decode_timedelta=False) as off,
+        ):
+            xr.testing.assert_identical(on.load(), off.load())

@@ -12,7 +12,7 @@ from fme.core.distributed import Distributed
 from fme.core.typing_ import TensorDict, TensorMapping
 from fme.core.wandb import Image
 
-from ..plotting import plot_paneled_data
+from ..plotting import images_enabled, plot_paneled_data
 from .build_context import MetricBuildContext, MetricNotSupportedError, maybe_filter
 from .data import InferenceBatchData, MetricBuildResult, SubAggregator
 
@@ -315,8 +315,13 @@ class ZonalMeanAggregator:
         return data
 
     def get_logs(self, label: str) -> dict[str, Image]:
-        logs = {}
+        """The images on the root; an empty dict elsewhere."""
+        if not images_enabled():
+            return {}
         data = self._get_data()
+        if not self._dist.is_root():
+            return {}
+        logs = {}
         for key, datum in data.items():
             logs[f"{label}/{key}"] = datum.get_image()
         return logs

@@ -2,12 +2,41 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 import xarray as xr
 from matplotlib.colors import Colormap
 from matplotlib.figure import Figure
 from matplotlib.ticker import NullLocator
 
+from fme.core.device import get_device
+from fme.core.distributed import Distributed
 from fme.core.wandb import Image, WandB
+
+
+def images_enabled() -> bool:
+    """Whether to make images: wandb logs them from the root only, and only
+    when it is enabled (assumed so when it is not configured).
+
+    Returns the root's answer on every rank, so it can gate the collectives
+    that assemble the maps; draw them on the root only. Collective.
+    """
+    dist = Distributed.get_instance()
+    wandb = WandB.get_instance()
+    enabled = dist.is_root() and (wandb.enabled or not wandb.configured)
+    # the root's value: over its spatial group, then over the replicas
+    flag = torch.tensor([float(enabled)], device=get_device())
+    return bool(dist.reduce_max(dist.spatial_reduce_sum(flag)).item() > 0)
+
+
+def gather_map_to_root(tile: torch.Tensor) -> np.ndarray | None:
+    """The global map of a tile-local one, on the root only; None elsewhere.
+    Collective over the spatial group.
+    """
+    dist = Distributed.get_instance()
+    global_map = dist.gather_spatial_tile_to_root(tile)
+    if global_map is None or not dist.is_root():
+        return None
+    return global_map.cpu().numpy()
 
 
 def get_cmap_limits(data: np.ndarray, diverging=False) -> tuple[float, float]:
@@ -159,6 +188,20 @@ def plot_paneled_data(
     plt.close(fig)
 
     return wandb_image
+
+
+def plot_gathered_panels(
+    data: list[list[np.ndarray | None]],
+    diverging: bool,
+    caption: str | None = None,
+) -> Image | None:
+    """``plot_paneled_data`` of maps from ``gather_map_to_root``, which are
+    None off the root: None there.
+    """
+    panels = [[arr for arr in row if arr is not None] for row in data]
+    if [len(row) for row in panels] != [len(row) for row in data]:
+        return None
+    return plot_paneled_data(panels, diverging, caption=caption)
 
 
 def _stitch_data_panels(data: list[list[np.ndarray]], fill_value) -> np.ndarray:

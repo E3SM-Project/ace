@@ -7,7 +7,11 @@ import numpy as np
 import torch
 import xarray as xr
 
-from fme.ace.aggregator.plotting import plot_paneled_data
+from fme.ace.aggregator.plotting import (
+    gather_map_to_root,
+    images_enabled,
+    plot_paneled_data,
+)
 from fme.core.dataset.data_typing import VariableMetadata
 from fme.core.device import get_device
 from fme.core.distributed import Distributed
@@ -99,9 +103,13 @@ class SeasonalAggregator:
             ).cpu()
             for name in names
         }
-        if dist.has_spatial_parallelism:
-            target = _gather_spatial_dataset(dist, target, names)
-            gen = _gather_spatial_dataset(dist, gen, names)
+        plot = images_enabled()
+        if plot and dist.has_spatial_parallelism:
+            target_maps = _gather_spatial_dataset(target, names)
+            gen_maps = _gather_spatial_dataset(gen, names)
+            if target_maps is None or gen_maps is None:
+                return {}
+            target, gen = target_maps, gen_maps
             bias = gen - target
         if not dist.is_root():
             return {}
@@ -109,61 +117,8 @@ class SeasonalAggregator:
         metric_logs: dict[str, float] = {}
 
         for name in names:
-            if self._variable_metadata is not None and name in self._variable_metadata:
-                long_name = self._variable_metadata[name].display_long_name(name)
-                units = self._variable_metadata[name].display_units()
-                caption_name = f"{long_name} ({units})"
-            else:
-                caption_name = name
-
-            target_mean_pattern = target[name].mean(dim="season")
-            gen_anomaly = gen[name] - target_mean_pattern
-            target_anomaly = target[name] - target_mean_pattern
-            r2 = get_r2(gen_anomaly, target_anomaly)
-
-            image = plot_paneled_data(
-                [
-                    [
-                        target_anomaly.sel(season="DJF").values,
-                        target_anomaly.sel(season="MAM").values,
-                        target_anomaly.sel(season="JJA").values,
-                        target_anomaly.sel(season="SON").values,
-                    ],
-                    [
-                        gen_anomaly.sel(season="DJF").values,
-                        gen_anomaly.sel(season="MAM").values,
-                        gen_anomaly.sel(season="JJA").values,
-                        gen_anomaly.sel(season="SON").values,
-                    ],
-                ],
-                diverging=True,
-                caption=(
-                    f"Seasonal time-mean anomaly of {caption_name} for target (top) "
-                    f"and gen (bottom) starting with DJF, R2={r2:.4f}. "
-                    "Time-mean of target is subtracted from predictions and target."
-                ),
-            )
-            plots[f"anomaly/{name}"] = image
-
-            image_err = plot_paneled_data(
-                [
-                    [
-                        bias[name].sel(season="DJF").values,
-                        bias[name].sel(season="MAM").values,
-                    ],
-                    [
-                        bias[name].sel(season="JJA").values,
-                        bias[name].sel(season="SON").values,
-                    ],
-                ],
-                diverging=True,
-                caption=(
-                    f"Seasonal bias of {caption_name} for DJF (Upper-Left), "
-                    "MAM (UR), JJA (LL), and SON (LR). "
-                    f"Seasonal anomaly R2={r2:.4f} (excludes time-mean of target)."
-                ),
-            )
-            plots[f"bias/{name}"] = image_err
+            if plot:
+                plots.update(self._plot(name, target, gen, bias))
 
             mse_tensor = mse[name]
             for i, season in enumerate(bias[name].season.values):
@@ -182,6 +137,68 @@ class SeasonalAggregator:
         logs.update({f"{label}{name}": plots[name] for name in plots.keys()})
         logs.update({f"{label}{name}": val for name, val in metric_logs.items()})
         return logs
+
+    def _plot(
+        self, name: str, target: xr.Dataset, gen: xr.Dataset, bias: xr.Dataset
+    ) -> dict[str, Image]:
+        """The seasonal anomaly and bias images of the global maps."""
+        plots: dict[str, Image] = {}
+        if self._variable_metadata is not None and name in self._variable_metadata:
+            long_name = self._variable_metadata[name].display_long_name(name)
+            units = self._variable_metadata[name].display_units()
+            caption_name = f"{long_name} ({units})"
+        else:
+            caption_name = name
+
+        target_mean_pattern = target[name].mean(dim="season")
+        gen_anomaly = gen[name] - target_mean_pattern
+        target_anomaly = target[name] - target_mean_pattern
+        r2 = get_r2(gen_anomaly, target_anomaly)
+
+        image = plot_paneled_data(
+            [
+                [
+                    target_anomaly.sel(season="DJF").values,
+                    target_anomaly.sel(season="MAM").values,
+                    target_anomaly.sel(season="JJA").values,
+                    target_anomaly.sel(season="SON").values,
+                ],
+                [
+                    gen_anomaly.sel(season="DJF").values,
+                    gen_anomaly.sel(season="MAM").values,
+                    gen_anomaly.sel(season="JJA").values,
+                    gen_anomaly.sel(season="SON").values,
+                ],
+            ],
+            diverging=True,
+            caption=(
+                f"Seasonal time-mean anomaly of {caption_name} for target (top) "
+                f"and gen (bottom) starting with DJF, R2={r2:.4f}. "
+                "Time-mean of target is subtracted from predictions and target."
+            ),
+        )
+        plots[f"anomaly/{name}"] = image
+
+        image_err = plot_paneled_data(
+            [
+                [
+                    bias[name].sel(season="DJF").values,
+                    bias[name].sel(season="MAM").values,
+                ],
+                [
+                    bias[name].sel(season="JJA").values,
+                    bias[name].sel(season="SON").values,
+                ],
+            ],
+            diverging=True,
+            caption=(
+                f"Seasonal bias of {caption_name} for DJF (Upper-Left), "
+                "MAM (UR), JJA (LL), and SON (LR). "
+                f"Seasonal anomaly R2={r2:.4f} (excludes time-mean of target)."
+            ),
+        )
+        plots[f"bias/{name}"] = image_err
+        return plots
 
     def get_dataset(self) -> xr.Dataset:
         logging.debug(
@@ -213,22 +230,18 @@ def get_r2(da: xr.DataArray, target: xr.DataArray) -> float:
     return float(1 - SS_pred / SS_ref)
 
 
-def _gather_spatial_dataset(
-    dist: Distributed, dataset: xr.Dataset, names: list[str]
-) -> xr.Dataset:
-    """Assemble the global (season, lat, lon) maps of the spatial tiles."""
+def _gather_spatial_dataset(dataset: xr.Dataset, names: list[str]) -> xr.Dataset | None:
+    """Assemble the global (season, lat, lon) maps of the spatial tiles on
+    the root; None elsewhere.
+    """
+    maps = {
+        name: gather_map_to_root(torch.as_tensor(dataset[name].values).to(get_device()))
+        for name in names
+    }
+    if any(value is None for value in maps.values()):
+        return None
     return xr.Dataset(
-        {
-            name: (
-                ["season", "lat", "lon"],
-                dist.gather_spatial_tile(
-                    torch.as_tensor(dataset[name].values).to(get_device())
-                )
-                .cpu()
-                .numpy(),
-            )
-            for name in names
-        },
+        {name: (["season", "lat", "lon"], value) for name, value in maps.items()},
         coords={"season": dataset["season"]},
     )
 

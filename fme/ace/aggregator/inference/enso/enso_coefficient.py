@@ -9,7 +9,13 @@ import numpy as np
 import torch
 import xarray as xr
 
-from fme.ace.aggregator.plotting import get_cmap_limits, plot_imshow, plot_paneled_data
+from fme.ace.aggregator.plotting import (
+    gather_map_to_root,
+    get_cmap_limits,
+    images_enabled,
+    plot_imshow,
+    plot_paneled_data,
+)
 from fme.core.coordinates import LatLonCoordinates
 from fme.core.dataset.data_typing import VariableMetadata
 from fme.core.device import get_device
@@ -215,6 +221,7 @@ class EnsoCoefficientEvaluatorAggregator:
             return {}  # no sample on any process overlapped the index
         dist = Distributed.get_instance()
         wandb = WandB.get_instance()
+        plot = images_enabled()
         images, metrics = {}, {}
         for name in gen_coefficients.keys():
             # collectives on every rank: the RMSE reduces over the spatial
@@ -228,9 +235,12 @@ class EnsoCoefficientEvaluatorAggregator:
                 .cpu()
                 .numpy()
             )
-            target_map = dist.gather_spatial_tile(target_coefficients[name])
-            gen_map = dist.gather_spatial_tile(gen_coefficients[name])
-            if not dist.is_root():
+            metrics[f"rmse/{name}"] = rmse
+            if not plot:
+                continue
+            target_map = gather_map_to_root(target_coefficients[name])
+            gen_map = gather_map_to_root(gen_coefficients[name])
+            if target_map is None or gen_map is None:
                 continue
             if name in self._variable_metadata:
                 caption_name = self._variable_metadata[name].display_long_name(name)
@@ -243,21 +253,20 @@ class EnsoCoefficientEvaluatorAggregator:
             caption = self._image_captions["target_gen_coefficient_maps"].format(
                 name=caption_name, units=caption_units
             )
-            panels = [[target_map.cpu().numpy(), gen_map.cpu().numpy()]]
+            panels = [[target_map, gen_map]]
             coefficient_map = plot_paneled_data(
                 data=panels, diverging=True, caption=caption
             )
             images.update({f"coefficient_maps/{name}": coefficient_map})
-            metrics.update({f"rmse/{name}": rmse})
             diff = gen_map - target_map
             caption = self._image_captions["coefficient_difference_map"].format(
                 name=caption_name, units=caption_units
             )
-            vmin, vmax = get_cmap_limits(diff.cpu().numpy(), diverging=True)
+            vmin, vmax = get_cmap_limits(diff, diverging=True)
             caption += (
                 f" vmin={vmin:.4g}, vmax={vmax:.4g}; global-mean RMSE={rmse:.4g}."
             )
-            fig = plot_imshow(diff.cpu().numpy(), vmin, vmax, cmap="RdBu_r")
+            fig = plot_imshow(diff, vmin, vmax, cmap="RdBu_r")
             coefficient_difference_map = wandb.Image(fig, caption=caption)
             plt.close(fig)
             images.update(
@@ -281,32 +290,23 @@ class EnsoCoefficientEvaluatorAggregator:
         target_coefficients, gen_coefficients = self._get_coefficients()
         if target_coefficients is None or gen_coefficients is None:
             return xr.Dataset()
-        dist = Distributed.get_instance()
-        target_coefficients = {
-            name: dist.gather_spatial_tile(value)
+        target_maps = {
+            name: gather_map_to_root(value)
             for name, value in target_coefficients.items()
         }
-        gen_coefficients = {
-            name: dist.gather_spatial_tile(value)
-            for name, value in gen_coefficients.items()
+        gen_maps = {
+            name: gather_map_to_root(value) for name, value in gen_coefficients.items()
         }
-        if not dist.is_root():
+        if not Distributed.get_instance().is_root():
             return xr.Dataset()
         target_coefficients_ds = xr.Dataset(
             {
-                name: (
-                    ["lat", "lon"],
-                    target_coefficients[name].cpu().numpy(),
-                    self._get_var_attrs(name),
-                )
-                for name in target_coefficients.keys()
+                name: (["lat", "lon"], value, self._get_var_attrs(name))
+                for name, value in target_maps.items()
             }
         ).expand_dims({"source": ["target"]})
         gen_coefficients_ds = xr.Dataset(
-            {
-                name: (["lat", "lon"], gen_coefficients[name].cpu().numpy())
-                for name in gen_coefficients.keys()
-            }
+            {name: (["lat", "lon"], value) for name, value in gen_maps.items()}
         ).expand_dims({"source": ["prediction"]})
         return xr.concat([target_coefficients_ds, gen_coefficients_ds], dim="source")
 

@@ -281,6 +281,15 @@ class _FakeDistributed:
         # not a collective without spatial parallelism
         return tensor
 
+    def gather_spatial_tile_to_root(self, tensor: torch.Tensor) -> torch.Tensor:
+        return tensor
+
+    def spatial_reduce_sum(self, tensor: torch.Tensor) -> torch.Tensor:
+        return tensor
+
+    def reduce_max(self, tensor: torch.Tensor) -> torch.Tensor:
+        return tensor
+
     def reduce_sum(self, tensor: torch.Tensor) -> torch.Tensor:
         self.calls.append(("reduce_sum", tuple(tensor.shape)))
         if self._contributions is None:

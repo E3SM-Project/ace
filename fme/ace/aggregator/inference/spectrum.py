@@ -15,6 +15,7 @@ from fme.core.gridded_ops import GriddedOperations
 from fme.core.metrics import spherical_power_spectrum
 from fme.core.typing_ import TensorMapping
 
+from ..plotting import images_enabled
 from .build_context import MetricBuildContext, MetricNotSupportedError, maybe_filter
 from .data import InferenceBatchData, MetricBuildResult, SubAggregator
 
@@ -104,8 +105,11 @@ class SphericalPowerSpectrumAggregator:
     @torch.no_grad()
     def get_logs(self, label: str) -> dict[str, plt.Figure]:
         logs: dict[str, plt.Figure] = {}
-        if self._report_plot:
-            for name, spectrum in self.get_mean().items():
+        if self._report_plot and images_enabled():
+            means = self.get_mean()
+            if not Distributed.get_instance().is_root():
+                return logs
+            for name, spectrum in means.items():
                 fig = _plot_spectrum_pair(spectrum.cpu(), target=None)
                 logs[f"{label}/{name}"] = fig
                 plt.close(fig)
@@ -204,7 +208,11 @@ class PairedSphericalPowerSpectrumAggregator:
         logs: dict[str, plt.Figure | float] = {}
         gen_spectrum = self._gen_aggregator.get_mean()
         target_spectrum = self._target_aggregator.get_mean()
-        if self._report_plot:
+        if (
+            self._report_plot
+            and images_enabled()
+            and Distributed.get_instance().is_root()
+        ):
             for name in gen_spectrum:
                 if (
                     self._plot_variables is not None

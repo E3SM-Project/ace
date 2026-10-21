@@ -14,7 +14,7 @@ from fme.core.gridded_ops import GriddedOperations
 from fme.core.typing_ import TensorDict, TensorMapping
 from fme.core.wandb import Image
 
-from ..plotting import plot_paneled_data
+from ..plotting import gather_map_to_root, images_enabled, plot_paneled_data
 from .build_context import MetricBuildContext, MetricNotSupportedError, maybe_filter
 from .data import InferenceBatchData, MetricBuildResult, SubAggregator
 
@@ -205,6 +205,7 @@ class TrendEvaluatorAggregator:
         """Returns the logs on the root process, and an empty dict elsewhere."""
         target_trends, gen_trends = self._get_trends()
         dist = Distributed.get_instance()
+        plot = images_enabled()
         images: dict[str, Image] = {}
         metrics: dict[str, float] = {}
         for name in gen_trends:
@@ -219,18 +220,19 @@ class TrendEvaluatorAggregator:
                 .cpu()
                 .numpy()
             )
-            target_map = dist.gather_spatial_tile(target_trends[name])
-            gen_map = dist.gather_spatial_tile(gen_trends[name])
-            if not dist.is_root():
+            if not plot:
+                continue
+            target_map = gather_map_to_root(target_trends[name])
+            gen_map = gather_map_to_root(gen_trends[name])
+            if target_map is None or gen_map is None:
                 continue
             images[f"maps/{name}"] = plot_paneled_data(
-                [[target_map.cpu().numpy(), gen_map.cpu().numpy()]],
+                [[target_map, gen_map]],
                 diverging=True,
                 caption=self._caption("maps", name),
             )
-            difference = gen_map - target_map
             images[f"difference_map/{name}"] = plot_paneled_data(
-                [[difference.cpu().numpy()]],
+                [[gen_map - target_map]],
                 diverging=True,
                 caption=self._caption("difference_map", name),
             )
@@ -257,34 +259,24 @@ class TrendEvaluatorAggregator:
     def get_dataset(self) -> xr.Dataset:
         """Returns the dataset on the root process, and an empty one elsewhere."""
         target_trends, gen_trends = self._get_trends()
-        dist = Distributed.get_instance()
-        target_trends = {
-            name: dist.gather_spatial_tile(value)
-            for name, value in target_trends.items()
+        target_maps = {
+            name: gather_map_to_root(value) for name, value in target_trends.items()
         }
-        gen_trends = {
-            name: dist.gather_spatial_tile(value) for name, value in gen_trends.items()
+        gen_maps = {
+            name: gather_map_to_root(value) for name, value in gen_trends.items()
         }
-        if not dist.is_root():
+        if not Distributed.get_instance().is_root():
             return xr.Dataset()
         target_ds = xr.Dataset(
             {
-                name: (
-                    self._horizontal_dims,
-                    value.cpu().numpy(),
-                    self._var_attrs(name),
-                )
-                for name, value in target_trends.items()
+                name: (self._horizontal_dims, value, self._var_attrs(name))
+                for name, value in target_maps.items()
             }
         ).expand_dims({"source": ["target"]})
         gen_ds = xr.Dataset(
             {
-                name: (
-                    self._horizontal_dims,
-                    value.cpu().numpy(),
-                    self._var_attrs(name),
-                )
-                for name, value in gen_trends.items()
+                name: (self._horizontal_dims, value, self._var_attrs(name))
+                for name, value in gen_maps.items()
             }
         ).expand_dims({"source": ["prediction"]})
         return xr.concat([target_ds, gen_ds], dim="source")

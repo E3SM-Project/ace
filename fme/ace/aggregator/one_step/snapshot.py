@@ -1,15 +1,15 @@
 import dataclasses
 from collections.abc import Mapping
 
+import numpy as np
 import torch
 import xarray as xr
 
 from fme.core.dataset.data_typing import VariableMetadata
-from fme.core.distributed import Distributed
 from fme.core.typing_ import TensorMapping
 from fme.core.wandb import Image
 
-from ..plotting import plot_paneled_data
+from ..plotting import gather_map_to_root, images_enabled, plot_paneled_data
 from .build_context import OneStepBuildContext, OneStepMetricBuildResult
 
 
@@ -63,34 +63,29 @@ class SnapshotAggregator:
         self._target_data_norm = target_data_norm
         self._gen_data_norm = gen_data_norm
 
-    def _get_data(self) -> tuple[TensorMapping, TensorMapping, TensorMapping]:
+    def _get_data(
+        self,
+    ) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray], dict[str, np.ndarray]]:
+        """The first sample's global fields on the root; empty elsewhere."""
         time_dim = 1
         input_time = 0
         target_time = 1
-        # assemble the global fields from the spatial tiles
-        gather = Distributed.get_instance().gather_spatial_tile
-        gen, target, input = {}, {}, {}
+        gen: dict[str, np.ndarray] = {}
+        target: dict[str, np.ndarray] = {}
+        input: dict[str, np.ndarray] = {}
         for name in sorted(self._gen_data.keys()):
             # use first sample in batch
-            gen[name] = (
-                gather(self._gen_data[name].select(dim=time_dim, index=target_time)[0])
-                .cpu()
-                .numpy()
+            fields = (
+                (gen, self._gen_data[name], target_time),
+                (target, self._target_data[name], target_time),
+                (input, self._target_data[name], input_time),
             )
-            target[name] = (
-                gather(
-                    self._target_data[name].select(dim=time_dim, index=target_time)[0]
+            for out, data, time in fields:
+                global_field = gather_map_to_root(
+                    data.select(dim=time_dim, index=time)[0]
                 )
-                .cpu()
-                .numpy()
-            )
-            input[name] = (
-                gather(
-                    self._target_data[name].select(dim=time_dim, index=input_time)[0]
-                )
-                .cpu()
-                .numpy()
-            )
+                if global_field is not None:
+                    out[name] = global_field
         return gen, target, input
 
     @torch.no_grad()
@@ -101,6 +96,8 @@ class SnapshotAggregator:
         Args:
             label: Label to prepend to all log keys.
         """
+        if not images_enabled():
+            return {}
         image_logs = {}
         gen, target, input = self._get_data()
         for name in gen:
@@ -132,6 +129,7 @@ class SnapshotAggregator:
         return caption
 
     def get_dataset(self) -> xr.Dataset:
+        """The first sample's fields on the root; an empty dataset elsewhere."""
         gen, target, input = self._get_data()
         ds = xr.Dataset()
         for name in gen:

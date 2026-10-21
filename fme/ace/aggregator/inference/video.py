@@ -11,6 +11,7 @@ from fme.core.distributed import Distributed
 from fme.core.typing_ import TensorDict, TensorMapping
 from fme.core.wandb import WandB
 
+from ..plotting import images_enabled
 from .build_context import MetricBuildContext, MetricNotSupportedError, maybe_filter
 from .data import InferenceBatchData, MetricBuildResult, SubAggregator
 
@@ -373,7 +374,11 @@ class VideoAggregator:
         Args:
             label: Label to prepend to all log keys.
         """
+        if not images_enabled():
+            return {}
         data = self._get_data()
+        if not Distributed.get_instance().is_root():
+            return {}
         videos = {}
         for sub_label, d in data.items():
             videos[f"{label}/{sub_label}"] = d.make_video()

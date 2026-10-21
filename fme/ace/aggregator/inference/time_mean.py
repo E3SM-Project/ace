@@ -2,7 +2,6 @@ import dataclasses
 from collections.abc import Mapping, Sequence
 from typing import Literal
 
-import matplotlib.pyplot as plt
 import torch
 import xarray as xr
 
@@ -12,7 +11,7 @@ from fme.core.gridded_ops import GriddedOperations
 from fme.core.typing_ import TensorDict, TensorMapping
 from fme.core.wandb import Image
 
-from ..plotting import plot_paneled_data
+from ..plotting import gather_map_to_root, images_enabled, plot_gathered_panels
 from .build_context import MetricBuildContext
 from .data import InferenceBatchData, MetricBuildResult, SubAggregator
 
@@ -49,13 +48,6 @@ class _TargetGenPair:
             .cpu()
             .numpy()
         )
-
-
-def _global_map(tensor: torch.Tensor) -> torch.Tensor:
-    """The global map of a tile-local one under spatial parallelism, for
-    plotting and saving. Scalars must be computed from the tile.
-    """
-    return Distributed.get_instance().gather_spatial_tile(tensor)
 
 
 def _local_reference(reference: xr.DataArray, device: torch.device) -> torch.Tensor:
@@ -181,7 +173,7 @@ class TimeMeanAggregator:
             self._n_timesteps += tensor_data[list(tensor_data)[0]].size(1)
         if not self._reference_validated:
             if self._reference_means is not None:
-                self.get_logs(label="")
+                self.get_logs(label="", images=False)
             self._reference_validated = True
 
     def get_data(self) -> TensorDict:
@@ -199,33 +191,39 @@ class TimeMeanAggregator:
 
     @torch.no_grad()
     def get_logs(
-        self, label: str, target_maps: dict[str, torch.Tensor] | None = None
+        self,
+        label: str,
+        target_maps: dict[str, torch.Tensor] | None = None,
+        images: bool | None = None,
     ) -> dict[str, float | Image]:
+        """
+        Args:
+            label: Prefix of the log keys.
+            target_maps: Target time means to plot under the generated ones.
+            images: Whether to make the map images; defaults to
+                ``images_enabled()``.
+        """
+        if images is None:
+            images = images_enabled()
         logs: dict[str, float | Image] = {}
         data = self.get_data()
-        gen_map_key = "gen_map"
         for name, pred in data.items():
             if self._log_variables is not None and name not in self._log_variables:
                 continue
-            if self._should_plot(name):
+            plot = images and self._should_plot(name)
+            if plot:
+                panels = [[gather_map_to_root(pred)]]
+                caption_key = "gen_map"
                 if target_maps is not None and name in target_maps:
-                    gen_map_caption_key = "gen_target_map"
-                    data_panels = [
-                        [_global_map(pred).cpu().numpy()],
-                        [_global_map(target_maps[name]).cpu().numpy()],
-                    ]
-                else:
-                    gen_map_caption_key = gen_map_key
-                    data_panels = [[_global_map(pred).cpu().numpy()]]
-                logs.update(
-                    {
-                        f"{gen_map_key}/{name}": plot_paneled_data(
-                            data_panels,
-                            diverging=False,
-                            caption=self._get_caption(gen_map_caption_key, name),
-                        ),
-                    }
+                    caption_key = "gen_target_map"
+                    panels.append([gather_map_to_root(target_maps[name])])
+                image = plot_gathered_panels(
+                    panels,
+                    diverging=False,
+                    caption=self._get_caption(caption_key, name),
                 )
+                if image is not None:
+                    logs[f"gen_map/{name}"] = image
             if self._reference_means is not None and name in self._reference_means:
                 pair = _TargetGenPair(
                     name=name,
@@ -237,16 +235,14 @@ class TimeMeanAggregator:
                 )
                 logs.update({f"ref_bias/{name}": pair.weighted_mean_bias()})
                 logs.update({f"ref_rmse/{name}": pair.rmse()})
-                if self._should_plot(name):
-                    logs.update(
-                        {
-                            f"ref_bias_map/{name}": plot_paneled_data(
-                                [[_global_map(pair.bias()).cpu().numpy()]],
-                                diverging=True,
-                                caption=self._get_caption("bias_map", name),
-                            )
-                        }
+                if plot:
+                    image = plot_gathered_panels(
+                        [[gather_map_to_root(pair.bias())]],
+                        diverging=True,
+                        caption=self._get_caption("bias_map", name),
                     )
+                    if image is not None:
+                        logs[f"ref_bias_map/{name}"] = image
 
         if len(label) != 0:
             return {f"{label}/{key}": logs[key] for key in logs}
@@ -273,10 +269,14 @@ class TimeMeanAggregator:
         return caption
 
     def get_dataset(self) -> xr.Dataset:
+        """The time-mean maps on the root; an empty dataset elsewhere."""
         dims = ("lat", "lon")
         data = {}
         for name, pred in self.get_data().items():
             if self._log_variables is not None and name not in self._log_variables:
+                continue
+            gen_map = gather_map_to_root(pred)
+            if gen_map is None:
                 continue
             if name in self._variable_metadata:
                 long_name = self._variable_metadata[name].display_long_name(name)
@@ -285,14 +285,8 @@ class TimeMeanAggregator:
                 long_name = name
                 units = "unknown_units"
             gen_metadata = VariableMetadata(long_name=long_name, units=units).as_attrs()
-            data.update(
-                {
-                    f"gen_map-{name}": xr.DataArray(
-                        _global_map(pred).cpu(),
-                        dims=dims,
-                        attrs=gen_metadata,
-                    ),
-                }
+            data[f"gen_map-{name}"] = xr.DataArray(
+                gen_map, dims=dims, attrs=gen_metadata
             )
         return xr.Dataset(data)
 
@@ -405,7 +399,10 @@ class TimeMeanEvaluatorAggregator:
 
     @torch.no_grad()
     def get_logs(self, label: str) -> dict[str, float | torch.Tensor | Image]:
-        logs = self._gen_agg.get_logs("", target_maps=self._target_agg.get_data())
+        images = images_enabled()
+        logs = self._gen_agg.get_logs(
+            "", target_maps=self._target_agg.get_data(), images=images
+        )
         preds = self._get_target_gen_pairs()
         bias_map_key = "bias_map"
         rmse_all_channels = {}
@@ -422,17 +419,14 @@ class TimeMeanEvaluatorAggregator:
                 logs.update({f"rmse/{pred.name}": rmse_all_channels[pred.name]})
                 if self._target == "denorm":
                     logs.update({f"bias/{pred.name}": pred.weighted_mean_bias()})
-                    if self._should_plot(pred.name):
-                        logs.update(
-                            {
-                                f"{bias_map_key}/{pred.name}": plot_paneled_data(
-                                    [[_global_map(pred.bias()).cpu().numpy()]],
-                                    diverging=True,
-                                    caption=self._get_caption(bias_map_key, pred.name),
-                                )
-                            }
+                    if images and self._should_plot(pred.name):
+                        image = plot_gathered_panels(
+                            [[gather_map_to_root(pred.bias())]],
+                            diverging=True,
+                            caption=self._get_caption(bias_map_key, pred.name),
                         )
-                        plt.close("all")
+                        if image is not None:
+                            logs[f"{bias_map_key}/{pred.name}"] = image
         if self._target == "norm":
             metric_name = "rmse/channel_mean"
             if self._channel_mean_names is None:
@@ -488,10 +482,15 @@ class TimeMeanEvaluatorAggregator:
         return caption
 
     def get_dataset(self) -> xr.Dataset:
+        """The bias and time-mean maps on the root; an empty dataset elsewhere."""
         data = {}
         preds = self._get_target_gen_pairs()
         for pred in preds:
             if self._log_variables is not None and pred.name not in self._log_variables:
+                continue
+            bias_map = gather_map_to_root(pred.bias())
+            gen_map = gather_map_to_root(pred.gen)
+            if bias_map is None or gen_map is None:
                 continue
             if pred.name in self._variable_metadata:
                 long_name = self._variable_metadata[pred.name].display_long_name(
@@ -508,14 +507,10 @@ class TimeMeanEvaluatorAggregator:
             data.update(
                 {
                     f"bias_map-{pred.name}": xr.DataArray(
-                        _global_map(pred.bias()).cpu(),
-                        dims=self._horizontal_dims,
-                        attrs=bias_metadata,
+                        bias_map, dims=self._horizontal_dims, attrs=bias_metadata
                     ),
                     f"gen_map-{pred.name}": xr.DataArray(
-                        _global_map(pred.gen).cpu(),
-                        dims=self._horizontal_dims,
-                        attrs=gen_metadata,
+                        gen_map, dims=self._horizontal_dims, attrs=gen_metadata
                     ),
                 }
             )

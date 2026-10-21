@@ -1,7 +1,7 @@
 import dataclasses
 from collections.abc import Callable, Mapping, Sequence
 
-import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import xarray as xr
 
@@ -10,7 +10,7 @@ from fme.core.distributed import Distributed
 from fme.core.typing_ import TensorMapping
 from fme.core.wandb import Image
 
-from ..plotting import plot_paneled_data
+from ..plotting import gather_map_to_root, images_enabled, plot_paneled_data
 from .build_context import MetricBuildContext, maybe_filter
 from .data import InferenceBatchData, MetricBuildResult, SubAggregator
 
@@ -220,14 +220,14 @@ class NearZeroFractionAggregator:
 
     def _reduced_maps(
         self, sums: dict[str, torch.Tensor], counts: dict[str, int]
-    ) -> dict[str, torch.Tensor]:
-        """The global maps, for plotting and saving."""
-        maps: dict[str, torch.Tensor] = {}
+    ) -> dict[str, np.ndarray]:
+        """The global maps on the root, for plotting and saving; empty elsewhere."""
+        maps: dict[str, np.ndarray] = {}
         for name in sorted(sums):
             local_map = sums[name] / counts[name]
-            maps[name] = self._dist.gather_spatial_tile(
-                self._dist.reduce_mean(local_map)
-            )
+            global_map = gather_map_to_root(self._dist.reduce_mean(local_map))
+            if global_map is not None:
+                maps[name] = global_map
         return maps
 
     def _caption_name_units(self, name: str) -> tuple[str, str]:
@@ -251,12 +251,12 @@ class NearZeroFractionAggregator:
             if name in target_maps:
                 target_map = target_maps[name]
                 comparison_image = plot_paneled_data(
-                    [[gen_map.cpu().numpy()], [target_map.cpu().numpy()]],
+                    [[gen_map], [target_map]],
                     diverging=False,
                     caption=f"{fraction_desc}; (top) generated and (bottom) target",
                 )
                 error_image = plot_paneled_data(
-                    [[(gen_map - target_map).cpu().numpy()]],
+                    [[gen_map - target_map]],
                     diverging=True,
                     caption=f"{fraction_desc} error (generated - target)",
                 )
@@ -264,12 +264,11 @@ class NearZeroFractionAggregator:
                 logs[f"error_map/{name}"] = error_image
             else:
                 gen_image = plot_paneled_data(
-                    [[gen_map.cpu().numpy()]],
+                    [[gen_map]],
                     diverging=False,
                     caption=f"{fraction_desc}; generated",
                 )
                 logs[f"gen_map/{name}"] = gen_image
-        plt.close("all")
         return logs
 
     @torch.no_grad()
@@ -281,7 +280,7 @@ class NearZeroFractionAggregator:
             logs[f"gen/{name}"] = value
             if name in target_means:
                 logs[f"gen_minus_target/{name}"] = value - target_means[name]
-        if self._include_maps:
+        if self._include_maps and images_enabled():
             logs.update(self._map_logs())
         if label != "":
             logs = {f"{label}/{k}": v for k, v in logs.items()}
@@ -289,6 +288,7 @@ class NearZeroFractionAggregator:
 
     @torch.no_grad()
     def get_dataset(self) -> xr.Dataset:
+        """The maps on the root; an empty dataset elsewhere."""
         if not self._include_maps:
             return xr.Dataset()
         gen_maps = self._reduced_maps(self._gen_map_sum, self._gen_map_count)
@@ -296,11 +296,11 @@ class NearZeroFractionAggregator:
         dims = self._horizontal_dims
         data: dict[str, xr.DataArray] = {}
         for name, gen_map in gen_maps.items():
-            data[f"gen_map-{name}"] = xr.DataArray(gen_map.cpu(), dims=dims)
+            data[f"gen_map-{name}"] = xr.DataArray(gen_map, dims=dims)
             if name in target_maps:
                 target_map = target_maps[name]
-                data[f"target_map-{name}"] = xr.DataArray(target_map.cpu(), dims=dims)
+                data[f"target_map-{name}"] = xr.DataArray(target_map, dims=dims)
                 data[f"error_map-{name}"] = xr.DataArray(
-                    (gen_map - target_map).cpu(), dims=dims
+                    gen_map - target_map, dims=dims
                 )
         return xr.Dataset(data)

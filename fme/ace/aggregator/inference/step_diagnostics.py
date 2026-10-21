@@ -15,7 +15,7 @@ from fme.core.step.step_diagnostics import StepDiagnostics
 from fme.core.typing_ import TensorDict, TensorMapping
 from fme.core.wandb import Image
 
-from ..plotting import plot_paneled_data
+from ..plotting import gather_map_to_root, images_enabled, plot_gathered_panels
 from .reduced import (
     AreaWeightedSingleTargetReducedMetric,
     SeriesData,
@@ -340,6 +340,7 @@ class CorrectionDeltaTimeMeanAggregator:
         if not self._has_data:
             return {}
         signed, magnitude = self._get_time_means()
+        record_maps = self._record_maps and images_enabled()
         logs: dict[str, float | Image] = {}
         for name in signed:
             if self._record_scalars:
@@ -350,15 +351,14 @@ class CorrectionDeltaTimeMeanAggregator:
                     .cpu()
                     .numpy()
                 )
-            if self._record_maps:
-                global_map = Distributed.get_instance().gather_spatial_tile(
-                    signed[name]
-                )
-                logs[f"correction_map/{name}"] = plot_paneled_data(
-                    [[global_map.cpu().numpy()]],
+            if record_maps:
+                image = plot_gathered_panels(
+                    [[gather_map_to_root(signed[name])]],
                     diverging=True,
                     caption=self._caption(self._MAP_CAPTION, name),
                 )
+                if image is not None:
+                    logs[f"correction_map/{name}"] = image
         if len(label) != 0:
             return {f"{label}/{key}": value for key, value in logs.items()}
         return logs
@@ -372,16 +372,16 @@ class CorrectionDeltaTimeMeanAggregator:
 
     @torch.no_grad()
     def get_dataset(self) -> xr.Dataset:
+        """The correction maps on the root; an empty dataset elsewhere."""
         if not self._has_data or not self._record_maps:
             return xr.Dataset()
         signed, _ = self._get_time_means()
         dims = ("lat", "lon")
         data = {}
-        dist = Distributed.get_instance()
         for name, value in signed.items():
-            data[f"correction_map-{name}"] = xr.DataArray(
-                dist.gather_spatial_tile(value).cpu(), dims=dims
-            )
+            global_map = gather_map_to_root(value)
+            if global_map is not None:
+                data[f"correction_map-{name}"] = xr.DataArray(global_map, dims=dims)
         return xr.Dataset(data)
 
 

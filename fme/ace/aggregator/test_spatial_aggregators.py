@@ -7,9 +7,9 @@ records its data-parallel block of samples and its spatial tile of the same
 global data that a serial reference, run in-process on every rank with
 ``Distributed.force_non_distributed``, records in full. The root compares
 the logged metrics, the images (their captions and the plotted arrays) and
-the per-epoch diagnostics netCDF files. Under data parallelism the ensemble
-mean RMSE and spread-skill ratio are skipped, as by convention they are
-means of per-rank values.
+the per-epoch diagnostics netCDF files. The other ranks draw no images.
+Under data parallelism the ensemble mean RMSE and spread-skill ratio are
+skipped, as by convention they are means of per-rank values.
 """
 
 import dataclasses
@@ -165,6 +165,8 @@ def _compare_on_root(serial: _Result, parallel: _Result, dirs=()):
     dist = Distributed.get_instance()
     dist.barrier()
     if not dist.is_root():
+        # only the root's images are logged
+        assert parallel.images == []
         return
     ignore: tuple[str, ...] = ()
     nc_rtol = 1e-5

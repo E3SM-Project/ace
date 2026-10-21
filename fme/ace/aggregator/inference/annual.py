@@ -16,7 +16,7 @@ from fme.core.ensemble import get_crps as _ensemble_crps
 from fme.core.gridded_ops import GriddedOperations
 from fme.core.typing_ import TensorMapping
 
-from ..plotting import plot_mean_and_samples
+from ..plotting import images_enabled, plot_mean_and_samples
 from .build_context import MetricBuildContext, MetricNotSupportedError, maybe_filter
 from .data import InferenceBatchData, MetricBuildResult, SubAggregator
 
@@ -89,6 +89,7 @@ class PairedGlobalMeanAnnualAggregator:
 
     @torch.no_grad()
     def get_logs(self, label: str) -> dict[str, Any]:
+        plot = images_enabled()
         gathered = self._get_gathered_means()
         if gathered is None:  # not the root rank
             return {}
@@ -110,7 +111,7 @@ class PairedGlobalMeanAnnualAggregator:
             fig = Figure()  # create directly for cleanup when it leaves scope
             ax = fig.add_subplot(1, 1, 1)  # Add an axes to the figure
             ref = self._get_reference(name)
-            if ref is not None:
+            if plot and ref is not None:
                 if ref.mean.sizes["year"] > 1:
                     # dataarray.plot() does not work for singleton dimensions
                     ref.mean.plot(ax=ax, x="year", label="ref_mean", color="black")
@@ -140,16 +141,21 @@ class PairedGlobalMeanAnnualAggregator:
                 else:
                     target_label = "target"
                     gen_label = "gen"
-                plot_mean_and_samples(
-                    ax, target[name], target_label, color="orange", plot_samples=False
-                )
-                plot_mean_and_samples(ax, gen[name], gen_label)
-
-            ax.set_title(f"{name}")
-            ax.set_ylabel(f"{long_name} [{units}]")
-            ax.legend()
-            fig.tight_layout()
-            plots[name] = fig
+                if plot:
+                    plot_mean_and_samples(
+                        ax,
+                        target[name],
+                        target_label,
+                        color="orange",
+                        plot_samples=False,
+                    )
+                    plot_mean_and_samples(ax, gen[name], gen_label)
+            if plot:
+                ax.set_title(f"{name}")
+                ax.set_ylabel(f"{long_name} [{units}]")
+                ax.legend()
+                fig.tight_layout()
+                plots[name] = fig
         if len(label) > 0:
             label = label + "/"
         logs = {}
@@ -241,6 +247,8 @@ class GlobalMeanAnnualAggregator:
 
     @torch.no_grad()
     def get_logs(self, label: str) -> dict[str, Any]:
+        if not images_enabled():
+            return {}
         ds = self.get_gathered_means()
         if ds is None:  # not the root rank
             return {}
