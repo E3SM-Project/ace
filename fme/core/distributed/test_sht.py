@@ -46,7 +46,13 @@ def _assert_matches_torch_harmonics(nlat, nlon, lmax, mmax, grid):
 @pytest.mark.parametrize("grid", ["legendre-gauss", "equiangular", "lobatto"])
 @pytest.mark.parametrize(
     "nlat, nlon, lmax, mmax",
-    [(16, 32, None, None), (17, 32, 12, 10), (12, 24, 12, 13)],
+    [
+        (16, 32, None, None),
+        (17, 32, 12, 10),
+        (12, 24, 12, 13),
+        (64, 128, None, None),  # several blocks of orders
+        (48, 96, 30, 41),  # orders beyond lmax
+    ],
 )
 def test_sht_matches_torch_harmonics(nlat, nlon, lmax, mmax, grid):
     _assert_matches_torch_harmonics(nlat, nlon, lmax, mmax, grid)
@@ -88,3 +94,11 @@ def test_tables_are_counted_once_and_released_with_their_transforms():
     del transforms
     gc.collect()
     assert len(sht._TABLES) == n_before
+
+
+def test_table_skips_the_zero_degrees():
+    nlat, mmax = 64, 65
+    table = sht.RealSHT(nlat, 2 * (mmax - 1), grid="legendre-gauss").pct
+    # one block of 32 orders from l=0, one from l=32, and m=64 from l=64
+    assert table.numel() == (32 * 64 + 32 * 32 + 0) * nlat
+    assert table.numel() < 0.75 * mmax * nlat * nlat

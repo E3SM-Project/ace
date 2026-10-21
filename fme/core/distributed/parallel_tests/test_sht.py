@@ -24,7 +24,8 @@ def _assert_close(actual: torch.Tensor, expected: torch.Tensor, scale: torch.Ten
 @pytest.mark.parallel
 @pytest.mark.parametrize("grid", ["legendre-gauss", "equiangular"])
 @pytest.mark.parametrize(
-    "nlat, nlon, lmax, mmax", [(16, 32, None, None), (17, 30, 12, 9)]
+    "nlat, nlon, lmax, mmax",
+    [(16, 32, None, None), (17, 30, 12, 9), (64, 128, None, None), (48, 96, 30, 41)],
 )
 def test_spatial_sht_matches_serial_torch_harmonics(nlat, nlon, lmax, mmax, grid):
     dist = Distributed.get_instance()

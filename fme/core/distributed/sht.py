@@ -11,8 +11,13 @@ the 2*pi of the longitude integral) to its Fourier coefficients, so both
 directions contract with the same table. Tables are cached per configuration
 and device, so every transform of one grid in a process (model, loss,
 diagnostics) holds the same tensor.
+
+P_l^m is zero for l < m, so the table is stored in blocks of orders, each
+holding only the degrees from the block's first order up, and the
+contraction skips the rest: about half the table and half the work.
 """
 
+import dataclasses
 import math
 import weakref
 
@@ -47,6 +52,46 @@ def _quadrature(nlat: int, grid: str) -> tuple[torch.Tensor, torch.Tensor, int]:
     raise ValueError(f"Unknown quadrature mode {grid!r}")
 
 
+# Orders per block of the Legendre contraction; the zero triangle inside a
+# block is still stored and multiplied.
+_M_BLOCK = 32
+
+
+@dataclasses.dataclass(frozen=True)
+class _Block:
+    m0: int  # local orders m0:m1
+    m1: int
+    l0: int  # first stored degree
+    offset: int  # into the packed table
+
+
+@dataclasses.dataclass(frozen=True)
+class _LegendrePlan:
+    """Layout of a packed table holding P[m, l, k] for l >= l0 of m's block."""
+
+    nlat: int
+    lmax: int
+    blocks: tuple[_Block, ...]
+    numel: int
+
+    @classmethod
+    def new(cls, nlat: int, lmax: int, m_start: int, m_stop: int) -> "_LegendrePlan":
+        blocks = []
+        offset = 0
+        m = m_start
+        while m < m_stop:
+            m_next = min((m // _M_BLOCK + 1) * _M_BLOCK, m_stop)
+            l0 = min(m, lmax)
+            blocks.append(_Block(m - m_start, m_next - m_start, l0, offset))
+            offset += (m_next - m) * (lmax - l0) * nlat
+            m = m_next
+        return cls(nlat, lmax, tuple(blocks), offset)
+
+    def block_table(self, table: torch.Tensor, block: _Block) -> torch.Tensor:
+        shape = (block.m1 - block.m0, self.lmax - block.l0, self.nlat)
+        return table[block.offset : block.offset + math.prod(shape)].view(shape)
+
+
 def _legendre_table(
     nlat: int,
     lmax: int,
@@ -56,8 +101,8 @@ def _legendre_table(
     m_stop: int,
     device: torch.device,
 ) -> torch.Tensor:
-    """The fp32 table P[m, l, k] for orders m_start:m_stop, shared by
-    every live transform with the same arguments.
+    """The packed fp32 table of orders m_start:m_stop, shared by every live
+    transform with the same arguments.
     """
     key = (nlat, lmax, mmax, grid, m_start, m_stop, str(device))
     table = _TABLES.get(key)
@@ -65,11 +110,79 @@ def _legendre_table(
         cost, _, _ = _quadrature(nlat, grid)
         t = torch.flip(torch.arccos(cost), dims=(0,))
         pct = legpoly(mmax, lmax, torch.cos(t), norm="ortho", csphase=True)
-        table = pct[m_start:m_stop].to(device=device, dtype=torch.float32)
-        table = table.contiguous()
+        plan = _LegendrePlan.new(nlat, lmax, m_start, m_stop)
+        table = torch.empty(plan.numel, dtype=torch.float32, device=device)
+        for block in plan.blocks:
+            m0, m1 = m_start + block.m0, m_start + block.m1
+            plan.block_table(table, block).copy_(pct[m0:m1, block.l0 :])
         del pct
         _TABLES[key] = table
     return table
+
+
+def _contract(x: torch.Tensor, table: torch.Tensor, plan: _LegendrePlan):
+    """(..., nlat, m, 2) -> (..., lmax, m, 2), summing P[m, l, k] x[k, m]."""
+    *lead, nlat, n_m, _ = x.shape
+    xt = x.reshape(-1, nlat, n_m, 2).permute(2, 1, 0, 3).reshape(n_m, nlat, -1)
+    yt = xt.new_empty(n_m, plan.lmax, xt.shape[-1])
+    for block in plan.blocks:
+        m0, m1, l0 = block.m0, block.m1, block.l0
+        yt[m0:m1, :l0].zero_()
+        if l0 < plan.lmax:
+            yt[m0:m1, l0:] = torch.bmm(plan.block_table(table, block), xt[m0:m1])
+    y = yt.view(n_m, plan.lmax, *lead, 2).movedim((0, 1), (-2, -3))
+    # a new tensor, not a view: callers modify the output in place
+    return y.clone(memory_format=torch.contiguous_format)
+
+
+def _contract_transpose(y: torch.Tensor, table: torch.Tensor, plan: _LegendrePlan):
+    """(..., lmax, m, 2) -> (..., nlat, m, 2), summing P[m, l, k] y[l, m]."""
+    *lead, lmax, n_m, _ = y.shape
+    # with l contiguous and the table on the right, the sum over l rounds
+    # like torch-harmonics' einsum
+    yt = y.reshape(-1, lmax, n_m, 2).permute(2, 0, 3, 1).reshape(n_m, -1, lmax)
+    xt = yt.new_empty(n_m, yt.shape[1], plan.nlat)
+    for block in plan.blocks:
+        m0, m1, l0 = block.m0, block.m1, block.l0
+        if l0 < plan.lmax:
+            table_block = plan.block_table(table, block)
+            torch.bmm(yt[m0:m1, :, l0:], table_block, out=xt[m0:m1])
+        else:
+            xt[m0:m1].zero_()
+    n_lead = len(lead)
+    x = xt.view(n_m, *lead, 2, plan.nlat)
+    x = x.permute(*range(1, n_lead + 1), n_lead + 2, 0, n_lead + 1)
+    return x.clone(memory_format=torch.contiguous_format)
+
+
+class _Legendre(torch.autograd.Function):
+    """Analysis contraction; its adjoint is the synthesis contraction."""
+
+    @staticmethod
+    def forward(ctx, x, table, plan):
+        ctx.save_for_backward(table)
+        ctx.plan = plan
+        return _contract(x, table, plan)
+
+    @staticmethod
+    def backward(ctx, grad):
+        (table,) = ctx.saved_tensors
+        return _contract_transpose(grad, table, ctx.plan), None, None
+
+
+class _LegendreTranspose(torch.autograd.Function):
+    """Synthesis contraction; its adjoint is the analysis contraction."""
+
+    @staticmethod
+    def forward(ctx, y, table, plan):
+        ctx.save_for_backward(table)
+        ctx.plan = plan
+        return _contract_transpose(y, table, plan)
+
+    @staticmethod
+    def backward(ctx, grad):
+        (table,) = ctx.saved_tensors
+        return _contract(grad, table, ctx.plan), None, None
 
 
 def _split_start(shapes: list[int], rank: int) -> int:
@@ -112,6 +225,7 @@ class _SHTBase(nn.Module):
             nlat, self.lmax, self.mmax, grid, m_start, m_stop, get_device()
         )
         self.register_buffer("pct", table, persistent=False)
+        self._plan = _LegendrePlan.new(nlat, self.lmax, m_start, m_stop)
 
     def extra_repr(self):
         return (
@@ -165,7 +279,7 @@ class RealSHT(_SHTBase):
 
         with torch.autocast(device_type=x.device.type, enabled=False):
             x = torch.view_as_real(x)
-            x = torch.einsum("...kmr,mlk->...lmr", x, self.pct).contiguous()
+            x = _Legendre.apply(x, self.pct.to(x.dtype), self._plan)
         x = torch.view_as_complex(x)
 
         if self.comm_size_polar > 1:
@@ -200,7 +314,7 @@ class InverseRealSHT(_SHTBase):
 
         with torch.autocast(device_type=x.device.type, enabled=False):
             x = torch.view_as_real(x)
-            x = torch.einsum("...lmr,mlk->...kmr", x, self.pct).contiguous()
+            x = _LegendreTranspose.apply(x, self.pct.to(x.dtype), self._plan)
         x = torch.view_as_complex(x)
 
         if self.comm_size_polar > 1:
