@@ -1819,6 +1819,26 @@ def test_cdf5_engine_samples_match_netcdf4_engine(
     assert len(cdf5_opened) > 0
 
 
+@pytest.mark.parametrize(
+    "engine, nc_format", [("netcdf4", "NETCDF4"), ("cdf5", "NETCDF3_64BIT_DATA")]
+)
+def test_sample_within_one_file_is_a_fresh_tensor(
+    tmp_path_factory, engine, nc_format
+):
+    """A sample is safe to modify in place (as SST perturbations do): it
+    shares memory with nothing that a later read returns."""
+    mock_data = get_mock_monthly_netcdfs(
+        tmp_path_factory, f"fresh_{engine}", nc_format=nc_format
+    )
+    config = XarrayDataConfig(data_path=str(mock_data.tmpdir), engine=engine)
+    dataset = xarray_dataset_constructor(config, ["foo", "bar"], 3)
+    first, *_ = dataset.get_sample_by_time_slice(slice(0, 3))
+    expected = first["foo"].clone()
+    first["foo"].add_(1.0)
+    second, *_ = dataset.get_sample_by_time_slice(slice(0, 3))
+    torch.testing.assert_close(second["foo"], expected, rtol=0, atol=0)
+
+
 def test_cdf5_engine_rejects_remote_paths():
     with pytest.raises(ValueError, match="local files only"):
         XarrayDataConfig(data_path="gs://bucket/data", engine="cdf5")

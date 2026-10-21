@@ -1325,7 +1325,11 @@ class XarrayDataset(DatasetABC):
 
         tensors: TensorDict = {}
         for n, tensor_list in arrays.items():
-            tensors[n] = torch.cat(tensor_list)
+            if len(tensor_list) == 1 and tensor_list[0].is_contiguous():
+                # a window within one file needs no copy: the read is fresh
+                tensors[n] = tensor_list[0]
+            else:
+                tensors[n] = torch.cat(tensor_list)
         del arrays
 
         # broadcast the time-invariant variables loaded at construction
