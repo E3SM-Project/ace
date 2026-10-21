@@ -412,23 +412,25 @@ class SpectralConvS2(nn.Module):
 
         # Slice global weights to the local spectral partition (lat only).
         weight_local = self.weight[:, self._weight_l_index]
+        x_modes = x[..., : self.modes_lat_local, : self.modes_lon]
+        lora_update: torch.Tensor | None = None
         if self.lora_A is not None and self.lora_B is not None:
             with timer.child("lora_update"):
                 lora_update = _contract_lora(
                     self.lora_A[:, self._weight_l_index],
                     self.lora_B[:, self._weight_l_index],
-                    x[..., : self.modes_lat_local, : self.modes_lon],
+                    x_modes,
                 )
-        else:
-            lora_update = 0.0
 
         with timer.child("dhconv"):
-            xp = torch.zeros_like(x)
-            xp[..., : self.modes_lat_local, : self.modes_lon] = _contract_dhconv(
-                x[..., : self.modes_lat_local, : self.modes_lon],
-                weight_local,
-            )
-            xp = xp + self.lora_scaling * lora_update
+            xp = _contract_dhconv(x_modes, weight_local)
+            if xp.shape != x.shape:
+                # the transform keeps more modes than the weights: zero the rest
+                xp_full = torch.zeros_like(x)
+                xp_full[..., : self.modes_lat_local, : self.modes_lon] = xp
+                xp = xp_full
+            if lora_update is not None:
+                xp = xp + self.lora_scaling * lora_update
             if self._preserve_global_mean and self._has_global_mean:
                 # Skip the per-mode weight at l=0 by passing the input's l=0
                 # through unchanged, so the filter cannot reason about or alter

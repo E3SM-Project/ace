@@ -399,14 +399,7 @@ class FourierNeuralOperatorBlock(nn.Module):
 
     def forward(self, x, context_embedding, timer: Timer = NullTimer()):
         with timer.child("norm0") as norm0_timer:
-            x_norm = torch.zeros_like(x)
-            x_norm[..., : self.input_shape_loc[0], : self.input_shape_loc[1]] = (
-                self.norm0(
-                    x[..., : self.input_shape_loc[0], : self.input_shape_loc[1]],
-                    context_embedding,
-                    timer=norm0_timer,
-                )
-            )
+            x_norm = self.norm0(x, context_embedding, timer=norm0_timer)
         with timer.child("filter") as filter_timer:
             x, residual = self.filter(x_norm, timer=filter_timer)
         if hasattr(self, "inner_skip"):
@@ -422,15 +415,7 @@ class FourierNeuralOperatorBlock(nn.Module):
                 x = self.act_layer(x)
 
         with timer.child("norm1") as norm1_timer:
-            x_norm = torch.zeros_like(x)
-            x_norm[..., : self.output_shape_loc[0], : self.output_shape_loc[1]] = (
-                self.norm1(
-                    x[..., : self.output_shape_loc[0], : self.output_shape_loc[1]],
-                    context_embedding,
-                    timer=norm1_timer,
-                )
-            )
-            x = x_norm
+            x = self.norm1(x, context_embedding, timer=norm1_timer)
 
         if hasattr(self, "mlp"):
             with timer.child("mlp"):
