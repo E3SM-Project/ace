@@ -311,3 +311,36 @@ def test_applied_params_releases_stored_copy():
     assert ema._stored_params == []
     for p, o in zip(model.parameters(), original):
         torch.testing.assert_close(p, o)
+
+
+def _model_and_ema_that_differ() -> tuple[nn.Module, EMATracker]:
+    model = nn.Linear(4, 4).to(get_device())
+    ema = EMATracker(model, decay=0.9)
+    with torch.no_grad():
+        for p in model.parameters():
+            p.add_(1.0)
+    return model, ema
+
+
+def test_applied_params_restores_live_parameters():
+    model, ema = _model_and_ema_that_differ()
+    live = {name: p.detach().clone() for name, p in model.named_parameters()}
+    averages = {name: p.clone() for name, p in ema._ema_params.items()}
+    with ema.applied_params(model):
+        for name, p in model.named_parameters():
+            torch.testing.assert_close(p, averages[name.replace(".", "")])
+    for name, p in model.named_parameters():
+        assert torch.equal(p, live[name])
+    for name, p in ema._ema_params.items():
+        assert torch.equal(p, averages[name])
+
+
+def test_nested_applied_params_raises_and_keeps_live_parameters():
+    model, ema = _model_and_ema_that_differ()
+    live = {name: p.detach().clone() for name, p in model.named_parameters()}
+    with ema.applied_params(model):
+        with pytest.raises(RuntimeError, match="nest"):
+            with ema.applied_params(model):
+                pass
+    for name, p in model.named_parameters():
+        assert torch.equal(p, live[name])

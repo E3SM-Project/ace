@@ -187,9 +187,9 @@ class EMATracker:
 
     @contextlib.contextmanager
     def applied_params(self, model: HasNamedParameters) -> Iterator[None]:
-        self.store(parameters=model.parameters())
         if self._in_context:
             raise RuntimeError("Cannot nest EMA contexts")
+        self.store(parameters=model.parameters())
         self._in_context = True
         self.copy_to(model)
         try:
