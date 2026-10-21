@@ -76,19 +76,6 @@ def _all_reduce_any_device(
     return tensor
 
 
-def _spatial_grad_sync() -> str:
-    """How spatially-parallel gradients are summed over tiles.
-
-    ``ddp`` (default): DDP over the whole world with a comm hook, bucketed and
-    overlapped with backward. ``hooks``: the original per-parameter
-    all-reduce over the spatial group, kept for A/B comparison.
-    """
-    mode = os.environ.get("FME_SPATIAL_GRAD_SYNC", "ddp")
-    if mode not in ("ddp", "hooks"):
-        raise ValueError(f"FME_SPATIAL_GRAD_SYNC must be ddp or hooks, got {mode}")
-    return mode
-
-
 def _sum_spatial_mean_data_hook(data_size: int):
     """DDP comm hook: all-reduce SUM over the world, divided by ``data_size``.
 
@@ -542,112 +529,70 @@ class ModelTorchDistributed(DistributedBackend):
         return None
 
     def wrap_module(self, module: torch.nn.Module) -> torch.nn.Module:
-        """Wrap with DDP over the **data** process group.
+        """Wrap ``module`` so that backward synchronizes its gradients.
 
-        Spatial model parallelism is handled by:
-        - Forward: communication inside model layers (distributed SHT/iSHT)
-        - Backward: gradient hooks registered here that all-reduce across
-          spatial ranks, so every rank sees the global-mean gradient.
+        Without spatial parallelism this is DDP over the data process group.
+
+        With it, the ranks of a spatial group hold tiles of the same samples
+        (the forward pass communicates inside the distributed SHT/iSHT), so a
+        replicated parameter's gradient is the sum over tiles and the mean
+        over data-parallel replicas: one bucketed DDP all-reduce over the
+        whole world, overlapped with backward, whose comm hook divides by the
+        data size. Spatially sharded parameters (see ``parameter_sharding``)
+        differ between tiles; DDP ignores them and hooks sync them instead.
 
         ``broadcast_buffers=False`` is required because the SHT/iSHT layers
         store precomputed Legendre polynomial buffers.  DDP's default
         buffer broadcast modifies these in-place between forward calls,
         which breaks autograd's tensor-version tracking.
         """
-        if any(p.requires_grad for p in module.parameters()):
-            if using_gpu():
-                output_device = [self._device_id]
-            else:
-                output_device = None
-            has_spatial = self._h_size > 1 or self._w_size > 1
-            # Spatially sharded parameters (see parameter_sharding) hold a
-            # different slice on each spatial rank. Their gradient is only
-            # summed over the ranks that hold the same slice, if any.
-            shards = named_parameter_shards(module)
-            if has_spatial and _spatial_grad_sync() == "ddp":
-                if shards:
-                    # DDP over the world would check that they have the same
-                    # shape on every rank, overwrite them with rank 0's slice
-                    # and sum their gradients over tiles
-                    DistributedDataParallel._set_params_and_buffers_to_ignore_for_model(
-                        module, _ddp_ignore_names(set(shards))
-                    )
-                    self._register_shard_grad_hooks(module, shards, data=True)
-                    if not any(
-                        p.requires_grad
-                        for name, p in module.named_parameters()
-                        if name not in shards
-                    ):
-                        return DummyWrapper(module)
-                # One bucketed, backward-overlapped all-reduce over the whole
-                # world replaces the per-parameter spatial hooks: parameters
-                # are replicated on every rank, so summing over (data, h, w)
-                # and dividing by the data size is exactly "sum over tiles,
-                # mean over data", the same gradient the hooks produce.
-                wrapped = DistributedDataParallel(
-                    SyncBatchNorm.convert_sync_batchnorm(module),
-                    device_ids=self._device_ids,
-                    output_device=output_device,
-                    process_group=None,
-                    broadcast_buffers=False,
-                    # grads alias the comm buckets instead of being a second
-                    # full-size copy (8.4 GB/GPU for the 2.1 B 0.25 deg SFNO)
-                    gradient_as_bucket_view=True,
-                )
-                wrapped.register_comm_hook(
-                    state=None, hook=_sum_spatial_mean_data_hook(self._data_size)
-                )
-                return wrapped
-            # DDP over the data group is right for sharded parameters too:
-            # its ranks hold the same slice; the spatial hooks sum the others
-            wrapped = DistributedDataParallel(
+        if not any(p.requires_grad for p in module.parameters()):
+            return DummyWrapper(module)
+        output_device = [self._device_id] if using_gpu() else None
+        if self._h_size == 1 and self._w_size == 1:
+            return DistributedDataParallel(
                 SyncBatchNorm.convert_sync_batchnorm(module),
                 device_ids=self._device_ids,
                 output_device=output_device,
                 process_group=self._data_group,
                 broadcast_buffers=False,
             )
-            self._register_spatial_grad_hooks(wrapped)
-            return wrapped
-        return DummyWrapper(module)
-
-    def _register_spatial_grad_hooks(self, module: torch.nn.Module) -> None:
-        """All-reduce gradients across spatial ranks after each backward.
-
-        Each spatial rank only sees its local slice of the input, so its
-        gradient is a partial sum.  This hook sums those partials so
-        that every rank applies the same weight update.
-
-        The hook fires via ``register_hook`` on each parameter, which is
-        invoked with the per-backward gradient tensor before it is
-        accumulated into ``.grad`` and before DDP's data-parallel
-        all-reduce. The two reductions commute (orthogonal groups), so
-        ordering does not matter.
-        """
-        if self._h_size <= 1 and self._w_size <= 1:
-            return
-        spatial_group = self._spatial_group
-        sharded = named_parameter_shards(module)
-        self._register_shard_grad_hooks(module, sharded, data=False)
-
-        def _hook(grad: torch.Tensor) -> torch.Tensor:
-            if grad is None:
-                return grad
-
-            reduced = grad.contiguous().clone()
-            torch.distributed.all_reduce(reduced, group=spatial_group)
-            return reduced
-
-        for name, p in module.named_parameters():
-            if p.requires_grad and name not in sharded:
-                p.register_hook(_hook)
+        shards = named_parameter_shards(module)
+        if shards:
+            # DDP over the world would check that they have the same shape on
+            # every rank, overwrite them with rank 0's slice and sum their
+            # gradients over tiles
+            DistributedDataParallel._set_params_and_buffers_to_ignore_for_model(
+                module, _ddp_ignore_names(set(shards))
+            )
+            self._register_shard_grad_hooks(module, shards)
+            if not any(
+                p.requires_grad
+                for name, p in module.named_parameters()
+                if name not in shards
+            ):
+                return DummyWrapper(module)
+        wrapped = DistributedDataParallel(
+            SyncBatchNorm.convert_sync_batchnorm(module),
+            device_ids=self._device_ids,
+            output_device=output_device,
+            process_group=None,
+            broadcast_buffers=False,
+            # grads alias the comm buckets instead of being a second
+            # full-size copy (8.4 GB/GPU for the 2.1 B 0.25 deg SFNO)
+            gradient_as_bucket_view=True,
+        )
+        wrapped.register_comm_hook(
+            state=None, hook=_sum_spatial_mean_data_hook(self._data_size)
+        )
+        return wrapped
 
     def _register_shard_grad_hooks(
-        self, module: nn.Module, shards: dict[str, ParameterShard], data: bool
+        self, module: nn.Module, shards: dict[str, ParameterShard]
     ) -> None:
         """Gradient sync of spatially sharded parameters: a sum over the
         spatial axes that do not split a parameter (its slice's replicas),
-        and with ``data``, the mean over data-parallel replicas.
+        and the mean over data-parallel replicas.
         """
         params: dict[tuple[str, ...], list[nn.Parameter]] = {}
         for name, param in module.named_parameters():
@@ -665,13 +610,12 @@ class ModelTorchDistributed(DistributedBackend):
             params.setdefault(axes, []).append(param)
         for axes, group_params in params.items():
             if axes:
-                group_axes = (("data",) if data else ()) + axes
                 _register_sum_hooks(
                     group_params,
-                    self._mesh_group(group_axes),
-                    divisor=self._data_size if data else 1,
+                    self._mesh_group(("data",) + axes),
+                    divisor=self._data_size,
                 )
-            elif data and self._data_size > 1:
+            elif self._data_size > 1:
                 _register_mean_hooks(group_params, self._data_group, self._data_size)
 
     def _mesh_group(self, axes: tuple[str, ...]) -> torch.distributed.ProcessGroup:

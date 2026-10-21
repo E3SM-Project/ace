@@ -55,10 +55,6 @@ class Case:
     use_gradient_accumulation: bool = False
     n_substeps: int = 1
     scheduler: SchedulerConfig = dataclasses.field(default_factory=SchedulerConfig)
-    # the default ("ddp") spatial gradient sync over-counts earlier backward
-    # passes of an accumulated step (each pass re-sums the accumulated
-    # gradient over tiles), with or without sharding; "hooks" is exact
-    spatial_grad_sync: str = "ddp"
 
 
 CASES = {
@@ -100,12 +96,6 @@ def _build_run(case: Case, shard: bool, seed: int | None = 0) -> Run:
     """Build under the active backend, from the same random state everywhere
     (unless ``seed`` is None, which keeps each rank's state).
     """
-    with pytest.MonkeyPatch.context() as monkeypatch:
-        monkeypatch.setenv("FME_SPATIAL_GRAD_SYNC", case.spatial_grad_sync)
-        return _build_run_with_env(case, shard, seed)
-
-
-def _build_run_with_env(case: Case, shard: bool, seed: int | None) -> Run:
     if seed is not None:
         torch.manual_seed(seed)
     builder = NoiseConditionedSFNOBuilder(
