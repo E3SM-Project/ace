@@ -15,15 +15,42 @@ diagnostics) holds the same tensor.
 P_l^m is zero for l < m, so the table is stored in blocks of orders, each
 holding only the degrees from the block's first order up, and the
 contraction skips the rest: about half the table and half the work.
+
+With the latitudes split over polar ranks only, the transforms can pipeline
+the polar transposes with the contraction over chunks of orders, giving
+bitwise the same results as the unchunked transforms. Two knobs set the
+number of chunks:
+
+- ``polar_chunks`` (or the ``FME_SHT_POLAR_CHUNKS`` environment variable,
+  default 1): the most chunks a call may use; 1 turns the pipeline off.
+- ``min_chunk_bytes`` (or ``FME_SHT_POLAR_MIN_CHUNK_MB``, in MiB, default 4):
+  the smallest message a chunk may send to each polar peer; 0 turns the
+  limit off.
+
+Chunks are whole blocks of orders, as evenly split as the blocks allow.
+Each call uses the most chunks, up to ``polar_chunks``, whose smallest
+message to each peer is at least ``min_chunk_bytes`` (small messages lose
+more to latency than the pipeline gains), and falls back to the unchunked
+transform when that is one chunk. The message size is that of the rank with
+the most rows, so every rank chooses the same number of chunks, as the polar
+collectives require; the backward of a call uses the chunks of its forward.
 """
 
 import dataclasses
 import math
+import os
 import weakref
+from collections.abc import Callable, Mapping
 
 import torch
 import torch.nn as nn
 import torch_harmonics.distributed as thd
+from torch.autograd.function import once_differentiable
+
+# private, but stable at the pinned torch-harmonics==0.8.0:
+# _transpose(tensor, dim0, dim1, dim1_split_sizes, group, async_op)
+# -> (received pieces, dim0 split sizes, work)
+from torch_harmonics.distributed.primitives import _transpose
 from torch_harmonics.legendre import legpoly
 from torch_harmonics.quadrature import (
     clenshaw_curtiss_weights,
@@ -90,6 +117,43 @@ class _LegendrePlan:
     def block_table(self, table: torch.Tensor, block: _Block) -> torch.Tensor:
         shape = (block.m1 - block.m0, self.lmax - block.l0, self.nlat)
         return table[block.offset : block.offset + math.prod(shape)].view(shape)
+
+    def sub(self, b0: int, b1: int) -> "_LegendrePlan":
+        """The plan of blocks b0:b1, with orders counted from the first of them
+        and the same table.
+        """
+        base = self.blocks[b0].m0
+        blocks = tuple(
+            dataclasses.replace(block, m0=block.m0 - base, m1=block.m1 - base)
+            for block in self.blocks[b0:b1]
+        )
+        return _LegendrePlan(self.nlat, self.lmax, blocks, self.numel)
+
+
+# (first order, stop order, plan of the chunk's orders)
+_Chunk = tuple[int, int, _LegendrePlan]
+# _contract or _contract_transpose: (x as real, table, plan) -> y as real
+_Contraction = Callable[[torch.Tensor, torch.Tensor, _LegendrePlan], torch.Tensor]
+
+
+def _m_chunks(plan: _LegendrePlan, k: int) -> tuple[_Chunk, ...]:
+    """Split the plan into at most k chunks of consecutive whole blocks, low
+    orders first. Each block's contraction is then the same as in the full
+    plan, so the chunked results are bitwise those of the full one.
+
+    The chunks' block counts differ by at most one, the larger ones last, as
+    only the last block may hold fewer than ``_M_BLOCK`` orders.
+    """
+    n = len(plan.blocks)
+    k = min(k, n)
+    sizes = [n // k + (i >= k - n % k) for i in range(k)]
+    chunks = []
+    b0 = 0
+    for size in sizes:
+        b1 = b0 + size
+        chunks.append((plan.blocks[b0].m0, plan.blocks[b1 - 1].m1, plan.sub(b0, b1)))
+        b0 = b1
+    return tuple(chunks)
 
 
 def _legendre_table(
@@ -185,6 +249,123 @@ class _LegendreTranspose(torch.autograd.Function):
         return _contract(grad, table, ctx.plan), None, None
 
 
+def _polar_pipeline(
+    x: torch.Tensor,
+    contract: _Contraction,
+    table: torch.Tensor,
+    chunks: tuple[_Chunk, ...],
+    in_shapes: list[int],
+    chan_shapes: list[int],
+) -> torch.Tensor:
+    """The polar transpose of channels to rows (split as ``in_shapes``), the
+    contraction and the transpose back to channels (split as ``chan_shapes``),
+    as torch-harmonics' ``distributed_transpose_polar`` around ``contract``
+    does, pipelined over chunks of orders.
+    """
+    group = thd.polar_group()
+    # every gather is issued first: collectives run in issue order, and a
+    # scatter issued in between would wait on its chunk's contraction
+    gathers = [
+        _transpose(x[..., m0:m1], -3, -2, in_shapes, group=group, async_op=True)
+        for m0, m1, _ in chunks
+    ]
+    scatters = []
+    for c, (_, _, plan) in enumerate(chunks):
+        pieces, _, work = gathers[c]
+        gathers[c] = None  # free the received pieces after use
+        work.wait()
+        xc = torch.cat(pieces, dim=-2)
+        del pieces
+        with torch.autocast(device_type=x.device.type, enabled=False):
+            yc = torch.view_as_complex(contract(torch.view_as_real(xc), table, plan))
+        del xc
+        pieces, _, work = _transpose(
+            yc, -2, -3, chan_shapes, group=group, async_op=True
+        )
+        scatters.append((pieces, work))
+
+    out = None
+    for (m0, m1, _), (pieces, work) in zip(chunks, scatters):
+        work.wait()
+        if out is None:
+            n_rows = pieces[0].shape[-2]
+            shape = (*x.shape[:-3], sum(chan_shapes), n_rows, x.shape[-1])
+            out = pieces[0].new_empty(shape)
+        c0 = 0
+        for piece in pieces:
+            c1 = c0 + piece.shape[-3]
+            out[..., c0:c1, :, m0:m1].copy_(piece)
+            c0 = c1
+    assert out is not None
+    return out
+
+
+class _PolarLegendre(torch.autograd.Function):
+    """``_polar_pipeline`` with ``contract``; its adjoint is the same pipeline
+    with the adjoint contraction, gathering rows split as ``adjoint_shapes``.
+    """
+
+    @staticmethod
+    def forward(
+        ctx, x, table, chunks, contract, adjoint, in_shapes, adjoint_shapes, chans
+    ):
+        ctx.save_for_backward(table)
+        ctx.args = (chunks, adjoint, adjoint_shapes, chans)
+        return _polar_pipeline(x, contract, table, chunks, in_shapes, chans)
+
+    @staticmethod
+    @once_differentiable
+    def backward(ctx, grad):
+        (table,) = ctx.saved_tensors
+        chunks, adjoint, adjoint_shapes, chans = ctx.args
+        grad = _polar_pipeline(grad, adjoint, table, chunks, adjoint_shapes, chans)
+        return grad, None, None, None, None, None, None, None
+
+
+def _choose_chunk_count(
+    plans: Mapping[int, tuple[_Chunk, ...]], peer_bytes: int, min_chunk_bytes: int
+) -> int:
+    """The largest chunk count of ``plans`` whose smallest chunk of the
+    ``peer_bytes`` sent to each peer, which are split over the chunks in
+    proportion to their orders, is at least ``min_chunk_bytes``, or 1 if
+    there is none.
+    """
+
+    def smallest_is_enough(chunks: tuple[_Chunk, ...]) -> bool:
+        smallest = min(m1 - m0 for m0, m1, _ in chunks)
+        total = chunks[-1][1] - chunks[0][0]
+        return peer_bytes * smallest >= min_chunk_bytes * total
+
+    return max(
+        (n for n, chunks in plans.items() if smallest_is_enough(chunks)),
+        default=1,
+    )
+
+
+def _min_chunk_bytes_from_environment() -> int:
+    value = os.environ.get("FME_SHT_POLAR_MIN_CHUNK_MB", "4")
+    try:
+        mib = float(value)
+    except ValueError:
+        mib = -1.0
+    if not (math.isfinite(mib) and mib >= 0):
+        raise ValueError(
+            "FME_SHT_POLAR_MIN_CHUNK_MB must be a finite non-negative number, "
+            f"got {value!r}"
+        )
+    return int(mib * 2**20)
+
+
+def _polar_chunks_from_environment() -> int:
+    value = os.environ.get("FME_SHT_POLAR_CHUNKS", "1")
+    try:
+        return int(value)
+    except ValueError:
+        raise ValueError(
+            f"FME_SHT_POLAR_CHUNKS must be a positive integer, got {value!r}"
+        ) from None
+
+
 def _split_start(shapes: list[int], rank: int) -> int:
     return sum(shapes[:rank])
 
@@ -199,6 +380,8 @@ class _SHTBase(nn.Module):
         lmax: int | None,
         mmax: int | None,
         grid: str,
+        polar_chunks: int | None,
+        min_chunk_bytes: int | None,
     ):
         super().__init__()
         _, _, default_lmax = _quadrature(nlat, grid)
@@ -227,10 +410,69 @@ class _SHTBase(nn.Module):
         self.register_buffer("pct", table, persistent=False)
         self._plan = _LegendrePlan.new(nlat, self.lmax, m_start, m_stop)
 
+        if polar_chunks is None:
+            polar_chunks = _polar_chunks_from_environment()
+        if polar_chunks < 1:
+            raise ValueError(f"polar_chunks must be positive, got {polar_chunks}")
+        self.polar_chunks = polar_chunks
+        if min_chunk_bytes is None:
+            min_chunk_bytes = _min_chunk_bytes_from_environment()
+        if min_chunk_bytes < 0:
+            raise ValueError(
+                f"min_chunk_bytes must be non-negative, got {min_chunk_bytes}"
+            )
+        self.min_chunk_bytes = min_chunk_bytes
+        # the chunks of each count above 1 that a call may use, which are
+        # at most the number of blocks; the pipeline needs all orders here
+        self._chunk_plans: dict[int, tuple[_Chunk, ...]] = {}
+        if self.comm_size_polar > 1 and self.comm_size_azimuth == 1:
+            for k in range(2, min(polar_chunks, len(self._plan.blocks)) + 1):
+                self._chunk_plans[k] = _m_chunks(self._plan, k)
+
+    def _select_chunks(
+        self, x: torch.Tensor, in_shapes: list[int]
+    ) -> tuple[_Chunk, ...] | None:
+        """The chunks for a call gathering rows of ``x`` split as
+        ``in_shapes``, or None for the unchunked transform. The choice uses
+        the largest split of the rows, never this rank's, so that it is the
+        same on every polar rank.
+        """
+        if not self._chunk_plans:
+            return None
+        numel_per_row = math.prod(x.shape[:-2]) * x.shape[-1]
+        local_bytes = numel_per_row * max(in_shapes) * x.element_size()
+        peer_bytes = local_bytes // self.comm_size_polar
+        k = _choose_chunk_count(self._chunk_plans, peer_bytes, self.min_chunk_bytes)
+        return self._chunk_plans.get(k)
+
+    def _pipelined_legendre(
+        self,
+        x: torch.Tensor,
+        chunks: tuple[_Chunk, ...],
+        contract: _Contraction,
+        adjoint: _Contraction,
+        in_shapes: list[int],
+        adjoint_shapes: list[int],
+    ) -> torch.Tensor:
+        chans = thd.compute_split_shapes(x.shape[-3], self.comm_size_polar)
+        table = self.pct.to(x.dtype.to_real())
+        return _PolarLegendre.apply(
+            x,
+            table,
+            chunks,
+            contract,
+            adjoint,
+            in_shapes,
+            adjoint_shapes,
+            chans,
+        )
+
     def extra_repr(self):
         return (
             f"nlat={self.nlat}, nlon={self.nlon},\n lmax={self.lmax}, "
-            f"mmax={self.mmax},\n grid={self.grid}, csphase={self.csphase}"
+            f"mmax={self.mmax},\n grid={self.grid}, csphase={self.csphase}, "
+            f"polar_chunks={self.polar_chunks}, "
+            f"min_chunk_bytes={self.min_chunk_bytes}"
         )
 
 
@@ -249,8 +491,10 @@ class RealSHT(_SHTBase):
         lmax: int | None = None,
         mmax: int | None = None,
         grid: str = "equiangular",
+        polar_chunks: int | None = None,
+        min_chunk_bytes: int | None = None,
     ):
-        super().__init__(nlat, nlon, lmax, mmax, grid)
+        super().__init__(nlat, nlon, lmax, mmax, grid, polar_chunks, min_chunk_bytes)
         # quadrature weights of this rank's latitudes, times the 2*pi of the
         # longitude integral
         _, weights, _ = _quadrature(nlat, grid)
@@ -274,6 +518,16 @@ class RealSHT(_SHTBase):
         if self.comm_size_azimuth > 1:
             chan_shapes = thd.compute_split_shapes(num_chans, self.comm_size_azimuth)
             x = thd.distributed_transpose_azimuth.apply(x, (-1, -3), chan_shapes)
+        chunks = self._select_chunks(x, self.lat_shapes)
+        if chunks is not None:
+            return self._pipelined_legendre(
+                x,
+                chunks,
+                _contract,
+                _contract_transpose,
+                self.lat_shapes,
+                self.l_shapes,
+            )
         if self.comm_size_polar > 1:
             x = thd.distributed_transpose_polar.apply(x, (-3, -2), self.lat_shapes)
 
@@ -300,8 +554,10 @@ class InverseRealSHT(_SHTBase):
         lmax: int | None = None,
         mmax: int | None = None,
         grid: str = "equiangular",
+        polar_chunks: int | None = None,
+        min_chunk_bytes: int | None = None,
     ):
-        super().__init__(nlat, nlon, lmax, mmax, grid)
+        super().__init__(nlat, nlon, lmax, mmax, grid, polar_chunks, min_chunk_bytes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if x.dim() < 3:
@@ -309,17 +565,28 @@ class InverseRealSHT(_SHTBase):
                 f"Expected tensor with at least 3 dimensions but got {x.dim()} instead"
             )
         num_chans = x.shape[-3]
-        if self.comm_size_polar > 1:
-            x = thd.distributed_transpose_polar.apply(x, (-3, -2), self.l_shapes)
+        chunks = self._select_chunks(x, self.l_shapes)
+        if chunks is not None:
+            x = self._pipelined_legendre(
+                x,
+                chunks,
+                _contract_transpose,
+                _contract,
+                self.l_shapes,
+                self.lat_shapes,
+            )
+        else:
+            if self.comm_size_polar > 1:
+                x = thd.distributed_transpose_polar.apply(x, (-3, -2), self.l_shapes)
 
-        with torch.autocast(device_type=x.device.type, enabled=False):
-            x = torch.view_as_real(x)
-            x = _LegendreTranspose.apply(x, self.pct.to(x.dtype), self._plan)
-        x = torch.view_as_complex(x)
+            with torch.autocast(device_type=x.device.type, enabled=False):
+                x = torch.view_as_real(x)
+                x = _LegendreTranspose.apply(x, self.pct.to(x.dtype), self._plan)
+            x = torch.view_as_complex(x)
 
-        if self.comm_size_polar > 1:
-            chan_shapes = thd.compute_split_shapes(num_chans, self.comm_size_polar)
-            x = thd.distributed_transpose_polar.apply(x, (-2, -3), chan_shapes)
+            if self.comm_size_polar > 1:
+                chan_shapes = thd.compute_split_shapes(num_chans, self.comm_size_polar)
+                x = thd.distributed_transpose_polar.apply(x, (-2, -3), chan_shapes)
         if self.comm_size_azimuth > 1:
             x = thd.distributed_transpose_azimuth.apply(x, (-3, -1), self.m_shapes)
 

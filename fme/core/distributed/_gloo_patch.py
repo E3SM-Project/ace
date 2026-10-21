@@ -17,6 +17,35 @@ import torch.distributed as dist
 _original_all_to_all = None
 
 
+class _CompletedWork:
+    """The handle of a collective that finished before it was returned,
+    with the parts of ``dist.Work``'s interface that make sense for it.
+    """
+
+    def __init__(self, result: list[torch.Tensor]):
+        self._result = result
+
+    def wait(self, timeout=None) -> bool:
+        return True
+
+    def is_completed(self) -> bool:
+        return True
+
+    def is_success(self) -> bool:
+        return True
+
+    def exception(self) -> None:
+        return None
+
+    def result(self) -> list[torch.Tensor]:
+        return self._result
+
+    def get_future(self) -> torch.futures.Future:
+        future: torch.futures.Future = torch.futures.Future()
+        future.set_result(self._result)
+        return future
+
+
 def _gloo_all_to_all(
     output_tensor_list: list[torch.Tensor],
     input_tensor_list: list[torch.Tensor],
@@ -34,11 +63,9 @@ def _gloo_all_to_all(
     translate them internally, unlike ``isend`` / ``irecv`` which can
     cause hangs when group-local ranks differ from global ranks.
 
-    Note: ``async_op=True`` is not supported; this implementation is
-    always synchronous and always returns ``None``.
+    This implementation is always synchronous: with ``async_op=True`` it
+    returns a handle that is already complete, otherwise ``None``.
     """
-    if async_op:
-        raise NotImplementedError("_gloo_all_to_all does not support async_op=True")
     rank = dist.get_rank(group=group)
     size = dist.get_world_size(group=group)
 
@@ -63,7 +90,7 @@ def _gloo_all_to_all(
             dist.recv(output_tensor_list[i], src=global_peer, group=group)
             dist.send(input_tensor_list[i].contiguous(), dst=global_peer, group=group)
 
-    return None
+    return _CompletedWork(output_tensor_list) if async_op else None
 
 
 def patch_gloo_alltoall() -> None:
@@ -88,10 +115,6 @@ def patch_gloo_alltoall() -> None:
         async_op=False,
     ):
         backend = dist.get_backend(group)
-        if backend == "gloo" and async_op:
-            raise NotImplementedError(
-                "all_to_all with async_op=True is not supported on the gloo backend"
-            )
         if backend == "gloo":
             return _gloo_all_to_all(
                 output_tensor_list,

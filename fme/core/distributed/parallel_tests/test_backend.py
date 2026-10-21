@@ -287,6 +287,14 @@ def test_gloo_all_to_all_patch():
         for i in range(size):
             expected = torch.full((2,), float(i), device=get_device())
             torch.testing.assert_close(outputs[i], expected)
+        # an async call completes before it returns its handle
+        inputs, outputs = _make_buffers()
+        handle = torch_dist.all_to_all(outputs, inputs, async_op=True)
+        assert handle.is_completed()
+        assert handle.get_future().wait() is outputs
+        for i in range(size):
+            expected = torch.full((2,), float(i), device=get_device())
+            torch.testing.assert_close(outputs[i], expected)
     finally:
         # Restore whatever state was in place before.
         torch_dist.all_to_all = saved_current

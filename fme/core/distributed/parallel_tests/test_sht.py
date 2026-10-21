@@ -1,5 +1,6 @@
 import pytest
 import torch
+import torch.utils.checkpoint
 import torch_harmonics.sht as th_sht
 from torch import nn
 from torch_harmonics.distributed import compute_split_shapes
@@ -22,15 +23,38 @@ def _assert_close(actual: torch.Tensor, expected: torch.Tensor, scale: torch.Ten
 
 
 @pytest.mark.parallel
+@pytest.mark.parametrize("polar_chunks", ["1", "3"])
 @pytest.mark.parametrize("grid", ["legendre-gauss", "equiangular"])
 @pytest.mark.parametrize(
     "nlat, nlon, lmax, mmax",
-    [(16, 32, None, None), (17, 30, 12, 9), (64, 128, None, None), (48, 96, 30, 41)],
+    [
+        (16, 32, None, None),
+        (17, 30, 12, 9),
+        (64, 128, None, None),
+        (48, 96, 30, 41),
+        (100, 200, None, None),  # four blocks of orders
+    ],
 )
-def test_spatial_sht_matches_serial_torch_harmonics(nlat, nlon, lmax, mmax, grid):
+def test_spatial_sht_matches_serial_torch_harmonics(
+    nlat, nlon, lmax, mmax, grid, polar_chunks, monkeypatch
+):
+    monkeypatch.setenv("FME_SHT_POLAR_CHUNKS", polar_chunks)
+    # chunk even these small grids
+    monkeypatch.setenv("FME_SHT_POLAR_MIN_CHUNK_MB", "0")
     dist = Distributed.get_instance()
     device = get_device()
     forward = dist.get_sht(nlat, nlon, lmax=lmax, mmax=mmax, grid=grid)
+    # serial runs get torch-harmonics' module, which has no chunks, and the
+    # pipeline needs a polar split and all orders on each rank
+    pipelined = (
+        getattr(forward, "comm_size_polar", 1) > 1
+        and getattr(forward, "comm_size_azimuth", 1) == 1
+    )
+    if polar_chunks != "1":
+        if not pipelined:
+            pytest.skip("no pipeline here: chunked is the unchunked transform")
+        # chunks need at least 2 blocks of orders
+        assert bool(forward._chunk_plans) == (len(forward._plan.blocks) > 1)
     inverse = dist.get_isht(nlat, nlon, lmax=lmax, mmax=mmax, grid=grid)
     ref_forward = th_sht.RealSHT(nlat, nlon, lmax, mmax, grid=grid).float().to(device)
     ref_inverse = th_sht.InverseRealSHT(nlat, nlon, lmax, mmax, grid=grid)
@@ -74,6 +98,71 @@ def test_spatial_sht_matches_serial_torch_harmonics(nlat, nlon, lmax, mmax, grid
     )
     _assert_close(actual, expected[..., h, w], expected)
     _assert_close(actual_grad, expected_grad[..., l_local, m_local], expected_grad)
+
+
+def _value_and_grad(
+    module: nn.Module, x: torch.Tensor, grad: torch.Tensor, recompute: bool
+):
+    x = x.detach().requires_grad_()
+    if recompute:
+        y = torch.utils.checkpoint.checkpoint(module, x, use_reentrant=False)
+    else:
+        y = module(x)
+    (x_grad,) = torch.autograd.grad(y, x, grad)
+    return y, x_grad
+
+
+@pytest.mark.parallel
+@pytest.mark.parametrize("recompute", [False, True])
+@pytest.mark.parametrize("lmax", [None, 40])  # 40: orders beyond lmax
+@pytest.mark.parametrize("polar_chunks", [2, 3, 4, 8])
+def test_polar_pipeline_is_bitwise_the_unchunked_transform(
+    polar_chunks, lmax, recompute
+):
+    # uneven splits of latitudes, degrees and channels over 3 polar ranks
+    nlat, nlon, n_chans = 100, 200, 4
+    dist = Distributed.get_instance()
+    device = get_device()
+    pairs = [
+        (
+            cls(nlat, nlon, lmax=lmax, grid="legendre-gauss", polar_chunks=1),
+            cls(
+                nlat,
+                nlon,
+                lmax=lmax,
+                grid="legendre-gauss",
+                polar_chunks=polar_chunks,
+                min_chunk_bytes=0,  # chunk even this small grid
+            ),
+        )
+        for cls in (sht.RealSHT, sht.InverseRealSHT)
+    ]
+    forward = pairs[0][1]
+    h_size, w_size = dist.spatial_size
+    pipelined = h_size > 1 and w_size == 1
+    assert all(bool(p._chunk_plans) == pipelined for _, p in pairs)
+    assert all(not p._chunk_plans for p, _ in pairs)
+    if not pipelined:
+        pytest.skip("the pipeline runs only with latitudes split over polar ranks")
+
+    h, w = dist.get_local_slices((nlat, nlon))
+    l_local = _local(forward.l_shapes, forward.comm_rank_polar)
+    m_local = _local(forward.m_shapes, forward.comm_rank_azimuth)
+    torch.manual_seed(0)
+    x = torch.randn(2, n_chans, nlat, nlon, device=device)
+    coeffs = torch.randn(
+        2, n_chans, forward.lmax, forward.mmax, dtype=torch.complex64, device=device
+    )
+    x_local = x[..., h, w].contiguous()
+    coeffs_local = coeffs[..., l_local, m_local].contiguous()
+    for (unchunked, chunked), inputs, grad in (
+        (pairs[0], x_local, coeffs_local),
+        (pairs[1], coeffs_local, x_local),
+    ):
+        expected, expected_grad = _value_and_grad(unchunked, inputs, grad, recompute)
+        actual, actual_grad = _value_and_grad(chunked, inputs, grad, recompute)
+        assert torch.equal(actual, expected)
+        assert torch.equal(actual_grad, expected_grad)
 
 
 def _legendre_tables(*modules: nn.Module) -> set[int]:
