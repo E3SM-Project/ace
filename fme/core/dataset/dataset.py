@@ -1,9 +1,11 @@
 import abc
+import logging
 from typing import Any, final
 
 import xarray as xr
 
 from fme.core.dataset.properties import DatasetProperties
+from fme.core.distributed import Distributed
 from fme.core.generics.dataset import GenericDataset
 from fme.core.typing_ import TensorDict
 
@@ -110,3 +112,29 @@ class DatasetABC(GenericDataset[DatasetItem], abc.ABC):
     @abc.abstractmethod
     def set_global_epoch_tensor(self, tensor):
         pass
+
+
+def restrict_to_local_spatial_tile(dataset: DatasetABC) -> tuple[slice, slice] | None:
+    """Make ``dataset`` load only this rank's tile of the horizontal grid,
+    under spatial parallelism and if it can.
+
+    The tile is computed here, where the distributed backend knows the rank's
+    (h, w) position, and handed to the dataset as plain slices, so DataLoader
+    workers load the same tile without consulting the backend.
+
+    Returns:
+        The tile, or None if the dataset keeps loading the global grid.
+    """
+    shape = dataset.properties.horizontal_coordinates.shape
+    tile = Distributed.get_instance().get_spatial_tile((shape[-2], shape[-1]))
+    if tile is None:
+        return None
+    if not dataset.supports_spatial_tile:
+        logging.info(
+            "Loading global fields on every spatial rank: "
+            f"{type(dataset).__name__} cannot load a spatial tile."
+        )
+        return None
+    logging.info(f"Loading only this rank's spatial tile {tile} of the data.")
+    dataset.set_spatial_tile(tile)
+    return tile

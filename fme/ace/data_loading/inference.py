@@ -12,6 +12,7 @@ from fme.ace.data_loading.batch_data import BatchData
 from fme.ace.data_loading.perturbation import SSTPerturbation
 from fme.ace.requirements import DataRequirements
 from fme.core.coordinates import LatLonCoordinates
+from fme.core.dataset.dataset import restrict_to_local_spatial_tile
 from fme.core.dataset.merged import (
     MergedXarrayDataset,
     MergeNoConcatDatasetConfig,
@@ -271,13 +272,7 @@ class InferenceDataset(torch.utils.data.Dataset[BatchData]):
             properties = dataset.properties
         self._properties = properties
         self._dataset = dataset
-        tile = None
-        if load_spatial_tile and dataset.supports_spatial_tile:
-            shape = properties.horizontal_coordinates.shape
-            tile = Distributed.get_instance().get_spatial_tile((shape[-2], shape[-1]))
-        if tile is not None:
-            logging.info(f"Loading only this rank's spatial tile {tile} of the data.")
-            dataset.set_spatial_tile(tile)
+        tile = restrict_to_local_spatial_tile(dataset) if load_spatial_tile else None
         self._forward_steps_in_memory = (
             requirements.n_timesteps_schedule.get_value(0) - 1
         )  # during inference, schedules are ignored
