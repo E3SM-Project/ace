@@ -53,7 +53,6 @@ _NC_CHAR = 2
 _NC_DIMENSION = 10
 _NC_VARIABLE = 11
 _NC_ATTRIBUTE = 12
-_STREAMING = 0xFFFFFFFF
 _INITIAL_HEADER_BYTES = 256 * 1024
 
 
@@ -170,7 +169,7 @@ def _parse_header(buf: bytes) -> _Header:
         raise ValueError("Not a netCDF classic (CDF-1, CDF-2 or CDF-5) file.")
     p = _HeaderParser(buf, version=buf[3])
     numrecs = p.count()
-    if numrecs == _STREAMING:
+    if numrecs < 0:  # the all-0xFF STREAMING marker, read as a signed count
         raise ValueError("Streaming netCDF files (numrecs unknown) are unsupported.")
     dim_names: list[str] = []
     dims: dict[str, int] = {}

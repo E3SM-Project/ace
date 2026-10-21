@@ -202,6 +202,19 @@ def test_rejects_non_classic_file(tmp_path):
         _open(path, CDF5BackendEntrypoint)
 
 
+@pytest.mark.parametrize(
+    "nc_format, numrecs_bytes",
+    [("NETCDF3_CLASSIC", 4), ("NETCDF3_64BIT_OFFSET", 4), (CDF5, 8)],
+)
+def test_rejects_streaming_file(tmp_path, nc_format, numrecs_bytes):
+    path = _write_classic_file(tmp_path / "data.nc", nc_format=nc_format)
+    with open(path, "r+b") as f:
+        f.seek(4)  # numrecs follows the 4-byte magic
+        f.write(b"\xff" * numrecs_bytes)
+    with pytest.raises(ValueError, match="Streaming"):
+        _open(path, CDF5BackendEntrypoint)
+
+
 def test_guess_can_open(tmp_path):
     path = _write_classic_file(tmp_path / "data.nc")
     assert CDF5BackendEntrypoint().guess_can_open(path)
