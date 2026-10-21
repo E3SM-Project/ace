@@ -971,6 +971,21 @@ def test_inference_persistence_names(tmp_path):
     assert not torch.all(first_item["bar"] == second_item["bar"])
 
 
+def test_inference_persistence_state_does_not_retain_the_window(tmp_path):
+    _create_dataset_on_disk(tmp_path, n_times=14)
+    config = InferenceDataLoaderConfig(
+        dataset=XarrayDataConfig(data_path=tmp_path),
+        start_indices=ExplicitIndices([0, 3]),
+        persistence_names=["foo"],
+    )
+    dataset = InferenceDataset(
+        config, 9, requirements=DataRequirements(names=["foo", "bar"], n_timesteps=3)
+    )
+    assert dataset._persistence_data is not None
+    foo = dataset._persistence_data.data["foo"]
+    assert foo.untyped_storage().nbytes() == foo.numel() * foo.element_size()
+
+
 def test_inference_persistence_names_tensors_support_pin_memory(tmp_path):
     """Persisted variables must not be stride-0 expanded views.
 

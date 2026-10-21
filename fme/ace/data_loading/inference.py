@@ -320,9 +320,11 @@ class InferenceDataset(torch.utils.data.Dataset[BatchData]):
         self._persistence_data: BatchData | None = None
         if config.persistence_names is not None:
             first_sample = self._get_batch_data(0)
-            self._persistence_data = first_sample.subset_names(
-                config.persistence_names
-            ).select_time_slice(slice(0, 1))
+            self._persistence_data = (
+                first_sample.subset_names(config.persistence_names)
+                .select_time_slice(slice(0, 1))
+                ._with_copied_data()
+            )
 
     def _get_batch_data(self, index) -> BatchData:
         dist = Distributed.get_instance()
