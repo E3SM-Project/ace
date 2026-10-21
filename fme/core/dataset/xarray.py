@@ -187,28 +187,10 @@ def _get_raw_times_cached(
 ) -> tuple[np.ndarray, ...]:
     """Read each file's time coordinate, serially, memoized on the file list.
 
-    Deliberately serial. Two faster approaches were tried and both break in
-    production:
-
-    * ``multiprocessing.Pool`` (the original) is created on a rank that has
-      already initialized CUDA and NCCL. Forking such a process deadlocks on
-      pool teardown: the rank wedges in ``Pool.__exit__`` -> ``_terminate_pool``
-      -> ``join`` while its peers sit in DDP's parameter allgather until the
-      30-minute NCCL watchdog fires, reporting a misleading "rank N has
-      inconsistent 0 params".
-    * ``ThreadPoolExecutor`` deadlocks nothing but corrupts the heap, because
-      netCDF4/HDF5 is not thread-safe. It survives small runs and then dies at
-      production width with ``corrupted size vs. prev_size`` and SIGSEGV
-      partway through dataset construction.
-
-    Memoizing is what makes serial affordable: a config opens the same file
-    list once per dataset (train windows, validation, each inference block),
-    so the ~20 calls per rank collapse to one per distinct stream. Reading
-    1501 files takes ~84 s, so this is the difference between ~4 minutes of
-    setup and ~28 minutes.
-
-    The time coordinate of a file cannot change during a run, so the cache
-    cannot go stale.
+    Serial because netCDF4/HDF5 is not thread-safe and forking a rank that has
+    initialized CUDA/NCCL can deadlock. Memoized because a config opens the
+    same file list for several datasets (training, validation, inference), and
+    a file's time coordinate cannot change during a run.
     """
     return tuple(_get_raw_times_single_file(path, engine=engine) for path in paths)
 
@@ -413,11 +395,8 @@ def _open_file_fh_cached(path, **kwargs):
 def get_raw_paths(path, file_pattern):
     if not _get_protocol(path):
         path = os.path.expanduser(str(path))
-        # fsspec's glob stats every entry in the directory, which on a model run
-        # directory of ~10k files is ~250x slower than the stdlib (7s vs 0.03s)
-        # for an identical result. That cost is paid once per dataset per rank,
-        # and a rank that falls far enough behind its peers trips the NCCL
-        # watchdog during DDP setup.
+        # the stdlib glob avoids the per-entry stat fsspec's glob does, which is
+        # slow on large directories and delays this rank relative to its peers
         return sorted(globlib.glob(os.path.join(path, file_pattern), recursive=True))
     fs = _get_fs(path)
     glob_paths = sorted(fs.glob(os.path.join(path, file_pattern)))
@@ -492,11 +471,8 @@ class OverwriteConfig:
             )
 
     def apply(self, tensors: TensorDict) -> TensorDict:
-        # Variables not present are skipped rather than raising: a single
-        # XarrayDataConfig may be loaded several times for different subsets of
-        # its names (the coupled loader splits the atmosphere into separate
-        # forcing and target datasets this way), and each such load only holds
-        # the names it asked for.
+        # Variables not present are skipped: one XarrayDataConfig may be loaded
+        # several times for different subsets of its names.
         for var, fill_value in self.constant.items():
             if var not in tensors:
                 continue
@@ -587,12 +563,9 @@ class XarrayDataConfig(DatasetConfigABC):
             own right are not returned.
         mask_and_scale: Whether to decode CF ``_FillValue``/``missing_value``
             and ``scale_factor``/``add_offset`` attributes when opening the
-            data. Defaults to False. Raw model output (e.g. remapped MPAS
-            netCDFs) flags land with a sentinel such as 1e20; leaving this
-            False loads the sentinel verbatim rather than as NaN, which
-            silently corrupts losses because spatial output masking writes
-            NaN over those same points while the target keeps the sentinel.
-            Set True for such data, optionally with ``fill_nans``.
+            data. Defaults to False. Set True for data that flags missing
+            points with a fill value (e.g. 1e20 over land), so they load as
+            NaN rather than as the fill value, optionally with ``fill_nans``.
         isel: Optional xarray isel arguments to be passed to the dataset. Will
             raise ValueError if time is included here, since the subset argument
             is used specifically for selecting times. Horizontal dimensions are

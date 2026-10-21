@@ -128,7 +128,7 @@ def test_wrapped_datasets_propagate_tile(tmp_path):
 
 def test_cdf5_reads_only_the_latitude_band(tmp_path, monkeypatch):
     """A latitude slice is one pread of just the band; a longitude slice
-    reads the band's full rows once (per-row reads are slower on Lustre)."""
+    reads the band's full rows once."""
     write_tile_test_files(tmp_path, "NETCDF3_64BIT_DATA", n_files=1)
     calls: list[int] = []
     real_pread_into = cdf5._pread_into

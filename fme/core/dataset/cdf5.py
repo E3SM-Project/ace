@@ -1,12 +1,10 @@
 """A fast xarray backend for netCDF classic files, aimed at CDF-5.
 
-netCDF-C (4.9.3, as used by netCDF4-python and so by xarray's ``netcdf4``
-engine) reads classic-format files through a page cache that issues 8 KiB
-``read()`` calls. On Lustre that caps a reader at 30-75 MB/s on the E3SM EAM
-history files (CDF-5, ~600 MB per record), against ~1 GB/s for plain large
-reads. In a classic file, the slab of a record variable at one timestep is
-contiguous at a known offset, so this backend reads it with a single
-``pread``.
+netCDF-C (and so xarray's ``netcdf4`` engine) reads classic-format files
+through a page cache that issues small ``read()`` calls, which is slow on
+parallel filesystems. In a classic file, the slab of a record variable at one
+timestep is contiguous at a known offset, so this backend reads it with a
+single ``pread``.
 
 The returned dataset is built from the same raw variables and attributes
 that the ``netcdf4`` engine exposes and goes through xarray's own CF decoding,
@@ -298,7 +296,7 @@ class _CDF5File:
     def read_slab(
         self, name: str, record: int | None, lo: int, hi: int, out: np.ndarray
     ):
-        """Read rows [lo, hi) of the leading slab axis into ``out``.
+        """Read rows [lo, hi) of the first slab axis into ``out``.
 
         ``out`` must be C-contiguous with the on-disk dtype. For a record
         variable the slab is one record; for a scalar or other non-record
@@ -377,13 +375,11 @@ class _CDF5Array(BackendArray):
         )
 
     def _getitem(self, key: tuple) -> np.ndarray:
-        # Only the rows [lo, hi) of the leading slab axis that the key touches
-        # are read, with one pread per record: a latitude band (the tile of a
-        # spatial H split) costs a proportionally smaller read. The other axes
-        # are cut from those rows in memory. Reading each row's segment of a
-        # longitude band separately instead was ~4x slower on Lustre for the
-        # 720x1440 EAM files (notes/tile-loading.md), so a W split reads full
-        # rows.
+        # Only the rows [lo, hi) of the first non-record axis that the key
+        # touches are read, with one pread per record, so a latitude band of a
+        # 2-d field costs a proportionally smaller read. The other axes are cut
+        # from those rows in memory: one large read of full rows is faster
+        # than a read per row of a longitude band.
         var = self._file.header.variables[self._name]
         if var.is_record:
             records = np.arange(var.shape[0])[key[0]]

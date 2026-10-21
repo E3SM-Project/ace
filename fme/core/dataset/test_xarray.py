@@ -1040,13 +1040,7 @@ def test_overwrite_add_scalar(mock_monthly_netcdfs):
 
 
 def test_get_raw_times_is_memoized_and_serial(tmp_path, monkeypatch):
-    """Repeated calls for the same file list must not re-read the files.
-
-    Dataset construction asks for the same stream once per dataset (train
-    windows, validation, each inference block). Re-reading every time made
-    setup slow enough to trip the NCCL watchdog, and the parallel workarounds
-    that hid the cost were unsafe (fork deadlock, then HDF5 heap corruption).
-    """
+    """Repeated calls for the same file list must not re-read the files."""
     from fme.core.dataset import xarray as xarray_module
 
     n_files = 13
