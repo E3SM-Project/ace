@@ -8,6 +8,7 @@ import torch
 from fme.ace.registry.registry import ModuleConfig, ModuleSelector
 from fme.core.dataset_info import DatasetInfo
 from fme.core.distributed.distributed import Distributed
+from fme.core.distributed.parameter_sharding import shard_parameter, spatial_shard
 from fme.core.models.conditional_sfno.s2convolutions import validate_spectral_ratio
 from fme.core.models.conditional_sfno.sfnonet import (
     Context,
@@ -69,6 +70,8 @@ class NoiseConditionedModel(torch.nn.Module):
         inverse_sht: Optional inverse spherical harmonic transform callable.
             If provided, isotropic noise is generated via SHT; otherwise
             gaussian noise is used.
+        shard_spatial_parameters: Under spatial parallelism, store only this
+            rank's tile of the positional embeddings.
     """
 
     def __init__(
@@ -82,6 +85,7 @@ class NoiseConditionedModel(torch.nn.Module):
         inverse_sht: Callable[[torch.Tensor], torch.Tensor] | None = None,
         lmax: int = 0,
         mmax: int = 0,
+        shard_spatial_parameters: bool = False,
     ):
         super().__init__()
         self.conditional_model = conditional_model
@@ -125,6 +129,17 @@ class NoiseConditionedModel(torch.nn.Module):
         else:
             self.pos_embed = None
 
+        # whether pos_embed/label_pos_embed hold only this rank's tile
+        self._pos_embed_is_local = False
+        if shard_spatial_parameters:
+            for name in ("pos_embed", "label_pos_embed"):
+                param = getattr(self, name)
+                if param is None:
+                    continue
+                shard = spatial_shard(param.shape, split_shape=img_shape, dims=(-2, -1))
+                shard_parameter(self, name, shard)
+                self._pos_embed_is_local = shard is not None
+
     def forward(
         self, x: torch.Tensor, labels: torch.Tensor | None = None
     ) -> torch.Tensor:
@@ -147,7 +162,12 @@ class NoiseConditionedModel(torch.nn.Module):
         if labels is not None and self.label_embedding is not None:
             labels = self.label_embedding(labels)
 
-        h_slice, w_slice = Distributed.get_instance().get_local_slices(self.img_shape)
+        if self._pos_embed_is_local:
+            h_slice, w_slice = slice(None), slice(None)
+        else:
+            h_slice, w_slice = Distributed.get_instance().get_local_slices(
+                self.img_shape
+            )
 
         if self.pos_embed is not None:
             pos_local = self.pos_embed[..., h_slice, w_slice]
@@ -255,6 +275,17 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
             per-mode weights scale with lmax, so at 0.25 deg (lmax 720) 0.5
             halves the spectral parameters; the grid itself, and every
             pointwise layer, stay at full resolution.
+        shard_spatial_parameters: Under spatial parallelism
+            (``FME_DISTRIBUTED_BACKEND=model``), store on each rank only the
+            parameter slices it uses, instead of a full replica: its range of
+            spherical-harmonic degrees l of every spectral filter weight
+            (polar split only; an azimuth split leaves l whole) and its tile
+            of the positional embeddings. Those gradients are then complete
+            on their rank, so they skip the sum over tiles. Initialization,
+            training and checkpoints (always full tensors) are those of the
+            unsharded model. No effect without spatial parallelism. Not
+            supported with ``enable_automatic_mixed_precision`` or
+            ``lr_tuning``.
     """
 
     filter_type: Literal["linear", "makani-linear"] = "linear"
@@ -289,6 +320,7 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
     spectral_ratio: float = 1.0
     clip_latent_global_means: bool = False
     hard_thresholding_fraction: float = 1.0
+    shard_spatial_parameters: bool = False
 
     @classmethod
     def remove_deprecated_keys(cls, state: Mapping[str, Any]) -> dict[str, Any]:
@@ -339,6 +371,15 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
         n_out_channels: int,
         dataset_info: DatasetInfo,
     ):
+        dist = Distributed.get_instance()
+        if self.shard_spatial_parameters and dist.has_spatial_parallelism:
+            # Sharded parameters are not broadcast from rank 0 when the model
+            # is wrapped for data parallelism, as replicated ones are, so
+            # every rank must draw the same full initialization to keep its
+            # slice of it: start all ranks from the root's random state.
+            torch.set_rng_state(
+                dist.scatter_object(torch.get_rng_state() if dist.is_root() else None)
+            )
         n_labels = len(dataset_info.all_labels)
         if self.label_embed_dim > 0:
             effective_label_dim = self.label_embed_dim
@@ -371,6 +412,7 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
             spectral_ratio=self.spectral_ratio,
             clip_latent_global_means=self.clip_latent_global_means,
             hard_thresholding_fraction=self.hard_thresholding_fraction,
+            shard_spatial_parameters=self.shard_spatial_parameters,
         )
         sfno_net = get_lat_lon_sfnonet(
             params=sfno_config,
@@ -403,4 +445,5 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
             inverse_sht=inverse_sht,
             lmax=lmax,
             mmax=mmax,
+            shard_spatial_parameters=self.shard_spatial_parameters,
         )

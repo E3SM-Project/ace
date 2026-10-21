@@ -24,6 +24,7 @@ import torch.nn as nn
 from torch.utils.checkpoint import checkpoint
 
 from fme.core.distributed import Distributed
+from fme.core.distributed.parameter_sharding import shard_parameter, spatial_shard
 
 from fme.core.benchmark.timer import Timer, NullTimer
 
@@ -105,6 +106,12 @@ class SFNONetConfig:
             inside it). The envelope is reset at the start of each training
             epoch (lazily, on the next training-mode forward) via
             ``request_latent_global_mean_envelope_reset``.
+        shard_spatial_parameters: Under spatial parallelism, store on each
+            rank only the slice of each spectral filter weight (its range of
+            spherical-harmonic degrees l, for the polar split) and of the
+            positional embedding (its tile) that the rank uses, instead of a
+            full copy. Checkpoints keep the full tensors. No effect without
+            spatial parallelism. See ``fme.core.distributed.parameter_sharding``.
     """
 
     embed_dim: int = 256
@@ -135,6 +142,7 @@ class SFNONetConfig:
     filter_preserves_global_mean: bool = False
     spectral_ratio: float = 1.0
     clip_latent_global_means: bool = False
+    shard_spatial_parameters: bool = False
 
     def __post_init__(self):
         validate_spectral_ratio(
@@ -189,6 +197,7 @@ class SpectralFilterLayer(nn.Module):
         lora_alpha: float | None = None,
         preserve_global_mean: bool = False,
         spectral_ratio: float = 1.0,
+        shard_spatial_parameters: bool = False,
     ):
         super(SpectralFilterLayer, self).__init__()
 
@@ -222,6 +231,7 @@ class SpectralFilterLayer(nn.Module):
                 num_groups=num_groups,
                 preserve_global_mean=preserve_global_mean,
                 spectral_ratio=spectral_ratio,
+                shard_spatial_parameters=shard_spatial_parameters,
             )
         elif filter_type == "makani-linear":
             self.filter = SpectralConv(
@@ -293,6 +303,7 @@ class FourierNeuralOperatorBlock(nn.Module):
         spectral_lora_alpha: float | None = None,
         filter_preserves_global_mean: bool = False,
         spectral_ratio: float = 1.0,
+        shard_spatial_parameters: bool = False,
     ):
         super(FourierNeuralOperatorBlock, self).__init__()
 
@@ -320,6 +331,7 @@ class FourierNeuralOperatorBlock(nn.Module):
             lora_alpha=spectral_lora_alpha,
             preserve_global_mean=filter_preserves_global_mean,
             spectral_ratio=spectral_ratio,
+            shard_spatial_parameters=shard_spatial_parameters,
         )
 
         if inner_skip == "linear":
@@ -684,6 +696,7 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
                 spectral_lora_alpha=self.spectral_lora_alpha,
                 filter_preserves_global_mean=self.filter_preserves_global_mean,
                 spectral_ratio=self.spectral_ratio,
+                shard_spatial_parameters=params.shard_spatial_parameters,
             )
 
             self.blocks.append(block)
@@ -718,8 +731,18 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
         self.decoder = nn.Sequential(*decoder_modules)
 
         # learned position embedding
+        # index of this rank's tile into the stored pos_embed: the full
+        # embedding, or (sharded) only the tile itself
+        self._pos_embed_index = (self._spatial_h_slice, self._spatial_w_slice)
         if self._use_pos_embed:
             self.pos_embed = get_pos_embed()
+            if params.shard_spatial_parameters:
+                shard = spatial_shard(
+                    self.pos_embed.shape, split_shape=self.img_shape, dims=(-2, -1)
+                )
+                shard_parameter(self, "pos_embed", shard)
+                if shard is not None:
+                    self._pos_embed_index = (slice(None), slice(None))
         else:
             self.pos_embed = None
 
@@ -786,7 +809,8 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
             x = self.encoder(x)
 
         if self.pos_embed is not None:
-            x = x + self.pos_embed[..., self._spatial_h_slice, self._spatial_w_slice]
+            h_index, w_index = self._pos_embed_index
+            x = x + self.pos_embed[..., h_index, w_index]
 
         # maybe clean the padding just in case
 

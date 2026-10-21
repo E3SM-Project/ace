@@ -37,6 +37,11 @@ import torch
 from torch import nn
 
 from fme.core.device import get_device
+from fme.core.distributed.parameter_sharding import (
+    ParameterShard,
+    gather_shard,
+    named_parameter_shards,
+)
 
 
 class HasNamedParameters(Protocol):
@@ -45,6 +50,13 @@ class HasNamedParameters(Protocol):
     ) -> Iterator[tuple[str, nn.Parameter]]: ...
 
     def parameters(self) -> Iterator[nn.Parameter]: ...
+
+
+def _named_shards(model: HasNamedParameters) -> dict[str, ParameterShard]:
+    # spatially sharded parameters are only found on modules
+    if isinstance(model, nn.Module):
+        return named_parameter_shards(model)
+    return {}
 
 
 EMA_CHECKPOINT_KEY = "ema"
@@ -120,6 +132,10 @@ class EMATracker:
         self.num_updates = torch.tensor(0, dtype=torch.int).to(get_device())
 
         self._ema_params: dict[str, torch.Tensor] = {}
+        # spatially sharded parameters: their averages are sharded likewise,
+        # and states hold the full tensors (see parameter_sharding)
+        shards = _named_shards(model)
+        self._shards: dict[str, ParameterShard] = {}
 
         for name, p in model.named_parameters():
             if p.requires_grad:
@@ -127,6 +143,8 @@ class EMATracker:
                 ema_name = name.replace(".", "")
                 self._module_name_to_ema_name.update({name: ema_name})
                 self._ema_params[ema_name] = p.clone().detach().data
+                if name in shards:
+                    self._shards[ema_name] = shards[name]
 
         self._stored_params: list[nn.Parameter] = []
         self._in_context = False
@@ -235,9 +253,27 @@ class EMATracker:
         }
         if include_params:
             state[self._PARAMS_KEY] = {
-                name: param.clone().detach() for name, param in self._ema_params.items()
+                name: self._param_state(name, param)
+                for name, param in self._ema_params.items()
             }
         return state
+
+    def _param_state(self, name: str, param: torch.Tensor) -> torch.Tensor:
+        if name in self._shards:
+            # the full average, when gathering for a checkpoint
+            gathered = gather_shard(param.detach(), self._shards[name])
+            if gathered.data_ptr() != param.data_ptr():
+                return gathered
+        return param.clone().detach()
+
+    def _localize(self, ema_params: Mapping[str, torch.Tensor]) -> dict:
+        """This rank's slices of the full averages of sharded parameters."""
+        return {
+            name: (
+                self._shards[name].localize(param) if name in self._shards else param
+            )
+            for name, param in ema_params.items()
+        }
 
     def load_ema_state_for_finetuning(self, state: dict):
         """Load EMA running state from a checkpoint for fine-tuning.
@@ -268,7 +304,7 @@ class EMATracker:
         self._module_name_to_ema_name = state["module_name_to_ema_name"]
         self._ema_params = {
             name: param.to(device, copy=True)
-            for name, param in state[self._PARAMS_KEY].items()
+            for name, param in self._localize(state[self._PARAMS_KEY]).items()
         }
 
     @classmethod
@@ -291,7 +327,7 @@ class EMATracker:
         if cls._PARAMS_KEY in state:
             ema._ema_params = {
                 name: param.to(device, copy=True)
-                for name, param in state[cls._PARAMS_KEY].items()
+                for name, param in ema._localize(state[cls._PARAMS_KEY]).items()
             }
         else:
             logging.warning("EMA params not found in state and will not be restored.")
@@ -318,6 +354,7 @@ class EMATracker:
         if cls._PARAMS_KEY not in state:
             return False
         parameters = dict(model.named_parameters())
+        shards = _named_shards(model)
         ema_params = state[cls._PARAMS_KEY]
         with torch.no_grad():
             for name, ema_name in state["module_name_to_ema_name"].items():
@@ -325,7 +362,10 @@ class EMATracker:
                     raise ValueError(
                         f"EMA-tracked parameter {name} is not a parameter of the model."
                     )
-                parameters[name].copy_(ema_params[ema_name])
+                value = ema_params[ema_name]
+                if name in shards:
+                    value = shards[name].localize(value)
+                parameters[name].copy_(value)
         return True
 
 

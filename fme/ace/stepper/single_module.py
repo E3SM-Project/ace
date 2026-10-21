@@ -32,6 +32,7 @@ from fme.core.dataset.data_typing import VariableMetadata
 from fme.core.dataset.schedule import IntSchedule
 from fme.core.dataset.utils import encode_timestep
 from fme.core.dataset_info import DatasetInfo, MissingDatasetInfo
+from fme.core.distributed.parameter_sharding import gathered_parameter_shards
 from fme.core.ema import load_ema_params_if_available
 from fme.core.generics.inference import PredictFunction
 from fme.core.generics.optimization import OptimizationABC
@@ -88,8 +89,10 @@ def load_weights_and_history(path: str | None) -> StepperWeightsAndHistory:
         return null_weights_and_history()
     stepper = load_stepper(path)
     return_weights: Weights = []
-    for module in stepper.modules:
-        return_weights.append(module.state_dict())
+    # full tensors on every rank, if the loaded stepper is spatially sharded
+    with gathered_parameter_shards(dst=None):
+        for module in stepper.modules:
+            return_weights.append(module.state_dict())
     return return_weights, stepper.training_history
 
 

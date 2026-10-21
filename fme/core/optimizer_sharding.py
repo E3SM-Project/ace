@@ -247,3 +247,139 @@ class SpatiallyShardedOptimizer(ZeroRedundancyOptimizer):
             local_groups.append({**hyperparameters, "params": indices})
         self.optim.load_state_dict({"state": local_state, "param_groups": local_groups})
         self._sync_param_groups(self.optim.param_groups, self.param_groups)
+
+
+class SplitShardedOptimizer(torch.optim.Optimizer):
+    """Optimizer state sharding for a model that has rank-local parameters.
+
+    A :class:`SpatiallyShardedOptimizer` needs parameters that are identical on
+    every rank of its group: it steps each on one rank and broadcasts the
+    result. Spatially sharded parameters (see
+    ``fme.core.distributed.parameter_sharding``) hold a different slice on
+    each rank, so their state is already rank-local. This optimizer steps the
+    replicated parameters with a :class:`SpatiallyShardedOptimizer` over
+    ``process_group`` and the rank-local ones with a plain ``optimizer_class``.
+
+    It presents one parameter group with all parameters, in the given order,
+    whose hyperparameters reach both inner optimizers at every step, and its
+    state dict is that of a single unsharded optimizer over all parameters,
+    with each rank-local parameter's state in its local shape. ``state_dict()``
+    is only available on the gathering rank inside :meth:`gathered_on`.
+
+    Args:
+        params: The parameters to optimize.
+        rank_local: Those of ``params`` that are rank-local.
+        optimizer_class: The optimizer, e.g. ``torch.optim.AdamW``.
+        process_group: The ranks that share the replicated parameters' state.
+        **defaults: Keyword arguments for ``optimizer_class``.
+    """
+
+    def __init__(
+        self,
+        params: list[torch.nn.Parameter],
+        rank_local: set[torch.nn.Parameter],
+        optimizer_class: type[torch.optim.Optimizer],
+        process_group: dist.ProcessGroup,
+        **defaults: Any,
+    ):
+        self._local_params = [p for p in params if p in rank_local]
+        self._shared_params = [p for p in params if p not in rank_local]
+        if not self._local_params:
+            raise ValueError("expected at least one rank-local parameter")
+        self.local = optimizer_class(self._local_params, **defaults)
+        self.shared: SpatiallyShardedOptimizer | None = None
+        if self._shared_params:
+            self.shared = SpatiallyShardedOptimizer(
+                self._shared_params,
+                optimizer_class=optimizer_class,
+                process_group=process_group,
+                **defaults,
+            )
+        super().__init__(params, self.local.defaults)
+        if len(self.param_groups) != 1:
+            raise ValueError("expected a single parameter group")
+
+    def _inner(self) -> list[tuple[torch.optim.Optimizer, list[torch.nn.Parameter]]]:
+        out: list[tuple[torch.optim.Optimizer, list[torch.nn.Parameter]]] = [
+            (self.local, self._local_params)
+        ]
+        if self.shared is not None:
+            out.append((self.shared, self._shared_params))
+        return out
+
+    @torch.no_grad()
+    def step(self, closure=None):
+        if closure is not None:
+            raise NotImplementedError("closures are not supported")
+        for optimizer, _ in self._inner():
+            SpatiallyShardedOptimizer._sync_param_groups(
+                self.param_groups, optimizer.param_groups
+            )
+            optimizer.step()
+        return None
+
+    @contextlib.contextmanager
+    def gathered_on(self, global_rank: int) -> Iterator[None]:
+        """See :meth:`SpatiallyShardedOptimizer.gathered_on`."""
+        if self.shared is None:
+            yield
+            return
+        SpatiallyShardedOptimizer._sync_param_groups(
+            self.param_groups, self.shared.param_groups
+        )
+        with self.shared.gathered_on(global_rank):
+            yield
+
+    def state_dict(self) -> dict[str, Any]:
+        # the groups, packed as an unsharded optimizer would (self.state is
+        # empty: the state lives in the inner optimizers)
+        state_dict = super().state_dict()
+        index = {param: i for i, param in enumerate(self.param_groups[0]["params"])}
+        state = {}
+        for optimizer, params in self._inner():
+            for inner_index, value in optimizer.state_dict()["state"].items():
+                state[index[params[inner_index]]] = value
+        state_dict["state"] = dict(sorted(state.items()))
+        return state_dict
+
+    def load_state_dict(self, state_dict: dict[str, Any]) -> None:
+        """Load an unsharded optimizer's state dict over the same parameters.
+
+        Rank-local parameters' state must already have the local shape. The
+        input is not modified.
+        """
+        saved_groups = state_dict["param_groups"]
+        if len(saved_groups) != len(self.param_groups):
+            raise ValueError(
+                "loaded state dict has a different number of parameter groups"
+            )
+        params = self.param_groups[0]["params"]
+        if len(saved_groups[0]["params"]) != len(params):
+            raise ValueError(
+                "loaded state dict contains a parameter group that doesn't "
+                "match the size of optimizer's group"
+            )
+        hyperparameters = {k: v for k, v in saved_groups[0].items() if k != "params"}
+        self.param_groups[0] = {**hyperparameters, "params": params}
+        index = {param: i for i, param in enumerate(params)}
+        for optimizer, inner_params in self._inner():
+            inner_state = {
+                i: state_dict["state"][index[param]]
+                for i, param in enumerate(inner_params)
+                if index[param] in state_dict["state"]
+            }
+            optimizer.load_state_dict(
+                {
+                    "state": inner_state,
+                    "param_groups": [
+                        {
+                            **hyperparameters,
+                            "params": list(range(len(inner_params))),
+                        }
+                    ],
+                }
+            )
+
+    def rank_local_state(self, param: torch.nn.Parameter) -> dict[str, Any]:
+        """The optimizer state of a rank-local parameter."""
+        return self.local.state.get(param, {})

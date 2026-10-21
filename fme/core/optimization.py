@@ -13,8 +13,14 @@ from torch import nn
 
 from fme.core.device import get_device
 from fme.core.distributed import Distributed
+from fme.core.distributed.parameter_sharding import (
+    ParameterShard,
+    gather_shard,
+    gathered_parameter_shards,
+    parameter_shards,
+)
 from fme.core.generics.optimization import OptimizationABC
-from fme.core.optimizer_sharding import SpatiallyShardedOptimizer
+from fme.core.optimizer_sharding import SpatiallyShardedOptimizer, SplitShardedOptimizer
 from fme.core.scheduler import LRScheduler, SchedulerConfig, SequentialSchedulerConfig
 from fme.core.typing_ import TensorDict, TensorMapping
 
@@ -116,6 +122,7 @@ class Optimization(OptimizationABC):
         consolidated_state: Callable[
             [], contextlib.AbstractContextManager[None]
         ] = contextlib.nullcontext,
+        parameter_shards: Mapping[nn.Parameter, ParameterShard] | None = None,
     ):
         """
         Args:
@@ -130,9 +137,18 @@ class Optimization(OptimizationABC):
             consolidated_state: Collective context within which the root rank's
                 ``optimizer.state_dict()`` is complete, for an optimizer
                 whose state is sharded across ranks.
+            parameter_shards: The spatially sharded parameters among the
+                optimized ones (see ``fme.core.distributed.parameter_sharding``),
+                whose state is rank-local. Their gradient norm is reduced over
+                the spatial group, and ``get_state``/``load_state`` use their
+                full tensors.
         """
         self.optimizer = optimizer
         self._consolidated_state = consolidated_state
+        self._parameter_shards = dict(parameter_shards or {})
+        # full state of the sharded parameters, by state dict index, on the
+        # root inside consolidated_state()
+        self._gathered_shard_state: dict[int, dict[str, Any]] | None = None
         if enable_automatic_mixed_precision:
             self.gscaler: torch.amp.GradScaler | None = torch.amp.GradScaler("cuda")
         else:
@@ -150,7 +166,64 @@ class Optimization(OptimizationABC):
     @contextlib.contextmanager
     def consolidated_state(self) -> Iterator[None]:
         with self._consolidated_state():
-            yield
+            if not self._parameter_shards:
+                yield
+                return
+            gathered = self._gather_shard_state()
+            if Distributed.get_instance().is_root():
+                self._gathered_shard_state = gathered
+            try:
+                yield
+            finally:
+                self._gathered_shard_state = None
+
+    def _indexed_parameters(self) -> list[nn.Parameter]:
+        """Parameters in the order of the optimizer state dict's indices."""
+        return [p for group in self.optimizer.param_groups for p in group["params"]]
+
+    def _rank_local_state(self, param: nn.Parameter) -> Mapping[str, Any]:
+        if isinstance(self.optimizer, SplitShardedOptimizer):
+            return self.optimizer.rank_local_state(param)
+        return self.optimizer.state.get(param, {})
+
+    def _gather_shard_state(self) -> dict[int, dict[str, Any]]:
+        """The full state of the sharded parameters, on the root (collective).
+
+        Every rank has the same state keys, as every rank steps together.
+        """
+        gathered: dict[int, dict[str, Any]] = {}
+        with gathered_parameter_shards(dst=0):
+            for index, param in enumerate(self._indexed_parameters()):
+                shard = self._parameter_shards.get(param)
+                if shard is None:
+                    continue
+                state = self._rank_local_state(param)
+                gathered[index] = {
+                    key: gather_shard(value, shard)
+                    for key, value in sorted(state.items())
+                    if isinstance(value, torch.Tensor)
+                    and tuple(value.shape) == shard.local_shape
+                }
+        return gathered
+
+    def _localize_state_dict(self, state_dict: Mapping[str, Any]) -> dict[str, Any]:
+        """A copy of an (unsharded) optimizer state dict in which the sharded
+        parameters' full state tensors are replaced by this rank's slices.
+        """
+        if not self._parameter_shards:
+            return dict(state_dict)
+        state = dict(state_dict["state"])
+        for index, param in enumerate(self._indexed_parameters()):
+            shard = self._parameter_shards.get(param)
+            if shard is None or index not in state:
+                continue
+            state[index] = {
+                key: (
+                    shard.localize(value) if isinstance(value, torch.Tensor) else value
+                )
+                for key, value in state[index].items()
+            }
+        return {**state_dict, "state": state}
 
     @contextlib.contextmanager
     def autocast(self):
@@ -221,12 +294,46 @@ class Optimization(OptimizationABC):
         if self._max_grad_norm is not None:
             if self.gscaler is not None:
                 self.gscaler.unscale_(self.optimizer)
-            params = itertools.chain.from_iterable(
-                group["params"] for group in self.optimizer.param_groups
+            params = list(
+                itertools.chain.from_iterable(
+                    group["params"] for group in self.optimizer.param_groups
+                )
             )
-            self._last_grad_norm = torch.nn.utils.clip_grad_norm_(
-                params, self._max_grad_norm
-            ).item()
+            if self._parameter_shards:
+                total_norm = self._sharded_grad_norm(params)
+                torch.nn.utils.clip_grads_with_norm_(
+                    params, self._max_grad_norm, total_norm
+                )
+                self._last_grad_norm = total_norm.item()
+            else:
+                self._last_grad_norm = torch.nn.utils.clip_grad_norm_(
+                    params, self._max_grad_norm
+                ).item()
+
+    def _sharded_grad_norm(self, params: list[nn.Parameter]) -> torch.Tensor:
+        """The global gradient norm when some parameters are sharded: their
+        squared norms are summed over the spatial group (once per slice).
+        """
+        replicated = []
+        sharded = []
+        for p in params:
+            if p.grad is None:
+                continue
+            shard = self._parameter_shards.get(p)
+            if shard is None:
+                replicated.append(p.grad)
+            elif shard.owner:
+                sharded.append(p.grad)
+        device = params[0].device
+        square = torch.zeros((), device=device)
+        if replicated:
+            square = square + torch.nn.utils.get_total_norm(replicated).to(device) ** 2
+        sharded_square = torch.zeros((), device=device)
+        if sharded:
+            sharded_square = torch.nn.utils.get_total_norm(sharded).to(device) ** 2
+        # every rank takes part, with or without gradients of its own
+        square = square + Distributed.get_instance().spatial_reduce_sum(sharded_square)
+        return square.sqrt()
 
     def _step_weights(self):
         if self.gscaler is not None:
@@ -275,7 +382,9 @@ class Optimization(OptimizationABC):
             for g in self.optimizer.param_groups
         ]
         try:
-            self.optimizer.load_state_dict(state["optimizer_state_dict"])
+            self.optimizer.load_state_dict(
+                self._localize_state_dict(state["optimizer_state_dict"])
+            )
         except ValueError as e:
             raise ValueError(
                 "Failed to load optimizer state for fine-tuning: parameter "
@@ -298,8 +407,23 @@ class Optimization(OptimizationABC):
         """
         Returns state as a serializable data structure.
         """
+        optimizer_state_dict = self.optimizer.state_dict()
+        if self._parameter_shards:
+            if self._gathered_shard_state is None:
+                raise RuntimeError(
+                    "The state of spatially sharded parameters is only "
+                    "available on the root rank, inside consolidated_state(), "
+                    "which every rank must enter together."
+                )
+            optimizer_state_dict = {
+                **optimizer_state_dict,
+                "state": {
+                    index: {**value, **self._gathered_shard_state.get(index, {})}
+                    for index, value in optimizer_state_dict["state"].items()
+                },
+            }
         state = {
-            "optimizer_state_dict": self.optimizer.state_dict(),
+            "optimizer_state_dict": optimizer_state_dict,
             "scheduler_state_dict": self.scheduler.state_dict(),
             "gscaler_state_dict": (
                 self.gscaler.state_dict() if self.gscaler is not None else None
@@ -311,7 +435,9 @@ class Optimization(OptimizationABC):
         """
         Loads state from a serializable data structure.
         """
-        self.optimizer.load_state_dict(state["optimizer_state_dict"])
+        self.optimizer.load_state_dict(
+            self._localize_state_dict(state["optimizer_state_dict"])
+        )
         self.scheduler.load_state_dict(state["scheduler_state_dict"])
         if self.gscaler is not None:
             self.gscaler.load_state_dict(state["gscaler_state_dict"])
@@ -367,7 +493,10 @@ class OptimizationConfig:
             that includes it. Checkpoints keep the unsharded format, so they
             load into sharded and unsharded runs alike. Has no effect without
             spatial parallelism (including serial and purely data-parallel
-            runs). Not supported with ``lr_tuning``.
+            runs). Not supported with ``lr_tuning``. Spatially sharded
+            parameters (e.g. ``NoiseConditionedSFNO``'s
+            ``shard_spatial_parameters``) are already rank-local; they keep
+            their state on their rank and are stepped there.
     """
 
     optimizer_type: Literal["Adam", "AdamW", "FusedAdam"] = "Adam"
@@ -400,7 +529,14 @@ class OptimizationConfig:
         return self.scheduler.type is not None
 
     def build(self, modules: torch.nn.ModuleList, max_epochs: int) -> Optimization:
-        parameters = itertools.chain(*[module.parameters() for module in modules])
+        parameters = list(itertools.chain(*[module.parameters() for module in modules]))
+        shards = parameter_shards(modules)
+        if shards and self.enable_automatic_mixed_precision:
+            raise ValueError(
+                "enable_automatic_mixed_precision is not supported with spatially "
+                "sharded parameters (shard_spatial_parameters): the grad scaler's "
+                "inf/nan check would differ between the ranks of a spatial group."
+            )
         shard_group = None
         if self.shard_optimizer_state:
             dist = Distributed.get_instance()
@@ -420,13 +556,25 @@ class OptimizationConfig:
             optimizer_class, optimizer_kwargs = _optimizer_class_and_kwargs(
                 self.optimizer_type, self.kwargs
             )
-            sharded = SpatiallyShardedOptimizer(
-                list(parameters),
-                optimizer_class=optimizer_class,
-                process_group=shard_group,
-                lr=self.lr,
-                **optimizer_kwargs,
-            )
+            sharded: SpatiallyShardedOptimizer | SplitShardedOptimizer
+            if shards:
+                # rank-local parameters cannot be partitioned over the group
+                sharded = SplitShardedOptimizer(
+                    parameters,
+                    rank_local=set(shards),
+                    optimizer_class=optimizer_class,
+                    process_group=shard_group,
+                    lr=self.lr,
+                    **optimizer_kwargs,
+                )
+            else:
+                sharded = SpatiallyShardedOptimizer(
+                    parameters,
+                    optimizer_class=optimizer_class,
+                    process_group=shard_group,
+                    lr=self.lr,
+                    **optimizer_kwargs,
+                )
             optimizer = sharded
             # checkpoints are written by the global root (rank 0)
             consolidated_state = functools.partial(sharded.gathered_on, 0)
@@ -440,6 +588,7 @@ class OptimizationConfig:
             get_checkpoint=self.checkpoint.build,
             max_grad_norm=self.max_grad_norm,
             consolidated_state=consolidated_state,
+            parameter_shards=shards,
         )
         if self.resume_optimizer_ckpt_path is not None:
             _load_finetune_optimization_state(

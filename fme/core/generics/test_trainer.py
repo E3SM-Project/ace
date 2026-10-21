@@ -2051,3 +2051,127 @@ def test_checkpoint_saves_consolidate_optimizer_state_on_every_rank(tmp_path: st
     assert n_other == n_root
     assert n_root_reads > n_root  # restart + epoch checkpoints share a gather
     assert n_other_reads == 0
+
+
+def _shard_stepper_weight(stepper: TrainStepper) -> None:
+    """Make the stepper's (1, 1) weight the first row of a (2, 1) parameter,
+    as a spatially sharded parameter (here without spatial parallelism, so
+    the gathered tensor holds zeros in the other row).
+    """
+    from fme.core.distributed.parameter_sharding import ParameterShard, shard_parameter
+
+    module = stepper.modules[0]
+    module.weight = torch.nn.Parameter(torch.zeros(2, 1, device=get_device()))
+    shard_parameter(
+        module,
+        "weight",
+        ParameterShard(
+            global_shape=(2, 1),
+            index=(slice(0, 1), slice(0, 1)),
+            split=(True, True),
+            owner=True,
+        ),
+    )
+
+
+@contextlib.contextmanager
+def _sharded_stepper_weight():
+    original_init = TrainStepper.__init__
+
+    def init(self, *args, **kwargs):
+        original_init(self, *args, **kwargs)
+        _shard_stepper_weight(self)
+
+    with unittest.mock.patch.object(TrainStepper, "__init__", init):
+        yield
+
+
+def test_sharded_parameters_reject_lr_tuning(tmp_path: str):
+    with _sharded_stepper_weight(), pytest.raises(ValueError, match="lr_tuning"):
+        get_trainer(
+            tmp_path,
+            lr_tuning=LRTuningConfig(
+                epochs=Slice(), lr_factor=0.5, num_batches=2, improvement_threshold=0.1
+            ),
+        )
+
+
+def _train_sharded(tmp_path: str, is_root: bool) -> tuple[Trainer, int]:
+    """Train with mid-epoch and epoch checkpoints, as rank 0 or as another
+    rank, which takes part in assembling the sharded state but writes
+    nothing. Returns the trainer and how many times this rank read the
+    stepper state inside the collective gather.
+    """
+    from fme.core.distributed.parameter_sharding import parameter_shards_gathered
+
+    with _sharded_stepper_weight():
+        _, trainer = get_trainer(
+            tmp_path,
+            max_epochs=2,
+            n_train_batches=4,
+            checkpoint_every_n_batches=2,
+            checkpoint_save_epochs=Slice(start=1),
+        )
+    original_get_state = trainer.stepper.get_state
+    n_reads = 0
+
+    def get_state():
+        nonlocal n_reads
+        assert parameter_shards_gathered(), "stepper state read outside the gather"
+        n_reads += 1
+        return original_get_state()
+
+    distributed = type(Distributed.get_instance())
+    with (
+        unittest.mock.patch.object(distributed, "is_root", return_value=is_root),
+        # every rank receives the root's choice of best checkpoints to save
+        unittest.mock.patch.object(
+            distributed,
+            "scatter_object",
+            lambda self, obj: obj if obj is not None else (True, True),
+        ),
+        unittest.mock.patch.object(trainer.stepper, "get_state", get_state),
+        mock_wandb(),
+    ):
+        trainer.train()
+    return trainer, n_reads
+
+
+def test_sharded_parameters_checkpoints_are_full_and_written_by_root(tmp_path: str):
+    trainer, _ = _train_sharded(os.path.join(tmp_path, "root"), is_root=True)
+    paths = trainer.paths
+    for path in (
+        paths.latest_checkpoint_path,
+        paths.best_checkpoint_path,
+        paths.epoch_checkpoint_path(1),
+    ):
+        checkpoint = torch.load(path, map_location="cpu", weights_only=False)
+        assert checkpoint["stepper"]["modules"]["0.weight"].shape == (2, 1)
+    checkpoint = torch.load(
+        paths.latest_checkpoint_path, map_location="cpu", weights_only=False
+    )
+    assert checkpoint["ema"]["ema_params"]["0weight"].shape == (2, 1)
+    optimizer_state = checkpoint["optimization"]["optimizer_state_dict"]["state"]
+    assert optimizer_state[0]["exp_avg"].shape == (2, 1)
+    # reading the state outside the collective save is refused
+    with pytest.raises(RuntimeError, match="_save_checkpoints_on_root"):
+        trainer.save_checkpoint(os.path.join(tmp_path, "other.tar"))
+    # the full checkpoint resumes into this rank's slice
+    with _sharded_stepper_weight():
+        _, resumed = get_trainer(
+            os.path.join(tmp_path, "root"),
+            max_epochs=2,
+            n_train_batches=4,
+            checkpoint_every_n_batches=2,
+        )
+    assert resumed.stepper.modules[0].weight.shape == (1, 1)
+    torch.testing.assert_close(
+        resumed.stepper.modules[0].weight, trainer.stepper.modules[0].weight
+    )
+
+
+def test_sharded_parameters_non_root_takes_part_but_writes_nothing(tmp_path: str):
+    _, n_root_reads = _train_sharded(os.path.join(tmp_path, "root"), is_root=True)
+    trainer, n_reads = _train_sharded(os.path.join(tmp_path, "other"), is_root=False)
+    assert n_reads == n_root_reads > 0
+    assert os.listdir(trainer.paths.checkpoint_dir) == []

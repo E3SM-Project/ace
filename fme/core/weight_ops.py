@@ -6,6 +6,7 @@ from typing import Any
 import torch
 from torch import nn
 
+from .distributed.parameter_sharding import get_parameter_shard
 from .wildcard import apply_by_exclude, apply_by_include, wildcard_match
 
 
@@ -154,6 +155,12 @@ def overwrite_weight_initial_slice(module, name, from_param):
         if name == "device_buffer" or name == "module.device_buffer":
             return  # ignore device buffer, used for GPU operations
         raise
+    shard = get_parameter_shard(module, name)
+    if shard is not None:
+        # a spatially sharded parameter: keep this rank's slice of the full
+        # tensor (the initial-slice overwrite of a larger parameter is not
+        # supported for these)
+        from_param = shard.localize(from_param)
     if len(from_param.shape) != len(to_param.shape):
         raise ValueError(
             f"Dest parameter {name} has "

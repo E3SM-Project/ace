@@ -8,6 +8,7 @@ import torch
 from torch import nn
 
 from fme.core.device import get_device
+from fme.core.distributed.parameter_sharding import get_parameter_shard
 from fme.core.training_history import TrainingHistory
 from fme.core.weight_ops import overwrite_weights
 from fme.core.wildcard import apply_by_exclude, apply_by_include, wildcard_match
@@ -61,6 +62,16 @@ class FrozenParameterConfig:
         elif self.exclude is not None:
             logging.info("applying freeze to parameters by exclude")
             apply_by_exclude(model, _freeze_weight, self.exclude)
+
+
+def _localize(module: nn.Module, name: str, value: Any) -> Any:
+    """This rank's slice of a full base weight, for a spatially sharded
+    parameter of ``module``.
+    """
+    shard = get_parameter_shard(module, name)
+    if shard is not None and isinstance(value, torch.Tensor):
+        return shard.localize(value)
+    return value
 
 
 def _freeze_weight(module: nn.Module, name: str):
@@ -256,10 +267,13 @@ class ParameterInitializer:
         if base_weights is not None and (
             self.config.alpha != 0 or self.config.beta != 0
         ):
+            local_base_weights = []
             for module, state_dict in zip(modules, base_weights):
                 state_dict = {
-                    name: value.to(device) for name, value in state_dict.items()
+                    name: _localize(module, name, value).to(device)
+                    for name, value in state_dict.items()
                 }
+                local_base_weights.append(state_dict)
                 from_names = set(state_dict.keys())
                 to_names = set(module.state_dict().keys())
                 if not from_names.issubset(to_names):
@@ -272,13 +286,14 @@ class ParameterInitializer:
             def regularizer():
                 loss = torch.tensor(0.0, device=device)
                 for module, state_dict, classification in zip(
-                    modules, base_weights, filled_parameters
+                    modules, local_base_weights, filled_parameters
                 ):
                     for name in state_dict.keys():
                         try:
                             param = module.get_parameter(name)
                         except AttributeError:  # non-trainable state data
                             continue
+                        base = state_dict[name]
                         if any(
                             wildcard_match(pattern, name)
                             for pattern in classification.exclude
@@ -293,7 +308,7 @@ class ParameterInitializer:
                                 self.config.alpha
                                 / 2
                                 * torch.linalg.norm(
-                                    (param - state_dict[name]).flatten(),
+                                    (param - base).flatten(),
                                     ord=2,
                                 )
                             )
