@@ -262,6 +262,22 @@ class DistributedBackend(ABC):
         """
         return (0, 0)
 
+    def spatial_size(self) -> tuple[int, int]:
+        """The number of (h, w) tiles each field is split into; (1, 1)
+        without spatial parallelism.
+        """
+        return (1, 1)
+
+    def gather_spatial_to_root(
+        self, tensor: torch.Tensor, img_shape: tuple[int, int]
+    ) -> torch.Tensor | None:
+        """Assemble the global field from every spatial co-rank's tile (the
+        last two dimensions) on the spatial-group root, the rank at spatial
+        coordinates (0, 0). Returns None on the other ranks. Without spatial
+        parallelism the tile is the global field and is returned as is.
+        """
+        return tensor
+
     @abstractmethod
     def weighted_mean(
         self,

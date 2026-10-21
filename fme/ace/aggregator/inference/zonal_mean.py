@@ -250,7 +250,9 @@ class ZonalMeanAggregator:
         field but avoids buffering the full longitudinal data.
         """
         new_buffer: TensorDict = {}
-        for name, tensor in data.items():
+        # sorted: under spatial parallelism the zonal mean is a collective
+        for name in sorted(data):
+            tensor = data[name]
             if name not in accumulator:
                 continue
             zonal_mean = self._zonal_mean(tensor)
@@ -272,15 +274,22 @@ class ZonalMeanAggregator:
         data: dict[str, _RawData] = {}
         sorted_names = sorted(list(self._gen_data.keys()))
         for name in sorted_names:
+            # under spatial parallelism each rank holds its latitude band
             gen = (
-                self._dist.reduce_mean(self._gen_data[name] / self._n_batches)
-                .mean(sample_dim)
+                self._dist.gather_spatial_lat(
+                    self._dist.reduce_mean(self._gen_data[name] / self._n_batches).mean(
+                        sample_dim
+                    )
+                )
                 .cpu()
                 .numpy()
             )
             target = (
-                self._dist.reduce_mean(self._target_data[name] / self._n_batches)
-                .mean(sample_dim)
+                self._dist.gather_spatial_lat(
+                    self._dist.reduce_mean(
+                        self._target_data[name] / self._n_batches
+                    ).mean(sample_dim)
+                )
                 .cpu()
                 .numpy()
             )

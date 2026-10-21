@@ -89,13 +89,20 @@ class MapAggregator:
         gen, target = {}, {}
         # divide before reducing so the reduction acts on a new tensor; reducing
         # the running totals directly would overwrite them with the cross-rank sum
+        # then assemble the global maps from the spatial tiles
         for name in sorted(list(self._gen_data.keys())):
             gen[name] = (
-                dist.reduce_mean(self._gen_data[name] / self._n_batches).cpu().numpy()
+                dist.gather_spatial_tile(
+                    dist.reduce_mean(self._gen_data[name] / self._n_batches)
+                )
+                .cpu()
+                .numpy()
             )
         for name in sorted(list(self._target_data.keys())):
             target[name] = (
-                dist.reduce_mean(self._target_data[name] / self._n_batches)
+                dist.gather_spatial_tile(
+                    dist.reduce_mean(self._target_data[name] / self._n_batches)
+                )
                 .cpu()
                 .numpy()
             )

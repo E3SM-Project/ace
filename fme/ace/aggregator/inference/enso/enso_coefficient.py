@@ -209,12 +209,29 @@ class EnsoCoefficientEvaluatorAggregator:
 
     @torch.no_grad()
     def get_logs(self, label: str) -> dict[str, Any]:
+        """Returns the logs on the root process, and an empty dict elsewhere."""
         target_coefficients, gen_coefficients = self._get_coefficients()
         if target_coefficients is None or gen_coefficients is None:
-            return {}  # only the root process returns logs
+            return {}  # no sample on any process overlapped the index
+        dist = Distributed.get_instance()
         wandb = WandB.get_instance()
         images, metrics = {}, {}
         for name in gen_coefficients.keys():
+            # collectives on every rank: the RMSE reduces over the spatial
+            # tiles, and the maps are assembled from them
+            rmse = float(
+                self._ops.area_weighted_rmse(
+                    predicted=gen_coefficients[name],
+                    truth=target_coefficients[name],
+                    name=name,
+                )
+                .cpu()
+                .numpy()
+            )
+            target_map = dist.gather_spatial_tile(target_coefficients[name])
+            gen_map = dist.gather_spatial_tile(gen_coefficients[name])
+            if not dist.is_root():
+                continue
             if name in self._variable_metadata:
                 caption_name = self._variable_metadata[name].display_long_name(name)
                 caption_units = self._variable_metadata[name].display_units(
@@ -226,27 +243,13 @@ class EnsoCoefficientEvaluatorAggregator:
             caption = self._image_captions["target_gen_coefficient_maps"].format(
                 name=caption_name, units=caption_units
             )
-            panels = [
-                [
-                    target_coefficients[name].cpu().numpy(),
-                    gen_coefficients[name].cpu().numpy(),
-                ]
-            ]
+            panels = [[target_map.cpu().numpy(), gen_map.cpu().numpy()]]
             coefficient_map = plot_paneled_data(
                 data=panels, diverging=True, caption=caption
             )
             images.update({f"coefficient_maps/{name}": coefficient_map})
-            rmse = float(
-                self._ops.area_weighted_rmse(
-                    predicted=gen_coefficients[name],
-                    truth=target_coefficients[name],
-                    name=name,
-                )
-                .cpu()
-                .numpy()
-            )
             metrics.update({f"rmse/{name}": rmse})
-            diff = gen_coefficients[name] - target_coefficients[name]
+            diff = gen_map - target_map
             caption = self._image_captions["coefficient_difference_map"].format(
                 name=caption_name, units=caption_units
             )
@@ -262,6 +265,8 @@ class EnsoCoefficientEvaluatorAggregator:
                     f"coefficient_difference_map/{name}": coefficient_difference_map,
                 }
             )
+        if not dist.is_root():
+            return {}
         logs: dict[str, Any] = {}
         if len(label) > 0:
             label = label + "/"
@@ -270,9 +275,22 @@ class EnsoCoefficientEvaluatorAggregator:
         return logs
 
     def get_dataset(self) -> xr.Dataset:
-        """Get the coefficients as an xarray Dataset."""
+        """Get the coefficients as an xarray Dataset, on the root process (an
+        empty one elsewhere).
+        """
         target_coefficients, gen_coefficients = self._get_coefficients()
         if target_coefficients is None or gen_coefficients is None:
+            return xr.Dataset()
+        dist = Distributed.get_instance()
+        target_coefficients = {
+            name: dist.gather_spatial_tile(value)
+            for name, value in target_coefficients.items()
+        }
+        gen_coefficients = {
+            name: dist.gather_spatial_tile(value)
+            for name, value in gen_coefficients.items()
+        }
+        if not dist.is_root():
             return xr.Dataset()
         target_coefficients_ds = xr.Dataset(
             {
@@ -421,8 +439,8 @@ def reduce_sample_coefficients(
         spatial_shapes: Spatial shape of each variable, known on every process.
 
     Returns:
-        Mean coefficients on the root process, or None if this is not the root
-        process or if no sample on any process had coefficients.
+        Mean coefficients (under spatial parallelism, of this rank's tile) on
+        every process, or None if no sample on any process had coefficients.
     """
     # sort for determinism: every process must stack its variables in the same
     # order for the collectives below to line up across processes
@@ -447,8 +465,6 @@ def reduce_sample_coefficients(
     if dist.is_distributed():
         summed = dist.reduce_sum(summed)
         counts = dist.reduce_sum(counts)
-    if not dist.is_root():
-        return None
     reduced = {
         name: summed[i] / counts[i]
         for i, name in enumerate(names)

@@ -9,6 +9,7 @@ import torch
 import xarray as xr
 
 from fme.core.device import get_device
+from fme.core.distributed import Distributed
 
 SAMPLE_DIM, TIME_DIM, LAT_DIM, LON_DIM = 0, 1, -2, -1
 
@@ -21,6 +22,18 @@ class Region(abc.ABC):
 
 @dataclass
 class LatLonRegion(Region):
+    """A latitude-longitude box on a global grid.
+
+    Parameters:
+        lat: The global grid's latitudes.
+        lon: The global grid's longitudes.
+        lat_bounds: The box's (min, max) latitude.
+        lon_bounds: The box's (min, max) longitude.
+
+    Under spatial parallelism ``regional_weights`` are this rank's tile of
+    the weights, matching the tile of the data it holds.
+    """
+
     lat: torch.Tensor
     lon: torch.Tensor
     lat_bounds: tuple[float, float]
@@ -36,7 +49,9 @@ class LatLonRegion(Region):
         ).unsqueeze(self.horizontal_dims[0])
         region_mask = torch.logical_and(lat_mask, lon_mask).float()
         cos_lat = torch.cos(torch.deg2rad(self.lat)).unsqueeze(self.horizontal_dims[1])
-        self._regional_weights = region_mask * cos_lat
+        weights = region_mask * cos_lat
+        slices = Distributed.get_instance().get_local_slices(weights.shape)
+        self._regional_weights = weights[slices]
 
     @property
     def regional_weights(self) -> torch.Tensor:

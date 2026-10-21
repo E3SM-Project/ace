@@ -19,6 +19,32 @@ from .build_context import MetricBuildContext, MetricNotSupportedError, maybe_fi
 from .data import InferenceBatchData, MetricBuildResult, SubAggregator
 
 
+def _spherical_power_spectrum(
+    field: torch.Tensor, sht: torch.nn.Module
+) -> torch.Tensor:
+    """``spherical_power_spectrum``, also of a spatially tiled field.
+
+    Under spatial parallelism ``sht`` is the distributed SHT of the tiles. It
+    returns this rank's block of the (l, m) coefficients, split like the
+    (lat, lon) tiles, and transposes its channel dimension (-3) across the
+    ranks, so the leading dimensions are flattened into channels, padded to
+    give every rank some. The power of each (l, m) is assembled from the
+    blocks before summing over m.
+    """
+    dist = Distributed.get_instance()
+    if not dist.has_spatial_parallelism:
+        return spherical_power_spectrum(field, sht)
+    h_size, w_size = dist.spatial_size
+    lead = field.shape[:-2]
+    flat = field.reshape(-1, *field.shape[-2:])
+    n = flat.shape[0]
+    n_pad = -n % (h_size * w_size)
+    if n_pad > 0:
+        flat = torch.cat([flat, flat.new_zeros((n_pad, *flat.shape[1:]))])
+    power_lm = dist.gather_spatial_tile(abs(sht.forward(flat)) ** 2)
+    return power_lm[:n].sum(dim=-1).reshape(*lead, -1)
+
+
 class SphericalPowerSpectrumAggregator:
     """Average the power spectrum over batch and time dimensions."""
 
@@ -29,9 +55,6 @@ class SphericalPowerSpectrumAggregator:
         report_plot: bool = True,
         variable_metadata: Mapping[str, VariableMetadata] | None = None,
     ):
-        Distributed.get_instance().require_no_spatial_parallelism(
-            "SphericalPowerSpectrumAggregator does not support spatial parallelism."
-        )
         self._real_sht = gridded_operations.get_real_sht()
         self._power_spectrum: dict[str, torch.Tensor] = {}
         self._counts: dict[str, int] = defaultdict(int)
@@ -47,11 +70,12 @@ class SphericalPowerSpectrumAggregator:
 
     @torch.no_grad()
     def record_data(self, prediction: TensorMapping):
-        for name in prediction:
+        # sorted: under spatial parallelism the spectrum is a collective
+        for name in sorted(prediction):
             batch_size = prediction[name].shape[0]
             time_size = prediction[name].shape[1]
             tensor = self._nan_fill_fn(prediction[name], name)
-            power_spectrum = spherical_power_spectrum(tensor, self._real_sht)
+            power_spectrum = _spherical_power_spectrum(tensor, self._real_sht)
             mean_power_spectrum = torch.mean(power_spectrum, dim=(0, 1))
             new_count = batch_size * time_size
             if name not in self._power_spectrum:

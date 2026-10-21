@@ -167,14 +167,16 @@ def _run_torchrun(config_yaml: str, module: str, extra_args: list[str] | None = 
 
 
 @pytest.mark.slow
-def test_distributed_evaluator(tmp_path: pathlib.Path):
-    """Evaluator under 2 GPU ranks matches a serial in-process reference."""
+@pytest.mark.parametrize("save_files", [False, True])
+def test_distributed_evaluator(tmp_path: pathlib.Path, save_files: bool):
+    """Evaluator under 2 GPU ranks matches a serial in-process reference,
+    including the prediction and monthly files when they are saved."""
     n_forward_steps = 2
     stepper_path, data = _make_evaluator_test_data(
         tmp_path, n_forward_steps=n_forward_steps
     )
 
-    # Build config with 2 ICs and all writers disabled.
+    # Build config with 2 ICs.
     loader_config = dataclasses.replace(
         data.inference_data_loader_config,
         start_indices=InferenceInitialConditionIndices(
@@ -193,7 +195,7 @@ def test_distributed_evaluator(tmp_path: pathlib.Path):
         ),
         loader=loader_config,
         forward_steps_in_memory=1,
-        data_writer=_no_writers_config(),
+        data_writer=DataWriterConfig() if save_files else _no_writers_config(),
         allow_incompatible_dataset=True,
     )
 
@@ -224,6 +226,16 @@ def test_distributed_evaluator(tmp_path: pathlib.Path):
     serial_restart = xr.open_dataset(os.path.join(serial_dir, "restart.nc"))
     dist_restart = xr.open_dataset(os.path.join(dist_dir, "restart.nc"))
     xr.testing.assert_allclose(serial_restart, dist_restart)
+
+    for name in ("autoregressive_predictions", "monthly_mean_predictions"):
+        serial_nc = os.path.join(serial_dir, f"{name}.nc")
+        dist_nc = os.path.join(dist_dir, f"{name}.nc")
+        assert os.path.exists(serial_nc) == save_files
+        if save_files:
+            xr.testing.assert_allclose(
+                xr.open_dataset(serial_nc, decode_timedelta=False),
+                xr.open_dataset(dist_nc, decode_timedelta=False),
+            )
 
 
 @pytest.mark.slow

@@ -50,12 +50,17 @@ class GriddedOperations(abc.ABC):
         name: str | None = None,
     ) -> torch.Tensor: ...
 
+    # The *_dict methods visit the variables in sorted order: under spatial
+    # parallelism each area-weighted reduction is a collective over the tiles,
+    # and the order of a dict of data can differ between ranks (e.g. when it
+    # comes from iterating a set of names, which is hashed differently in each
+    # process), which would combine one variable's tile with another's.
     @final
     def area_weighted_sum_dict(
         self, data: TensorMapping, keepdim: bool = False
     ) -> TensorDict:
         result = {}
-        for name in data:
+        for name in sorted(data):
             result[name] = self.area_weighted_sum(
                 data=data[name],
                 keepdim=keepdim,
@@ -82,7 +87,7 @@ class GriddedOperations(abc.ABC):
         self, data: TensorMapping, keepdim: bool = False
     ) -> TensorDict:
         result = {}
-        for name in data:
+        for name in sorted(data):
             result[name] = self.area_weighted_mean(
                 data=data[name],
                 keepdim=keepdim,
@@ -103,7 +108,7 @@ class GriddedOperations(abc.ABC):
         self, truth: TensorMapping, predicted: TensorMapping
     ) -> TensorDict:
         result = {}
-        for name in truth:
+        for name in sorted(truth):
             result[name] = self.area_weighted_mean_bias(
                 truth=truth[name],
                 predicted=predicted[name],
@@ -124,7 +129,7 @@ class GriddedOperations(abc.ABC):
         self, truth: TensorMapping, predicted: TensorMapping
     ) -> TensorDict:
         result = {}
-        for name in truth:
+        for name in sorted(truth):
             result[name] = self.area_weighted_rmse(
                 truth=truth[name],
                 predicted=predicted[name],
@@ -151,7 +156,7 @@ class GriddedOperations(abc.ABC):
         keepdim: bool = False,
     ) -> TensorDict:
         result = {}
-        for name in data:
+        for name in sorted(data):
             result[name] = self.area_weighted_std(
                 data=data[name],
                 keepdim=keepdim,
@@ -172,7 +177,7 @@ class GriddedOperations(abc.ABC):
         self, truth: TensorMapping, predicted: TensorMapping
     ) -> TensorDict:
         result = {}
-        for name in truth:
+        for name in sorted(truth):
             result[name] = self.area_weighted_gradient_magnitude_percent_diff(
                 truth=truth[name],
                 predicted=predicted[name],
@@ -197,7 +202,7 @@ class GriddedOperations(abc.ABC):
         keepdim: bool = False,
     ) -> TensorDict:
         result = {}
-        for name in data:
+        for name in sorted(data):
             result[name] = self.regional_area_weighted_mean(
                 data=data[name],
                 regional_weights=regional_weights,

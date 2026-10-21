@@ -305,8 +305,9 @@ class _EnsembleAggregator:
                     .numpy()
                 )
                 if self._log_mean_maps:
+                    global_map = self._dist.gather_spatial_tile(metric_value)
                     data[f"{metric}/mean_map/{key}"] = plot_paneled_data(
-                        [[metric_value.cpu().numpy()]],
+                        [[global_map.cpu().numpy()]],
                         diverging=metric in self._diverging_metrics,
                         caption=self._get_caption(key),
                     )

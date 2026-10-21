@@ -631,3 +631,34 @@ def test_get_sht_releases_torch_harmonics_legendre_cache():
     assert cached_entries() == 0
     x = torch.randn(1, 8, 16, device=get_device())
     assert isht(sht(x)).shape == x.shape
+
+
+def test_all_reduce_any_device_moves_cpu_tensors_for_nccl(monkeypatch):
+    """NCCL rejects CPU tensors; CPU accumulators (e.g. the video aggregator)
+    must be reduced through a device copy and written back in place."""
+    seen_devices: list[torch.device] = []
+
+    def fake_all_reduce(tensor, op=None, group=None):
+        seen_devices.append(tensor.device)
+        tensor.mul_(2)
+
+    monkeypatch.setattr(torch.distributed, "all_reduce", fake_all_reduce)
+    monkeypatch.setattr(torch.distributed, "get_backend", lambda group=None: "nccl")
+    monkeypatch.setattr(torch.cuda, "current_device", lambda: 0)
+    monkeypatch.setattr(torch.Tensor, "to", lambda self, device: self.clone())
+    x = torch.ones(3)
+    out = model_torch_distributed._all_reduce_any_device(x)
+    assert out is x
+    torch.testing.assert_close(x, torch.full((3,), 2.0))
+    assert len(seen_devices) == 1
+
+
+def test_all_reduce_any_device_passes_through_gloo(monkeypatch):
+    calls: list[torch.Tensor] = []
+    monkeypatch.setattr(
+        torch.distributed, "all_reduce", lambda t, op=None, group=None: calls.append(t)
+    )
+    monkeypatch.setattr(torch.distributed, "get_backend", lambda group=None: "gloo")
+    x = torch.ones(3)
+    model_torch_distributed._all_reduce_any_device(x)
+    assert calls == [x]

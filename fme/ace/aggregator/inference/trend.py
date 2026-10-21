@@ -160,12 +160,13 @@ class TrendEvaluatorAggregator:
         )
         return names, reduced_y, reduced_ty
 
-    def _get_trends(self) -> tuple[TensorDict | None, TensorDict | None]:
+    def _get_trends(self) -> tuple[TensorDict, TensorDict]:
         """Reduce sufficient statistics across ranks and finalize the target
-        and generated slopes. Returns ``(None, None)`` on non-root ranks.
+        and generated slopes, on every rank. Under spatial parallelism they
+        are this rank's tile of the slope maps.
 
         All collectives are issued unconditionally and in the same order on
-        every rank, before the ``is_root`` early-return, to avoid deadlock.
+        every rank.
         """
         if not self._gen_sum_y:
             raise ValueError("No data has been recorded yet.")
@@ -180,8 +181,6 @@ class TrendEvaluatorAggregator:
         target = self._reduce_running_sums(
             dist, self._target_sum_y, self._target_sum_ty
         )
-        if not dist.is_root():
-            return None, None
         denom = n * sum_tt - sum_t * sum_t
 
         def slopes(reduced: tuple[list[str], torch.Tensor, torch.Tensor]) -> TensorDict:
@@ -203,14 +202,27 @@ class TrendEvaluatorAggregator:
 
     @torch.no_grad()
     def get_logs(self, label: str) -> dict[str, float | Image]:
+        """Returns the logs on the root process, and an empty dict elsewhere."""
         target_trends, gen_trends = self._get_trends()
-        if target_trends is None or gen_trends is None:
-            return {}  # only the root process returns logs
+        dist = Distributed.get_instance()
         images: dict[str, Image] = {}
         metrics: dict[str, float] = {}
         for name in gen_trends:
-            target_map = target_trends[name]
-            gen_map = gen_trends[name]
+            # collectives on every rank: the RMSE reduces over the spatial
+            # tiles, and the maps are assembled from them
+            metrics[f"weighted_rmse/{name}"] = float(
+                self._ops.area_weighted_rmse(
+                    predicted=gen_trends[name].to(torch.float32),
+                    truth=target_trends[name].to(torch.float32),
+                    name=name,
+                )
+                .cpu()
+                .numpy()
+            )
+            target_map = dist.gather_spatial_tile(target_trends[name])
+            gen_map = dist.gather_spatial_tile(gen_trends[name])
+            if not dist.is_root():
+                continue
             images[f"maps/{name}"] = plot_paneled_data(
                 [[target_map.cpu().numpy(), gen_map.cpu().numpy()]],
                 diverging=True,
@@ -222,15 +234,8 @@ class TrendEvaluatorAggregator:
                 diverging=True,
                 caption=self._caption("difference_map", name),
             )
-            metrics[f"weighted_rmse/{name}"] = float(
-                self._ops.area_weighted_rmse(
-                    predicted=gen_map.to(torch.float32),
-                    truth=target_map.to(torch.float32),
-                    name=name,
-                )
-                .cpu()
-                .numpy()
-            )
+        if not dist.is_root():
+            return {}
         logs: dict[str, Any] = {}
         if len(label) > 0:
             label = label + "/"
@@ -250,8 +255,17 @@ class TrendEvaluatorAggregator:
         }
 
     def get_dataset(self) -> xr.Dataset:
+        """Returns the dataset on the root process, and an empty one elsewhere."""
         target_trends, gen_trends = self._get_trends()
-        if target_trends is None or gen_trends is None:
+        dist = Distributed.get_instance()
+        target_trends = {
+            name: dist.gather_spatial_tile(value)
+            for name, value in target_trends.items()
+        }
+        gen_trends = {
+            name: dist.gather_spatial_tile(value) for name, value in gen_trends.items()
+        }
+        if not dist.is_root():
             return xr.Dataset()
         target_ds = xr.Dataset(
             {

@@ -13,6 +13,7 @@ from fme.core.coordinates import HorizontalCoordinates, VerticalCoordinate
 from fme.core.dataset.data_typing import VariableMetadata
 from fme.core.dataset.properties import DatasetProperties
 from fme.core.dataset_info import DatasetInfo
+from fme.core.distributed import Distributed
 from fme.core.generics.data import (
     DataLoader,
     GriddedDataABC,
@@ -100,9 +101,12 @@ class GriddedData(GriddedDataABC[BatchData]):
 
     @property
     def coords(self) -> Mapping[str, np.ndarray]:
+        """The global coordinates, for writing global output: under spatial
+        parallelism the writers assemble every tile before writing.
+        """
         return {
-            **self.horizontal_coordinates.coords,
-            **self._vertical_coordinate.coords,
+            **self._global_properties.horizontal_coordinates.coords,
+            **self._global_properties.vertical_coordinate.coords,
         }
 
     @property
@@ -186,6 +190,14 @@ class InferenceGriddedData(InferenceDataABC[PrognosticState, BatchData]):
             self._initial_condition: PrognosticState = _get_initial_condition(
                 self.loader, initial_condition
             )
+        elif Distributed.get_instance().has_spatial_parallelism:
+            # an initial condition given as data (e.g. read from a file) holds
+            # the global fields; the stepper needs this rank's tile of them
+            self._initial_condition = PrognosticState(
+                initial_condition.as_batch_data().scatter_spatial(
+                    self._global_img_shape
+                )
+            ).to_device()
         else:
             self._initial_condition = initial_condition.to_device()
 
@@ -230,9 +242,12 @@ class InferenceGriddedData(InferenceDataABC[PrognosticState, BatchData]):
 
     @property
     def coords(self) -> Mapping[str, np.ndarray]:
+        """The global coordinates, for writing global output: under spatial
+        parallelism the writers assemble every tile before writing.
+        """
         return {
-            **self.horizontal_coordinates.coords,
-            **self._vertical_coordinate.coords,
+            **self._global_properties.horizontal_coordinates.coords,
+            **self._global_properties.vertical_coordinate.coords,
         }
 
     @property
