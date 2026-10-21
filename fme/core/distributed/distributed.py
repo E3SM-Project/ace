@@ -553,12 +553,51 @@ class Distributed:
             truth, predicted, weights=weights, dim=dim
         )
 
+    def get_spatial_tile(
+        self, img_shape: tuple[int, int]
+    ) -> tuple[slice, slice] | None:
+        """This rank's ``(h, w)`` slices of a global ``img_shape``, or None if
+        this rank holds the whole grid (no spatial split).
+
+        The slices are the ones ``get_local_slices`` and ``scatter_spatial``
+        use, as plain ``slice(start, stop)`` objects that can be handed to a
+        dataset (and through it to DataLoader workers) to load only the tile.
+        """
+        h_slice, w_slice = self.get_local_slices(img_shape)
+        tile = (
+            slice(*h_slice.indices(img_shape[0])[:2]),
+            slice(*w_slice.indices(img_shape[1])[:2]),
+        )
+        if tile == (slice(0, img_shape[0]), slice(0, img_shape[1])):
+            return None
+        return tile
+
     def scatter_spatial(
         self, data: dict[str, torch.Tensor], img_shape: tuple[int, int]
     ) -> dict[str, torch.Tensor]:
-        """Slice global tensors to the local spatial chunk for this rank."""
+        """Slice global tensors to the local spatial chunk for this rank.
+
+        Tensors that already have the local chunk's shape, because they were
+        loaded as this rank's tile (see ``get_spatial_tile``), are returned
+        as they are. Any other shape is an error.
+        """
         slices = self.get_local_slices(img_shape)
-        return {k: v[(..., *slices)].contiguous() for k, v in data.items()}
+        global_hw = tuple(img_shape)
+        local_hw = tuple(len(range(*s.indices(n))) for s, n in zip(slices, img_shape))
+        out = {}
+        for k, v in data.items():
+            hw = tuple(v.shape[-2:])
+            if hw == global_hw:
+                out[k] = v[(..., *slices)].contiguous()
+            elif hw == local_hw:
+                out[k] = v
+            else:
+                raise ValueError(
+                    f"Cannot scatter {k} of shape {tuple(v.shape)}: its last two "
+                    f"dimensions match neither the global {global_hw} nor this "
+                    f"rank's local {local_hw} spatial shape."
+                )
+        return out
 
     def gather_spatial(
         self, data: dict[str, torch.Tensor], img_shape: tuple[int, int]

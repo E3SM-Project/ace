@@ -117,6 +117,14 @@ class MergedXarrayDataset(DatasetABC):
             raise ValueError("No dataset available to determine properties")
         return data_properties
 
+    @property
+    def supports_spatial_tile(self) -> bool:
+        return all(d.supports_spatial_tile for d in self.datasets)
+
+    def set_spatial_tile(self, tile: tuple[slice, slice]) -> None:
+        for dataset in self.datasets:
+            dataset.set_spatial_tile(tile)
+
     def enable_shared_memory(self):
         for dataset in self.datasets:
             dataset.enable_shared_memory()
@@ -286,6 +294,14 @@ class TimePaddedMergedDataset(DatasetABC):
         if data_properties is None:
             raise ValueError("No dataset available to determine properties")
         return data_properties
+
+    @property
+    def supports_spatial_tile(self) -> bool:
+        return all(d.supports_spatial_tile for d in self.datasets)
+
+    def set_spatial_tile(self, tile: tuple[slice, slice]) -> None:
+        for dataset in self.datasets:
+            dataset.set_spatial_tile(tile)
 
     def enable_shared_memory(self):
         if not self._global_epoch.is_shared():

@@ -229,6 +229,7 @@ class InferenceDataset(torch.utils.data.Dataset[BatchData]):
         surface_temperature_name: str | None = None,
         ocean_fraction_name: str | None = None,
         label_encoding: LabelEncoding | None = None,
+        load_spatial_tile: bool = False,
     ):
         """
         Parameters:
@@ -241,6 +242,10 @@ class InferenceDataset(torch.utils.data.Dataset[BatchData]):
             surface_temperature_name: Name of the surface temperature variable.
             ocean_fraction_name: Name of the ocean fraction variable.
             label_encoding: Label encoding to use for the labels.
+            load_spatial_tile: Under spatial parallelism, load only this
+                rank's tile of the horizontal grid instead of the global
+                fields. Batches then hold the local tile, which
+                ``InferenceGriddedData`` passes through instead of slicing.
         """
         if label_encoding is None and config.available_labels is not None:
             label_encoding = LabelEncoding(labels=sorted(list(config.available_labels)))
@@ -266,6 +271,13 @@ class InferenceDataset(torch.utils.data.Dataset[BatchData]):
             properties = dataset.properties
         self._properties = properties
         self._dataset = dataset
+        tile = None
+        if load_spatial_tile and dataset.supports_spatial_tile:
+            shape = properties.horizontal_coordinates.shape
+            tile = Distributed.get_instance().get_spatial_tile((shape[-2], shape[-1]))
+        if tile is not None:
+            logging.info(f"Loading only this rank's spatial tile {tile} of the data.")
+            dataset.set_spatial_tile(tile)
         self._forward_steps_in_memory = (
             requirements.n_timesteps_schedule.get_value(0) - 1
         )  # during inference, schedules are ignored
@@ -286,6 +298,11 @@ class InferenceDataset(torch.utils.data.Dataset[BatchData]):
         )
         if isinstance(self._properties.horizontal_coordinates, LatLonCoordinates):
             self._lats, self._lons = self._properties.horizontal_coordinates.meshgrid
+            if tile is not None:
+                # SST perturbations are pointwise, so they apply to a tile
+                # given the tile's coordinates
+                self._lats = self._lats[tile]
+                self._lons = self._lons[tile]
         else:
             if self._perturbations is not None:
                 raise ValueError(
