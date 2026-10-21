@@ -187,15 +187,33 @@ class EMATracker:
 
     @contextlib.contextmanager
     def applied_params(self, model: HasNamedParameters) -> Iterator[None]:
+        """Within this context, the model's tracked parameters are the averages.
+
+        Nothing is copied: the parameters point at the averages' tensors, so
+        writing to them writes to the averages, and get their own tensors back
+        on exit.
+        """
         if self._in_context:
             raise RuntimeError("Cannot nest EMA contexts")
-        self.store(parameters=model.parameters())
         self._in_context = True
-        self.copy_to(model)
+        live: list[tuple[nn.Parameter, torch.Tensor]] = []
         try:
+            for name, param in model.named_parameters():
+                if not param.requires_grad:
+                    assert name not in self._module_name_to_ema_name
+                    continue
+                average = self._ema_params[self._module_name_to_ema_name[name]]
+                if average.shape != param.shape:
+                    raise ValueError(
+                        f"EMA of {name} has shape {tuple(average.shape)}, "
+                        f"expected {tuple(param.shape)}"
+                    )
+                live.append((param, param.data))
+                param.data = average.to(dtype=param.dtype, device=param.device)
             yield
         finally:
-            self.restore(parameters=model.parameters())
+            for param, data in live:
+                param.data = data
             self._in_context = False
 
     def copy_to(self, model: HasNamedParameters) -> None:

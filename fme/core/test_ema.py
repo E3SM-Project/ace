@@ -299,18 +299,16 @@ def test_load_ema_params_if_available_mismatched_model():
         load_ema_params_if_available({"ema": state}, other, "ckpt.tar")
 
 
-def test_applied_params_releases_stored_copy():
-    """The copy of the live parameters taken for the EMA swap must not outlive
-    the swap: it is a full parameter-sized buffer that otherwise stays on the
-    GPU for the rest of training after the first validation."""
-    model = nn.Linear(4, 4).to(get_device())
-    ema = EMATracker(model, decay=0.9)
-    original = [p.detach().clone() for p in model.parameters()]
+def test_applied_params_copies_no_parameters():
+    """The swap is a full parameter-sized buffer if it copies: the model must
+    use the averages' tensors within it and get its own tensors back."""
+    model, ema = _model_and_ema_that_differ()
+    live = {name: p.data_ptr() for name, p in model.named_parameters()}
     with ema.applied_params(model):
-        assert len(ema._stored_params) == len(original)
-    assert ema._stored_params == []
-    for p, o in zip(model.parameters(), original):
-        torch.testing.assert_close(p, o)
+        for name, p in model.named_parameters():
+            assert p.data_ptr() == ema._ema_params[name.replace(".", "")].data_ptr()
+    for name, p in model.named_parameters():
+        assert p.data_ptr() == live[name]
 
 
 def _model_and_ema_that_differ() -> tuple[nn.Module, EMATracker]:
