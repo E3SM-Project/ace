@@ -16,6 +16,6 @@ export FME_DIST_TIMEOUT_MINUTES=${FME_DIST_TIMEOUT_MINUTES:-120}
 export OMP_NUM_THREADS=${OMP_NUM_THREADS:-8}
 master=$(scontrol show hostnames "$SLURM_STEP_NODELIST" | head -1)
 mkdir -p "$expdir"
-exec torchrun --nnodes "$SLURM_NNODES" --nproc-per-node 4 \
+exec torchrun --nnodes "$SLURM_NNODES" --nproc-per-node "${NPROC:-4}" \
   --rdzv-backend c10d --rdzv-endpoint "$master:${PORT:-29900}" --rdzv-id "train${PORT:-29900}" \
   -m fme.ace.train "$config" --override experiment_dir="$expdir" "$@"

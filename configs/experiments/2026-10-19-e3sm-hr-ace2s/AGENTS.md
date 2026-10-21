@@ -250,3 +250,4 @@ Newest last. Times are PDT on 2026-10-19 unless noted.
   over-stated; the margin is ~1.4 GiB.
 - Tile layouts at full harmonics on 40 GB (section 16): 8x1 over 2 nodes
   3.20 s/step (20.8 GiB), 4x2 3.80 s (22.3 GiB); 2x2, 1x4 and 2x1 OOM.
+- Scaling-study plan for one large allocation: notes/scaling-study-plan.md, sweeps/scaling-matrix.tsv (66 rows), scripts/scaling_run.sh + step_time.py (smoke-tested: 4x1 steps, 2x1 single replica OOMs on 40 GB).
