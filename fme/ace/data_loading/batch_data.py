@@ -140,6 +140,10 @@ def _collate_with_masking(
     return batch_data, data_mask
 
 
+def _views_larger_buffer(tensor: torch.Tensor) -> bool:
+    return tensor.untyped_storage().nbytes() > tensor.numel() * tensor.element_size()
+
+
 class PrognosticState:
     """
     Thin typing wrapper around BatchData to indicate that the data is a prognostic
@@ -971,12 +975,15 @@ class BatchData:
     ) -> PrognosticState:
         """
         Get the initial condition state.
+
+        The state views this batch's tensors, so it keeps the whole batch
+        allocated; use ``with_owned_data`` on a state that outlives it.
         """
         self._raise_if_step_diagnostics("get_start")
         return PrognosticState(
-            self.subset_names(prognostic_names)
-            .select_time_slice(slice(0, n_ic_timesteps))
-            ._with_copied_data()
+            self.subset_names(prognostic_names).select_time_slice(
+                slice(0, n_ic_timesteps)
+            )
         )
 
     def get_end(
@@ -984,23 +991,26 @@ class BatchData:
     ) -> PrognosticState:
         """
         Get the final state which can be used as a new initial condition.
+
+        The state is copied out of this batch, which it typically outlives.
         """
         self._raise_if_step_diagnostics("get_end")
         return PrognosticState(
             self.subset_names(prognostic_names)
             .select_time_slice(slice(-n_ic_timesteps, None))
-            ._with_copied_data()
+            .with_owned_data()
         )
 
-    def _with_copied_data(self: SelfType) -> SelfType:
-        """This batch with its data copied out of the tensors it views.
-
-        A state kept beyond its window (an inline-inference initial condition
-        lives for the whole training run) would otherwise keep every
-        timestep of the window allocated.
+    def with_owned_data(self: SelfType) -> SelfType:
+        """This batch with each tensor that views a larger buffer copied out
+        of it, so that keeping the batch does not keep that buffer allocated.
         """
         return dataclasses.replace(
-            self, data={k: v.clone() for k, v in self.data.items()}
+            self,
+            data={
+                k: v.clone() if _views_larger_buffer(v) else v
+                for k, v in self.data.items()
+            },
         )
 
     def select_sample_slice(self: SelfType, sample_slice: slice) -> SelfType:

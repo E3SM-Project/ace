@@ -144,11 +144,20 @@ class GriddedData(GriddedDataABC[BatchData]):
 def _get_initial_condition(
     loader: DataLoader[BatchData],
     requirements: PrognosticStateDataRequirements,
+    global_img_shape: tuple[int, int],
 ) -> PrognosticState:
+    """The initial condition from the first batch: cut from the batch before
+    it moves to the device, and copied out of it, since it outlives the batch.
+    """
     for batch in loader:
-        return batch.to_device().get_start(
+        initial_condition = batch.get_start(
             prognostic_names=requirements.names,
             n_ic_timesteps=requirements.n_timesteps,
+        ).as_batch_data()
+        return PrognosticState(
+            initial_condition.scatter_spatial(global_img_shape)
+            .to_device()
+            .with_owned_data()
         )
     raise ValueError("No initial condition found in loader")
 
@@ -188,7 +197,7 @@ class InferenceGriddedData(InferenceDataABC[PrognosticState, BatchData]):
         self._n_initial_conditions: int | None = None
         if isinstance(initial_condition, PrognosticStateDataRequirements):
             self._initial_condition: PrognosticState = _get_initial_condition(
-                self.loader, initial_condition
+                self._loader, initial_condition, self._global_img_shape
             )
         elif Distributed.get_instance().has_spatial_parallelism:
             # an initial condition given as data (e.g. read from a file) holds

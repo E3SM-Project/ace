@@ -700,19 +700,16 @@ def test_get_end(names: list[str], prognostic_names: list[str], n_ic_timesteps: 
         )
 
 
-@pytest.mark.parametrize("method", ["get_start", "get_end"])
-def test_prognostic_state_does_not_retain_the_window(method: str):
-    """The state copies its timesteps instead of viewing the batch: a view
-    keeps the whole window of every variable allocated for as long as the
-    state lives (an inline-inference initial condition lives for the whole
-    training run)."""
+def test_end_state_does_not_retain_the_window():
+    """The end state is carried into the next window, so it must not keep
+    this window allocated."""
     batch_data = get_batch_data(
         names=["prog", "forcing"],
         n_samples=2,
         n_times=21,
         horizontal_dims=["lat", "lon"],
     )
-    state = getattr(batch_data, method)(["prog"], n_ic_timesteps=1).as_batch_data()
+    state = batch_data.get_end(["prog"], n_ic_timesteps=1).as_batch_data()
     tensor = state.data["prog"]
     assert tensor.untyped_storage().nbytes() == tensor.numel() * tensor.element_size()
 

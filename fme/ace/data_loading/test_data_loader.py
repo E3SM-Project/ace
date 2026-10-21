@@ -971,6 +971,24 @@ def test_inference_persistence_names(tmp_path):
     assert not torch.all(first_item["bar"] == second_item["bar"])
 
 
+def test_inference_initial_condition_does_not_retain_the_window(tmp_path):
+    _create_dataset_on_disk(tmp_path, n_times=14)
+    config = InferenceDataLoaderConfig(
+        dataset=XarrayDataConfig(data_path=tmp_path),
+        # with one IC, the IC is a contiguous view of the window
+        start_indices=ExplicitIndices([0]),
+    )
+    data = get_inference_data(
+        config,
+        total_forward_steps=9,
+        window_requirements=DataRequirements(names=["foo", "bar"], n_timesteps=4),
+        initial_condition=PrognosticStateDataRequirements(names=["foo"], n_timesteps=1),
+    )
+    foo = data.initial_condition.as_batch_data().data["foo"]
+    assert foo.shape[:2] == (1, 1)
+    assert foo.untyped_storage().nbytes() == foo.numel() * foo.element_size()
+
+
 def test_inference_persistence_state_does_not_retain_the_window(tmp_path):
     _create_dataset_on_disk(tmp_path, n_times=14)
     config = InferenceDataLoaderConfig(
