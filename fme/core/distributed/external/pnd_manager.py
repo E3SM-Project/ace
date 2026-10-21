@@ -394,14 +394,15 @@ class DistributedManager:
         device_type = "cuda" if (self.cuda and not force_cpu) else "cpu"
         # without options the subgroups get torch's per-backend default
         # timeout, not the world group's; a world-sized dimension reuses the
-        # world group
-        options = _backend_options(_process_group_timeout())
+        # world group. Each dimension needs its own options object, since
+        # torch fills in group-specific fields on the one it is handed.
+        timeout = _process_group_timeout()
         self._global_mesh = dist.init_device_mesh(
             device_type,
             mesh_shape,
             mesh_dim_names=mesh_dim_names,
             backend_override={
-                name: options
+                name: _backend_options(timeout)
                 for name, size in zip(mesh_dim_names, mesh_shape)
                 if size != self.world_size
             },

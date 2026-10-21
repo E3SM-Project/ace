@@ -7,6 +7,7 @@ Runs its own process group (gloo, on the CPU), so it is a serial test.
 import os
 import socket
 from datetime import timedelta
+from unittest import mock
 
 import pytest
 import torch
@@ -28,7 +29,7 @@ def _timeout(group: torch.distributed.ProcessGroup | None) -> timedelta:
     return group._get_backend(torch.device("cpu")).options._timeout
 
 
-def _check_group_timeouts(rank: int, port: int, h_size: int, w_size: int):
+def _init_env(rank: int, port: int):
     os.environ.update(
         RANK=str(rank),
         LOCAL_RANK=str(rank),
@@ -38,6 +39,10 @@ def _check_group_timeouts(rank: int, port: int, h_size: int, w_size: int):
         FME_FORCE_CPU="1",
         FME_DIST_TIMEOUT_MINUTES=str(TIMEOUT_MINUTES),
     )
+
+
+def _check_group_timeouts(rank: int, port: int, h_size: int, w_size: int):
+    _init_env(rank, port)
     from fme.core.distributed.model_torch_distributed import ModelTorchDistributed
 
     backend = ModelTorchDistributed(h_size=h_size, w_size=w_size)
@@ -64,6 +69,39 @@ def test_every_process_group_gets_the_configured_timeout(h_size, w_size):
     mp.spawn(
         _check_group_timeouts,
         args=(_free_port(), h_size, w_size),
+        nprocs=WORLD_SIZE,
+        join=True,
+    )
+
+
+def _check_mesh_options_not_shared(rank: int, port: int):
+    _init_env(rank, port)
+    from fme.core.distributed.model_torch_distributed import ModelTorchDistributed
+
+    overrides = []
+    init_device_mesh = torch.distributed.init_device_mesh
+
+    def spy(*args, backend_override, **kwargs):
+        # torch empties the dict it is given
+        overrides.append(dict(backend_override))
+        return init_device_mesh(*args, backend_override=backend_override, **kwargs)
+
+    with mock.patch.object(torch.distributed, "init_device_mesh", spy):
+        backend = ModelTorchDistributed(h_size=2, w_size=1)
+    try:
+        (override,) = overrides
+        assert len(override) == 3, override
+        # torch fills the options in for the group it builds from them
+        assert len({id(options) for options in override.values()}) == 3
+    finally:
+        backend.shutdown()
+
+
+@pytest.mark.serial
+def test_mesh_dimensions_get_their_own_backend_options():
+    mp.spawn(
+        _check_mesh_options_not_shared,
+        args=(_free_port(),),
         nprocs=WORLD_SIZE,
         join=True,
     )
