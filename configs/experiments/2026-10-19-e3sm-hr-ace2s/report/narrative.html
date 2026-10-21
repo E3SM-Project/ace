@@ -71,6 +71,7 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
       <tr><td><b>20 epochs</b></td><td><b>~139&nbsp;h</b></td><td><b>~70&nbsp;h</b></td><td><b>~36&nbsp;h</b></td></tr>
     </tbody>
   </table>
+  <p><b>Tile layouts at full harmonics on 40&nbsp;GB</b> (one replica): 4&times;1 on 1 node 5.00&nbsp;s/step (35.6&nbsp;GiB); 8&times;1 on 2 nodes 3.20&nbsp;s (20.8&nbsp;GiB, 78% parallel efficiency); 4&times;2 on 2 nodes 3.80&nbsp;s (22.3&nbsp;GiB). 2&times;2, 1&times;4 and 2&times;1 run out of memory: parameter sharding splits the spectral weights along the latitude split H only, so layouts with H &lt; 4 do not fit. Per node, 4&times;1 with data parallelism stays the most efficient. A 66-run plan for one large allocation (tiles alone, fixed GPU budgets, data-parallel weak scaling, fixed global batch) is in <code>notes/scaling-study-plan.md</code>.</p>
   <p>Node-hours are 560&ndash;580 per 20-epoch run at any node count. Constraints: <code>batch_size</code> = N (one sample per replica fits), so the global batch changes with N; and the 8 ICs need N = 4 or 8 (at most 2 per replica). 16 nodes needs 16 ICs.</p>
 </section>
 
