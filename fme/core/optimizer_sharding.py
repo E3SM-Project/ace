@@ -8,6 +8,12 @@ parameter for Adam). :class:`SpatiallyShardedOptimizer` keeps only a
 :class:`torch.distributed.optim.ZeroRedundancyOptimizer` for the step: each
 rank updates the parameters it owns and then broadcasts them to the group.
 
+Optional (``OptimizationConfig.shard_optimizer_state``, off by default). It
+pays off without spatially sharded parameters. With
+``shard_spatial_parameters`` most of the state is already rank-local (see
+:class:`SplitShardedOptimizer`), and it saves about 40 MB per GPU for the
+0.25 degree model.
+
 Checkpoints keep the format of an unsharded optimizer's ``state_dict()``: the
 state is gathered onto the checkpoint-writing rank inside
 :meth:`SpatiallyShardedOptimizer.gathered_on`, and :meth:`load_state_dict`

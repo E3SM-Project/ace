@@ -497,7 +497,9 @@ class OptimizationConfig:
             runs). Not supported with ``lr_tuning``. Spatially sharded
             parameters (e.g. ``NoiseConditionedSFNO``'s
             ``shard_spatial_parameters``) are already rank-local; they keep
-            their state on their rank and are stepped there.
+            their state on their rank and are stepped there, so with them
+            this option partitions only the replicated remainder and saves
+            little (about 40 MB per GPU for the 0.25 degree model).
     """
 
     optimizer_type: Literal["Adam", "AdamW", "FusedAdam"] = "Adam"
