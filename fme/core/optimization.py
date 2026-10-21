@@ -472,7 +472,8 @@ class OptimizationConfig:
             norm before each optimizer step. Compatible with automatic mixed
             precision. When use_gradient_accumulation is enabled, clipping is
             applied to the full N-step accumulated gradient (i.e. the gradient
-            the optimizer sees), not per accumulation sub-step.
+            the optimizer sees), not per accumulation sub-step. Not supported
+            under spatial parallelism.
         resume_optimizer_ckpt_path: Optional path to a training checkpoint
             (``ckpt.tar``) whose per-parameter optimizer running state (e.g.
             Adam moment estimates) and grad scaler state should be loaded into
@@ -537,9 +538,16 @@ class OptimizationConfig:
                 "sharded parameters (shard_spatial_parameters): the grad scaler's "
                 "inf/nan check would differ between the ranks of a spatial group."
             )
+        dist = Distributed.get_instance()
+        if self.use_gradient_accumulation and dist.has_spatial_parallelism:
+            # the gradient sync sums each pass's accumulated gradient over
+            # the tiles, counting earlier passes once per tile
+            raise ValueError(
+                "use_gradient_accumulation is not supported under spatial "
+                "parallelism."
+            )
         shard_group = None
         if self.shard_optimizer_state:
-            dist = Distributed.get_instance()
             shard_group = dist.get_spatial_process_group()
             if shard_group is None:
                 logging.info(

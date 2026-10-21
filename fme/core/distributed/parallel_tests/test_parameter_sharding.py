@@ -78,12 +78,7 @@ CASES = {
             step_each_iteration=True,
         ),
     ),
-    "accumulate_clip_hooks_sync": Case(
-        max_grad_norm=0.05,
-        use_gradient_accumulation=True,
-        n_substeps=2,
-        spatial_grad_sync="hooks",
-    ),
+    "substeps_clip": Case(max_grad_norm=0.05, n_substeps=2),
 }
 
 
@@ -403,6 +398,18 @@ def test_sharded_checkpoint_resumes(case: Case):
     _assert_same_checkpoint(
         serial_checkpoint, expected, rtol=SERIAL_RTOL, atol=SERIAL_ATOL
     )
+
+
+@pytest.mark.parallel
+def test_gradient_accumulation_is_rejected_under_spatial_parallelism():
+    """Each backward pass would sum the already accumulated gradient over the
+    tiles again."""
+    case = Case(use_gradient_accumulation=True, n_substeps=2)
+    if not Distributed.get_instance().has_spatial_parallelism:
+        _build_run(case, shard=True)
+        return
+    with pytest.raises(ValueError, match="use_gradient_accumulation"):
+        _build_run(case, shard=True)
 
 
 def _predict(run: Run, case: Case, n_replicas: int) -> torch.Tensor:

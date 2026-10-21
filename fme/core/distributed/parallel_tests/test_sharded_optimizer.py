@@ -33,21 +33,19 @@ class Case:
     kwargs: dict[str, Any] = dataclasses.field(default_factory=dict)
     scheduler: SchedulerConfig = dataclasses.field(default_factory=SchedulerConfig)
     max_grad_norm: float | None = None
-    use_gradient_accumulation: bool = False
 
 
 CASES = {
     "adamw": Case(kwargs={"weight_decay": 0.01}),
     "adamw_fused": Case(kwargs={"fused": True}),
     "adam": Case(optimizer_type="Adam"),
-    "scheduler_clip_accumulate": Case(
+    "scheduler_clip": Case(
         scheduler=SchedulerConfig(
             type="StepLR",
             kwargs={"step_size": 1, "gamma": 0.7},
             step_each_iteration=True,
         ),
         max_grad_norm=0.05,
-        use_gradient_accumulation=True,
     ),
 }
 
@@ -75,7 +73,6 @@ def _build_optimization(
         kwargs=case.kwargs,
         scheduler=case.scheduler,
         max_grad_norm=case.max_grad_norm,
-        use_gradient_accumulation=case.use_gradient_accumulation,
         shard_optimizer_state=shard,
     ).build(nn.ModuleList([model]), max_epochs=10)
 
@@ -219,7 +216,7 @@ def test_sharded_optimizer_finetune_from_checkpoint_file():
     """resume_optimizer_ckpt_path loads the moments into a sharded optimizer
     and keeps the configured hyperparameters, as for an unsharded one."""
     dist = Distributed.get_instance()
-    case = CASES["scheduler_clip_accumulate"]
+    case = CASES["scheduler_clip"]
     source_model = _build_model()
     source = _build_optimization(source_model, case, shard=True)
     _train(source_model, source, range(N_STEPS))
