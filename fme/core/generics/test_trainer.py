@@ -317,6 +317,7 @@ def get_trainer(
     checkpoint_save_epochs: Slice | None = None,
     segment_epochs: int | None = None,
     max_epochs: int = 8,
+    ema_checkpoint_save_epochs: Slice | None = None,
     checkpoint_dir: str | None = None,
     stepper_state: dict[str, Any] | None = None,
     train_losses: np.ndarray | None = None,
@@ -415,7 +416,7 @@ def get_trainer(
         experiment_dir=tmp_path,
         checkpoint_dir=checkpoint_dir,
         checkpoint_save_epochs=checkpoint_save_epochs,
-        ema_checkpoint_save_epochs=None,
+        ema_checkpoint_save_epochs=ema_checkpoint_save_epochs,
         checkpoint_every_n_batches=checkpoint_every_n_batches,
         segment_epochs=segment_epochs,
         max_epochs=max_epochs,
@@ -1986,6 +1987,75 @@ class TestBuildInferenceCallback:
         assert factory.call_count == 2
 
 
+@pytest.mark.parametrize("validate_using_ema", [True, False])
+def test_epoch_end_saves_read_each_state_once(tmp_path: str, validate_using_ema: bool):
+    """The epoch-end files hold two distinct states (restart format, and the
+    validation weights without optimization state): each is read, which
+    gathers sharded tensors, and written once, and the other files are links
+    to it."""
+    max_epochs = 2
+    config, trainer = get_trainer(
+        tmp_path,
+        max_epochs=max_epochs,
+        n_train_batches=3,
+        validate_using_ema=validate_using_ema,
+        checkpoint_save_epochs=Slice(),
+        ema_checkpoint_save_epochs=Slice(),
+        save_best_inference_epoch_checkpoints=True,
+        validation_losses=np.array([2.0, 1.0]),
+        inference_losses=np.array([2.0, 1.0]),
+        stepper_module_values=np.array([1.0, 2.0]),
+    )
+    original_get_state = trainer.stepper.get_state
+    n_reads = 0
+
+    def get_state():
+        nonlocal n_reads
+        n_reads += 1
+        return original_get_state()
+
+    with unittest.mock.patch.object(trainer.stepper, "get_state", get_state):
+        trainer.train()
+    # per epoch: the end-of-training restart save, then the epoch-end states
+    # (the EMA epoch checkpoint is a third one without EMA validation)
+    n_epoch_end_states = 2 if validate_using_ema else 3
+    assert n_reads == (1 + n_epoch_end_states) * max_epochs
+    paths = CheckpointPaths(config.checkpoint_dir)
+    assert os.path.samefile(
+        paths.latest_checkpoint_path, paths.epoch_checkpoint_path(max_epochs)
+    )
+    validation_files = [
+        paths.best_checkpoint_path,
+        paths.best_inference_checkpoint_path,
+        paths.best_inference_epoch_checkpoint_path(max_epochs),
+    ]
+    if validate_using_ema:
+        validation_files.append(paths.ema_epoch_checkpoint_path(max_epochs))
+    for path in validation_files[1:]:
+        assert os.path.samefile(validation_files[0], path)
+    best = torch.load(validation_files[0], map_location="cpu", weights_only=False)
+    latest = torch.load(
+        paths.latest_checkpoint_path, map_location="cpu", weights_only=False
+    )
+    assert "optimization" not in best
+    assert "optimization" in latest
+    if validate_using_ema:
+        torch.testing.assert_close(
+            best["stepper"]["modules"]["0.weight"],
+            latest["ema"]["ema_params"]["0weight"],
+        )
+    else:
+        torch.testing.assert_close(
+            best["stepper"]["modules"]["0.weight"],
+            latest["stepper"]["modules"]["0.weight"],
+        )
+    # an earlier epoch's files are kept when the latest ones are replaced
+    epoch_1 = torch.load(
+        paths.epoch_checkpoint_path(1), map_location="cpu", weights_only=False
+    )
+    assert epoch_1["epoch"] == 1
+
+
 def _run_trainer_recording_consolidations(
     tmp_path: str, is_root: bool
 ) -> tuple[int, int]:
@@ -2049,7 +2119,8 @@ def test_checkpoint_saves_consolidate_optimizer_state_on_every_rank(tmp_path: st
     # 15 (end of training on an epoch not ending in one), and 3 epoch ends
     assert n_root == 7 + 2 + 3
     assert n_other == n_root
-    assert n_root_reads > n_root  # restart + epoch checkpoints share a gather
+    # the epoch checkpoints link to the restart checkpoint saved with them
+    assert n_root_reads == n_root
     assert n_other_reads == 0
 
 

@@ -54,6 +54,7 @@ import dataclasses
 import gc
 import logging
 import os
+import shutil
 import time
 import uuid
 from collections.abc import Callable, Mapping, Sequence
@@ -329,6 +330,9 @@ class Trainer:
 
         self._do_gc_collect = do_gc_collect
         self._in_ema_context = False
+        # within _save_checkpoints_on_root: the file first written with each
+        # state, keyed by (EMA weights applied, include_optimization)
+        self._saved_checkpoints: dict[tuple[bool, bool], str] | None = None
         self._started_training = False
         self._validation_callback: ValidationCallback = validation_callback
         self._inference_callback: InferenceCallback = inference_callback
@@ -391,7 +395,9 @@ class Trainer:
         Every rank must call this at the same point: when the optimizer state
         is sharded, gathering it for the root is a collective (see
         ``OptimizationABC.consolidated_state``). One gather serves all the
-        checkpoints ``save`` writes, as no step happens in between.
+        checkpoints ``save`` writes, as no step happens in between: each
+        distinct state is read and written once, and the other checkpoints
+        of that state are hard links to the first file.
 
         With spatially sharded parameters every rank runs ``save``, as each
         read of the stepper or EMA state assembles the full tensors for the
@@ -399,12 +405,16 @@ class Trainer:
         """
         if not self.params.save_checkpoint:
             return
-        with self.optimization.consolidated_state():
-            if self._collective_checkpoints:
-                with gathered_parameter_shards(dst=0):
+        self._saved_checkpoints = {}
+        try:
+            with self.optimization.consolidated_state():
+                if self._collective_checkpoints:
+                    with gathered_parameter_shards(dst=0):
+                        save()
+                elif self._should_save_checkpoints():
                     save()
-            elif self._should_save_checkpoints():
-                save()
+        finally:
+            self._saved_checkpoints = None
 
     def _copy_stepper(self) -> TrainStepperABC:
         """Create a copy of the stepper via its state serialization API."""
@@ -748,6 +758,14 @@ class Trainer:
                 )
         elif not is_root:
             raise RuntimeError("Only the root process should save checkpoints")
+        state_key = (self._in_ema_context, include_optimization)
+        if self._saved_checkpoints is not None:
+            saved_path = self._saved_checkpoints.get(state_key)
+            if saved_path is not None:
+                if is_root:
+                    _link_checkpoint(saved_path, checkpoint_path)
+                return
+            self._saved_checkpoints[state_key] = checkpoint_path
         # on every rank, if they assemble sharded tensors
         stepper_state = self.stepper.get_state()
         ema_state = self._ema.get_state(include_params=include_optimization, copy=False)
@@ -1056,6 +1074,24 @@ def _restore_checkpoint(trainer: Trainer, checkpoint_path):
     trainer._ema = EMATracker.from_state(
         checkpoint[EMA_CHECKPOINT_KEY], trainer.stepper.modules
     )
+
+
+def _link_checkpoint(source: str, checkpoint_path: str) -> None:
+    """Replace ``checkpoint_path`` by a hard link to ``source`` (a copy where
+    links are not supported).
+    """
+    temporary_location = os.path.join(
+        os.path.dirname(checkpoint_path), f".{uuid.uuid4()}.tmp"
+    )
+    try:
+        try:
+            os.link(source, temporary_location)
+        except OSError:
+            shutil.copyfile(source, temporary_location)
+        os.replace(temporary_location, checkpoint_path)
+    finally:
+        if os.path.exists(temporary_location):
+            os.remove(temporary_location)
 
 
 def count_parameters(modules: torch.nn.ModuleList) -> int:
