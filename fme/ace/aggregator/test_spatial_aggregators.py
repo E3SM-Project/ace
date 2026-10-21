@@ -1,12 +1,15 @@
 """Aggregators produce the same maps, images and metrics under spatial
 parallelism as serially.
 
-Run under torchrun with the model backend, e.g. (H, W) in (2, 1), (1, 2),
-(2, 2). Every rank records its (data-parallel block, spatial tile) of the
-same global data that a serial reference, run in-process on every rank with
+Run under torchrun with any backend and layout, e.g. the model backend with
+(H, W) in (2, 1), (1, 2), (2, 2), alone or with data parallelism. Every rank
+records its data-parallel block of samples and its spatial tile of the same
+global data that a serial reference, run in-process on every rank with
 ``Distributed.force_non_distributed``, records in full. The root compares
 the logged metrics, the images (their captions and the plotted arrays) and
-the per-epoch diagnostics netCDF files.
+the per-epoch diagnostics netCDF files. Under data parallelism the ensemble
+mean RMSE and spread-skill ratio are skipped, as by convention they are
+means of per-rank values.
 """
 
 import dataclasses
@@ -75,15 +78,6 @@ def _dataset_info(timestep: datetime.timedelta) -> DatasetInfo:
     )
 
 
-def _global_fields(seed: int, n_time: int, offset: float = 0.0) -> TensorDict:
-    n_samples = SAMPLES_PER_RANK * Distributed.get_instance().total_data_parallel_ranks
-    generator = torch.Generator().manual_seed(seed)
-    return {
-        name: torch.randn(n_samples, n_time, N_LAT, N_LON, generator=generator) + offset
-        for name in NAMES
-    }
-
-
 def _times(n_samples: int, start: int, n_time: int) -> xr.DataArray:
     t0 = cftime.DatetimeJulian(2000, 1, 1)
     times = [[t0 + (start + i) * MONTH for i in range(n_time)]] * n_samples
@@ -93,10 +87,22 @@ def _times(n_samples: int, start: int, n_time: int) -> xr.DataArray:
 class _View:
     """Maps global fields to what this rank holds: everything serially, or
     its data-parallel block of samples and its spatial tile.
+
+    The global data have SAMPLES_PER_RANK samples per data-parallel rank of
+    the parallel run, so ``n_data_parallel`` is taken outside
+    ``force_non_distributed``.
     """
 
-    def __init__(self, serial: bool):
+    def __init__(self, serial: bool, n_data_parallel: int):
         self._serial = serial
+        self._n_samples = SAMPLES_PER_RANK * n_data_parallel
+
+    def global_fields(self, seed: int, n_time: int, offset: float = 0.0) -> TensorDict:
+        generator = torch.Generator().manual_seed(seed)
+        shape = (self._n_samples, n_time, N_LAT, N_LON)
+        return {
+            name: torch.randn(*shape, generator=generator) + offset for name in NAMES
+        }
 
     def __call__(self, tensor: torch.Tensor, sample_dim: int = 0) -> torch.Tensor:
         if self._serial:
@@ -122,9 +128,7 @@ class _View:
         return {name: self(select(data[name])) for name in names}
 
     def times(self, start: int, n_time: int) -> xr.DataArray:
-        n = SAMPLES_PER_RANK
-        if self._serial:
-            n *= Distributed.get_instance().total_data_parallel_ranks
+        n = self._n_samples if self._serial else SAMPLES_PER_RANK
         return _times(n, start, n_time)
 
 
@@ -145,14 +149,15 @@ def _run(
         images.append(np.array(data))
         return real_plot_imshow(data, *args, **kwargs)
 
+    n_data_parallel = Distributed.get_instance().total_data_parallel_ranks
     with monkeypatch.context() as m:
         m.setattr(plotting, "plot_imshow", recording_plot_imshow)
         m.setattr(enso_coefficient, "plot_imshow", recording_plot_imshow)
         if serial:
             with Distributed.force_non_distributed():
-                logs = run(_View(serial=True))
+                logs = run(_View(serial=True, n_data_parallel=n_data_parallel))
         else:
-            logs = run(_View(serial=False))
+            logs = run(_View(serial=False, n_data_parallel=n_data_parallel))
     return _Result(logs=logs, images=images)
 
 
@@ -161,12 +166,21 @@ def _compare_on_root(serial: _Result, parallel: _Result, dirs=()):
     dist.barrier()
     if not dist.is_root():
         return
-    assert_logs_close(serial.logs, parallel.logs)
+    ignore: tuple[str, ...] = ()
+    nc_rtol = 1e-5
+    if dist.total_data_parallel_ranks > 1:
+        # means over ranks of each rank's RMSE and spread-skill ratio, not
+        # the global values
+        ignore = ("ensemble_mean_rmse", "ssr_bias")
+        # float32 sample means summed in a different order; gen_var, a ratio
+        # of variances of a few samples, amplifies the rounding
+        nc_rtol = 1e-4
+    assert_logs_close(serial.logs, parallel.logs, ignore=ignore)
     assert len(serial.images) == len(parallel.images) > 0
     for s, p in zip(serial.images, parallel.images):
         np.testing.assert_allclose(p, s, rtol=1e-5, atol=1e-6, equal_nan=True)
     for serial_dir, parallel_dir in dirs:
-        assert_netcdf_files_close(serial_dir, parallel_dir)
+        assert_netcdf_files_close(serial_dir, parallel_dir, rtol=nc_rtol)
 
 
 def _write_reference_data(path: pathlib.Path) -> tuple[str, str]:
@@ -203,9 +217,9 @@ def _normalize(data: TensorMapping, apply_mean: bool = True) -> TensorDict:
 
 def _record_inference(agg, view: _View, with_reference: bool) -> list[dict]:
     """Record an initial condition and the forward steps in windows."""
-    target = _global_fields(seed=1, n_time=N_FORWARD_STEPS + 1)
-    gen = _global_fields(seed=2, n_time=N_FORWARD_STEPS + 1, offset=0.1)
-    delta = _global_fields(seed=3, n_time=N_FORWARD_STEPS + 1)
+    target = view.global_fields(seed=1, n_time=N_FORWARD_STEPS + 1)
+    gen = view.global_fields(seed=2, n_time=N_FORWARD_STEPS + 1, offset=0.1)
+    delta = view.global_fields(seed=3, n_time=N_FORWARD_STEPS + 1)
     logs = []
     ic_target = view.fields(target, lambda x: x[:, :1])
     ic_gen = view.fields(gen, lambda x: x[:, :1])
@@ -320,9 +334,12 @@ def test_inference_aggregator_matches_serial(tmp_path, monkeypatch):
 def test_one_step_aggregator_matches_serial(tmp_path, monkeypatch):
     path = shared_dir(tmp_path)
     n_ensemble, n_time = 2, 2
+    # the RMSE and spread-skill maps are means of per-rank maps (see
+    # _compare_on_root), and the recorded images are not keyed
+    data_parallel = Distributed.get_instance().total_data_parallel_ranks > 1
     config = OneStepAggregatorConfig(
         ensemble_denorm=OneStepEnsembleMetricConfig(
-            target="denorm", log_mean_maps=True
+            target="denorm", log_mean_maps=not data_parallel
         ),
     )
 
@@ -331,12 +348,12 @@ def test_one_step_aggregator_matches_serial(tmp_path, monkeypatch):
             _dataset_info(datetime.timedelta(hours=6)), output_dir=str(output_dir)
         )
         for seed in (10, 20):
-            target = _global_fields(seed, n_time)
+            target = view.global_fields(seed, n_time)
             gen = {
                 name: torch.stack(
                     [value + 0.1 * (i + 1) for i in range(n_ensemble)], dim=1
                 )
-                for name, value in _global_fields(seed + 1, n_time).items()
+                for name, value in view.global_fields(seed + 1, n_time).items()
             }
             agg.record_batch(
                 TrainOutput(
@@ -359,7 +376,8 @@ def test_one_step_aggregator_matches_serial(tmp_path, monkeypatch):
         "val/snapshot/image-full-field/sst",
         "val/mean_map/image-error/b",
         "val/power_spectrum/smallest_scale_norm_bias/sst",
-        "val/ensemble/crps/mean_map/sst",
+        "val/ensemble/crps/b",
+        *(() if data_parallel else ("val/ensemble/crps/mean_map/sst",)),
     ):
         assert any(k.startswith(key) for k in serial.logs[0]), key
     _compare_on_root(

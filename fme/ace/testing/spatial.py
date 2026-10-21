@@ -57,7 +57,9 @@ def assert_logs_close(
                 )
 
 
-def assert_netcdf_files_close(serial_dir: pathlib.Path, parallel_dir: pathlib.Path):
+def assert_netcdf_files_close(
+    serial_dir: pathlib.Path, parallel_dir: pathlib.Path, rtol: float = 1e-5
+):
     """The same netCDF files, recursively, with the same variables and values."""
     serial_files = sorted(
         str(p.relative_to(serial_dir)) for p in serial_dir.rglob("*.nc")
@@ -73,4 +75,4 @@ def assert_netcdf_files_close(serial_dir: pathlib.Path, parallel_dir: pathlib.Pa
             xr.open_dataset(parallel_dir / name, decode_timedelta=False) as p,
         ):
             assert set(s.data_vars) == set(p.data_vars), name
-            xr.testing.assert_allclose(s.load(), p.load(), rtol=1e-5, atol=1e-6)
+            xr.testing.assert_allclose(s.load(), p.load(), rtol=rtol, atol=1e-6)
