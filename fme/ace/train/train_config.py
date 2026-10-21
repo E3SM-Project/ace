@@ -473,6 +473,10 @@ class TrainConfig:
                 "lr_tuning and optimization.scheduler cannot both be specified; "
                 "lr_tuning is an alternative form of learning rate scheduling"
             )
+        if self.lr_tuning is not None and self.optimization.shard_optimizer_state:
+            raise ValueError(
+                "lr_tuning is not supported with optimization.shard_optimizer_state"
+            )
         if not is_local(self.experiment_dir):
             raise ValueError(
                 f"During training, experiment_dir must currently be a local "

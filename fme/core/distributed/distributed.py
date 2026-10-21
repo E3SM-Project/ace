@@ -246,6 +246,25 @@ class Distributed:
         """
         return self.world_size != self.total_data_parallel_ranks
 
+    def get_spatial_process_group(self) -> torch.distributed.ProcessGroup | None:
+        """The process group of this rank's spatial co-ranks, or None when
+        there is no spatial parallelism.
+
+        Every rank of a spatial group holds the same parameters and, after the
+        gradient all-reduce, the same gradients, so per-parameter work (e.g.
+        optimizer state, see ``OptimizationConfig.shard_optimizer_state``) can
+        be divided among them. Each data-parallel replica has its own group.
+        """
+        if not self.has_spatial_parallelism:
+            return None
+        group = self._distributed.spatial_process_group()
+        if group is None:
+            raise RuntimeError(
+                f"{type(self._distributed).__name__} has spatial co-ranks but "
+                "does not expose their process group."
+            )
+        return group
+
     def require_no_spatial_parallelism(self, msg: str) -> None:
         """Raise if spatial parallelism is active.
 

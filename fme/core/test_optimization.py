@@ -878,3 +878,42 @@ def test_optimization_config_passes_max_grad_norm():
         nn.ModuleList([model]), max_epochs=1
     )
     assert opt._max_grad_norm == 1.5
+
+
+def test_shard_optimizer_state_is_noop_without_spatial_parallelism():
+    """Serially (or purely data-parallel) the flag builds the plain optimizer,
+    trains identically, and get_state needs no consolidation."""
+    torch.manual_seed(0)
+    models = {}
+    optimizations = {}
+    for shard in (False, True):
+        torch.manual_seed(0)
+        models[shard] = nn.Linear(3, 2).to(fme.get_device())
+        optimizations[shard] = OptimizationConfig(
+            optimizer_type="AdamW",
+            lr=0.01,
+            shard_optimizer_state=shard,
+        ).build(nn.ModuleList([models[shard]]), max_epochs=1)
+    assert type(optimizations[True].optimizer) is torch.optim.AdamW
+    for _ in range(3):
+        x = torch.randn(4, 3, device=fme.get_device())
+        for shard in (False, True):
+            optimizations[shard].accumulate_loss(models[shard](x).pow(2).mean())
+            optimizations[shard].step_weights()
+    for p_unsharded, p_sharded in zip(
+        models[False].parameters(), models[True].parameters()
+    ):
+        torch.testing.assert_close(p_sharded, p_unsharded, rtol=0, atol=0)
+    with optimizations[True].consolidated_state():
+        state = optimizations[True].get_state()
+    assert state.keys() == optimizations[False].get_state().keys()
+    # outside the context too, as the unsharded optimizer never needs one
+    optimizations[True].get_state()
+
+
+def test_shard_optimizer_state_config_round_trips():
+    config = OptimizationConfig(shard_optimizer_state=True)
+    state = config.get_state()
+    assert state["shard_optimizer_state"] is True
+    assert OptimizationConfig.from_state(state).shard_optimizer_state is True
+    assert OptimizationConfig().shard_optimizer_state is False

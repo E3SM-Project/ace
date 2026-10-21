@@ -1,8 +1,10 @@
 import contextlib
 import dataclasses
+import functools
 import itertools
+import logging
 import warnings
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from typing import Any, Literal, TypeAlias
 
 import numpy as np
@@ -10,7 +12,9 @@ import torch
 from torch import nn
 
 from fme.core.device import get_device
+from fme.core.distributed import Distributed
 from fme.core.generics.optimization import OptimizationABC
+from fme.core.optimizer_sharding import SpatiallyShardedOptimizer
 from fme.core.scheduler import LRScheduler, SchedulerConfig, SequentialSchedulerConfig
 from fme.core.typing_ import TensorDict, TensorMapping
 
@@ -72,20 +76,30 @@ class CheckpointConfig:
             return NoCheckpoint()
 
 
+def _optimizer_class_and_kwargs(
+    optimizer_type: Literal["Adam", "FusedAdam", "AdamW"],
+    kwargs: Mapping[str, Any],
+) -> tuple[type[torch.optim.Optimizer], dict[str, Any]]:
+    if optimizer_type == "FusedAdam":
+        return torch.optim.AdamW, {"fused": True, **kwargs}
+    elif optimizer_type == "Adam":
+        return torch.optim.Adam, dict(kwargs)
+    elif optimizer_type == "AdamW":
+        return torch.optim.AdamW, dict(kwargs)
+    else:
+        raise ValueError(f"Unknown optimizer type: {optimizer_type}")
+
+
 def _build_optimizer(
     optimizer_type: Literal["Adam", "FusedAdam", "AdamW"],
     parameters: Iterable[torch.nn.Parameter],
     lr: float,
     kwargs: Mapping[str, Any],
 ) -> torch.optim.Optimizer:
-    if optimizer_type == "FusedAdam":
-        return torch.optim.AdamW(parameters, lr=lr, fused=True, **kwargs)
-    elif optimizer_type == "Adam":
-        return torch.optim.Adam(parameters, lr=lr, **kwargs)
-    elif optimizer_type == "AdamW":
-        return torch.optim.AdamW(parameters, lr=lr, **kwargs)
-    else:
-        raise ValueError(f"Unknown optimizer type: {optimizer_type}")
+    optimizer_class, optimizer_kwargs = _optimizer_class_and_kwargs(
+        optimizer_type, kwargs
+    )
+    return optimizer_class(parameters, lr=lr, **optimizer_kwargs)
 
 
 class Optimization(OptimizationABC):
@@ -99,8 +113,26 @@ class Optimization(OptimizationABC):
             [int], Checkpoint | NoCheckpoint
         ] = lambda _: NoCheckpoint(),
         max_grad_norm: float | None = None,
+        consolidated_state: Callable[
+            [], contextlib.AbstractContextManager[None]
+        ] = contextlib.nullcontext,
     ):
+        """
+        Args:
+            optimizer: The optimizer.
+            scheduler: The learning rate scheduler, built on ``optimizer``.
+            enable_automatic_mixed_precision: Whether to use a grad scaler and
+                bfloat16 autocast.
+            use_gradient_accumulation: Whether to backpropagate each loss as it
+                is accumulated.
+            get_checkpoint: Activation checkpointing for a given step.
+            max_grad_norm: Global gradient norm to clip to, if any.
+            consolidated_state: Collective context within which the root rank's
+                ``optimizer.state_dict()`` is complete, for an optimizer
+                whose state is sharded across ranks.
+        """
         self.optimizer = optimizer
+        self._consolidated_state = consolidated_state
         if enable_automatic_mixed_precision:
             self.gscaler: torch.amp.GradScaler | None = torch.amp.GradScaler("cuda")
         else:
@@ -114,6 +146,11 @@ class Optimization(OptimizationABC):
 
     def checkpoint(self, module: nn.Module, step: int) -> nn.Module:
         return self._get_checkpoint(step)(module)
+
+    @contextlib.contextmanager
+    def consolidated_state(self) -> Iterator[None]:
+        with self._consolidated_state():
+            yield
 
     @contextlib.contextmanager
     def autocast(self):
@@ -318,6 +355,19 @@ class OptimizationConfig:
             ``betas``, ...) and scheduler are kept; only the running state is
             transferred. Intended for non-resuming jobs; preemption resume in
             the Trainer overrides this state via ``Optimization.load_state``.
+        shard_optimizer_state: Under spatial parallelism, divide the optimizer
+            state (e.g. Adam moment estimates) among the ranks of each spatial
+            group instead of keeping a full copy on every rank, using
+            ``torch.distributed.optim.ZeroRedundancyOptimizer`` over the
+            spatial process group. Each rank steps the parameters it owns
+            and broadcasts them to its group; each data-parallel replica keeps
+            its own shards. Optimizer state memory per rank drops by the
+            spatial group size, at the cost of a parameter broadcast per step
+            and a gather of the state onto the root rank at each checkpoint
+            that includes it. Checkpoints keep the unsharded format, so they
+            load into sharded and unsharded runs alike. Has no effect without
+            spatial parallelism (including serial and purely data-parallel
+            runs). Not supported with ``lr_tuning``.
     """
 
     optimizer_type: Literal["Adam", "AdamW", "FusedAdam"] = "Adam"
@@ -333,6 +383,7 @@ class OptimizationConfig:
         default_factory=lambda: CheckpointConfig()
     )
     resume_optimizer_ckpt_path: str | None = None
+    shard_optimizer_state: bool = False
 
     def __post_init__(self):
         if self.optimizer_type == "FusedAdam":
@@ -350,9 +401,36 @@ class OptimizationConfig:
 
     def build(self, modules: torch.nn.ModuleList, max_epochs: int) -> Optimization:
         parameters = itertools.chain(*[module.parameters() for module in modules])
-        optimizer = _build_optimizer(
-            self.optimizer_type, parameters, self.lr, self.kwargs
-        )
+        shard_group = None
+        if self.shard_optimizer_state:
+            dist = Distributed.get_instance()
+            shard_group = dist.get_spatial_process_group()
+            if shard_group is None:
+                logging.info(
+                    "shard_optimizer_state has no effect without spatial "
+                    "parallelism; keeping the full optimizer state on each rank."
+                )
+        consolidated_state: Callable[[], contextlib.AbstractContextManager[None]]
+        if shard_group is None:
+            optimizer = _build_optimizer(
+                self.optimizer_type, parameters, self.lr, self.kwargs
+            )
+            consolidated_state = contextlib.nullcontext
+        else:
+            optimizer_class, optimizer_kwargs = _optimizer_class_and_kwargs(
+                self.optimizer_type, self.kwargs
+            )
+            sharded = SpatiallyShardedOptimizer(
+                list(parameters),
+                optimizer_class=optimizer_class,
+                process_group=shard_group,
+                lr=self.lr,
+                **optimizer_kwargs,
+            )
+            optimizer = sharded
+            # checkpoints are written by the global root (rank 0)
+            consolidated_state = functools.partial(sharded.gathered_on, 0)
+
         scheduler = self.scheduler.build(optimizer, max_epochs)
         optimization = Optimization(
             optimizer=optimizer,
@@ -361,6 +439,7 @@ class OptimizationConfig:
             use_gradient_accumulation=self.use_gradient_accumulation,
             get_checkpoint=self.checkpoint.build,
             max_grad_norm=self.max_grad_norm,
+            consolidated_state=consolidated_state,
         )
         if self.resume_optimizer_ckpt_path is not None:
             _load_finetune_optimization_state(

@@ -529,6 +529,12 @@ class ModelTorchDistributed(DistributedBackend):
             if p.requires_grad:
                 p.register_hook(_hook)
 
+    def spatial_process_group(self) -> torch.distributed.ProcessGroup | None:
+        """The (h, w) process group, or None without spatial parallelism."""
+        if self._h_size > 1 or self._w_size > 1:
+            return self._spatial_group
+        return None
+
     def barrier(self):
         """Global barrier across all ranks."""
         logger.debug("Barrier on rank %d", self._rank)

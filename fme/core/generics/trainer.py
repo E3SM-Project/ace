@@ -359,6 +359,7 @@ class Trainer:
             # rank 0 holds the full model state, so the save needs no other
             # rank's cooperation; a spatially-parallel stepper's state is
             # sharded, and assembling it would need the aborted communicators
+            # (so would sharded optimizer state, which needs spatial ranks)
             add_post_abort_callback(save_restart_checkpoints_on_terminate)
 
     def switch_off_grad(self, model: torch.nn.Module):
@@ -368,6 +369,20 @@ class Trainer:
     def _should_save_checkpoints(self) -> bool:
         dist = Distributed.get_instance()
         return self.params.save_checkpoint and dist.is_root()
+
+    def _save_checkpoints_on_root(self, save: Callable[[], None]) -> None:
+        """Run ``save``, which writes checkpoints, on the root rank only.
+
+        Every rank must call this at the same point: when the optimizer state
+        is sharded, gathering it for the root is a collective (see
+        ``OptimizationABC.consolidated_state``). One gather serves all the
+        checkpoints ``save`` writes, as no step happens in between.
+        """
+        if not self.params.save_checkpoint:
+            return
+        with self.optimization.consolidated_state():
+            if self._should_save_checkpoints():
+                save()
 
     def _copy_stepper(self) -> TrainStepperABC:
         """Create a copy of the stepper via its state serialization API."""
@@ -519,9 +534,11 @@ class Trainer:
             wandb = WandB.get_instance()
             wandb.log(all_logs, step=self.num_batches_seen)
 
-            if self._should_save_checkpoints():
+            def save_epoch_checkpoints():
                 logging.info(f"Saving checkpoints for epoch {self._epochs_trained}")
                 self.save_all_checkpoints(valid_loss, inference_error)
+
+            self._save_checkpoints_on_root(save_epoch_checkpoints)
 
     def _log_first_batch_metrics(self):
         wandb = WandB.get_instance()
@@ -610,11 +627,11 @@ class Trainer:
                 logging.info(f"Step {self.num_batches_seen}: {metrics_to_log}")
                 n_samples_seen_since_logging = 0
             if (
-                self._should_save_checkpoints()
+                self.params.save_checkpoint
                 and self.params.checkpoint_every_n_batches > 0
                 and self.num_batches_seen % self.params.checkpoint_every_n_batches == 0
             ):
-                self._save_restart_checkpoints()
+                self._save_checkpoints_on_root(self._save_restart_checkpoints)
                 self._last_saved_num_batches_seen = self.num_batches_seen
         # evaluate after training on an independent shuffle of the data
         self.train_data.alternate_shuffle()
@@ -632,10 +649,11 @@ class Trainer:
                     )
                 aggregator.record_batch(stepped)
         if (
-            self._should_save_checkpoints()
+            self.params.save_checkpoint
             and self.num_batches_seen > self._last_saved_num_batches_seen
         ):
-            self._save_restart_checkpoints()  # before incrementing epoch so we will validate after resuming  # noqa: E501
+            # before incrementing epoch so we will validate after resuming
+            self._save_checkpoints_on_root(self._save_restart_checkpoints)
         # we will save restart checkpoints again after validation/inference
         # are recorded to wandb
         self._epochs_trained += 1
@@ -693,6 +711,10 @@ class Trainer:
         checkpoint_path: str,
         include_optimization: bool = False,
     ):
+        """Write a checkpoint. Root only; with ``include_optimization``, every
+        rank must be inside ``self.optimization.consolidated_state()`` (see
+        ``_save_checkpoints_on_root``).
+        """
         if not Distributed.get_instance().is_root():
             raise RuntimeError("Only the root process should save checkpoints")
         # save to a temporary file in case we get pre-empted during save

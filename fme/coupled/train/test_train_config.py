@@ -15,6 +15,7 @@ from fme.ace.stepper.time_length_probabilities import (
 )
 from fme.core.dataset.xarray import XarrayDataConfig
 from fme.core.generics.aggregator import AggregatorSummary, InferenceSummary
+from fme.core.generics.lr_tuning import LRTuningConfig
 from fme.core.loss import StepLossConfig
 from fme.core.typing_ import Slice
 from fme.coupled.aggregator import InferenceEvaluatorAggregatorConfig
@@ -701,3 +702,19 @@ class TestGetInferenceCallback:
         assert error == pytest.approx(0.5)
         assert "a/time_mean_norm/rmse/channel_mean" in logs
         assert "b/time_mean_norm/rmse/channel_mean" not in logs
+
+
+def test_lr_tuning_with_sharded_optimizer_state_raises(tmp_path):
+    with pytest.raises(ValueError, match="shard_optimizer_state"):
+        TrainConfig(
+            train_loader=MagicMock(),
+            validation=_make_validation_config(),
+            stepper=_make_stepper_mock(),
+            stepper_training=_make_stepper_training_mock(),
+            optimization=MagicMock(has_lr_schedule=False, shard_optimizer_state=True),
+            logging=MagicMock(),
+            max_epochs=5,
+            save_checkpoint=False,
+            experiment_dir=str(tmp_path),
+            lr_tuning=LRTuningConfig(),
+        )
