@@ -2,6 +2,7 @@ import pytest
 import torch
 
 from fme.core.tensor_dict_accumulator import TensorDictAccumulator
+from fme.core.testing import mock_identical_ranks
 
 
 def test_empty_state_returns_none():
@@ -84,6 +85,19 @@ def test_get_distributed_mean_non_distributed():
     result = acc.get_distributed_mean()
     assert torch.equal(result["a"], torch.tensor([2.0]))
     assert torch.equal(result["b"], torch.tensor([15.0]))
+
+
+def test_get_distributed_sum_does_not_modify_state():
+    acc = TensorDictAccumulator()
+    acc.add({"a": torch.tensor([1.0, 2.0])})
+    with mock_identical_ranks(world_size=4):
+        first = acc.get_distributed_sum()
+        second = acc.get_distributed_sum()
+    assert torch.equal(first["a"], torch.tensor([4.0, 8.0]))
+    assert torch.equal(second["a"], torch.tensor([4.0, 8.0]))
+    local_sum = acc.get_sum()
+    assert local_sum is not None
+    assert torch.equal(local_sum["a"], torch.tensor([1.0, 2.0]))
 
 
 def test_get_distributed_raises_when_empty():

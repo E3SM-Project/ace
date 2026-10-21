@@ -72,7 +72,8 @@ class SphericalPowerSpectrumAggregator:
             _mean_spectrum = self._power_spectrum[name]
             if dist.world_size > 1:
                 # assuming same count on all workers
-                _mean_spectrum = dist.reduce_mean(_mean_spectrum)
+                # clone so the in-place reduction does not modify recorded state
+                _mean_spectrum = dist.reduce_mean(_mean_spectrum.clone())
             logs[name] = _mean_spectrum
         return logs
 

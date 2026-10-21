@@ -16,6 +16,7 @@ from fme.ace.aggregator.inference.spectrum import (
 from fme.core.dataset.data_typing import VariableMetadata
 from fme.core.gridded_ops import LatLonOperations
 from fme.core.metrics import spherical_power_spectrum
+from fme.core.testing import mock_identical_ranks
 
 DEVICE = fme.get_device()
 
@@ -104,6 +105,33 @@ def test_spherical_power_spectrum_aggregator_get_dataset():
     )
     expected = xr.Dataset({"a": expected_da})
     xr.testing.assert_identical(result, expected)
+
+
+def test_spherical_power_spectrum_aggregator_repeated_reduction():
+    """
+    Inference and validation write the dataset before logging, so the
+    cross-rank reduction must not change the recorded spectrum.
+    """
+    nlat, nlon = 8, 16
+    agg = SphericalPowerSpectrumAggregator(
+        get_gridded_operations(nlat, nlon), report_plot=False
+    )
+    agg.record_batch(
+        InferenceBatchData(
+            prediction={"a": torch.randn(2, 3, nlat, nlon, device=DEVICE)},
+            prediction_norm={},
+            target=None,
+            target_norm=None,
+            time=make_dummy_time(2, 3),
+            i_time_start=0,
+        )
+    )
+    expected = agg.get_dataset()
+    with mock_identical_ranks(world_size=4):
+        first = agg.get_dataset()
+        second = agg.get_dataset()
+    xr.testing.assert_allclose(first, expected)
+    xr.testing.assert_allclose(second, expected)
 
 
 def test_paired_spherical_power_spectrum_aggregator_get_dataset():

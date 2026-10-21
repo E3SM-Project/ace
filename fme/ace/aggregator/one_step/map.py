@@ -87,13 +87,15 @@ class MapAggregator:
     def _get_data(self) -> tuple[TensorMapping, TensorMapping]:
         dist = Distributed.get_instance()
         gen, target = {}, {}
+        # divide before reducing so the reduction acts on a new tensor; reducing
+        # the running totals directly would overwrite them with the cross-rank sum
         for name in sorted(list(self._gen_data.keys())):
             gen[name] = (
-                (dist.reduce_mean(self._gen_data[name]) / self._n_batches).cpu().numpy()
+                dist.reduce_mean(self._gen_data[name] / self._n_batches).cpu().numpy()
             )
         for name in sorted(list(self._target_data.keys())):
             target[name] = (
-                (dist.reduce_mean(self._target_data[name]) / self._n_batches)
+                dist.reduce_mean(self._target_data[name] / self._n_batches)
                 .cpu()
                 .numpy()
             )

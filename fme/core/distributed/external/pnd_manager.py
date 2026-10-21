@@ -32,6 +32,8 @@ import numpy as np
 import torch
 import torch.distributed as dist
 
+from fme.core.distributed.torch_distributed import _process_group_timeout
+
 
 class PhysicsNeMoUninitializedDistributedManagerWarning(Warning):
     """Warning to indicate usage of an uninitialized DistributedManager."""
@@ -461,6 +463,7 @@ class DistributedManager:
                         rank=manager.rank,
                         world_size=manager.world_size,
                         device_id=manager.device,
+                        timeout=_process_group_timeout(),
                     )
                 except TypeError:
                     # device_id only introduced in PyTorch 2.3
@@ -468,12 +471,14 @@ class DistributedManager:
                         backend,
                         rank=manager.rank,
                         world_size=manager.world_size,
+                        timeout=_process_group_timeout(),
                     )
             else:
                 dist.init_process_group(
                     backend,
                     rank=manager.rank,
                     world_size=manager.world_size,
+                    timeout=_process_group_timeout(),
                 )
 
         if torch.cuda.is_available() and os.environ.get("FME_FORCE_CPU", "0") != "1":

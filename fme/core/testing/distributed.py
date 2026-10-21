@@ -71,6 +71,49 @@ class MockDistributed:
         return result
 
 
+class IdenticalRanksDistributed(MockDistributed):
+    """
+    Simulates reductions across ``world_size`` ranks that all hold the same data.
+
+    Like the real torch backends, reductions modify the input tensor in-place
+    (an all-reduce sum) as a side effect, so tests can detect code that
+    reduces its accumulated state directly.
+    """
+
+    def __init__(self, world_size: int):
+        super().__init__(fill_value=0.0, world_size=world_size)
+
+    def reduce_sum(self, tensor: torch.Tensor) -> torch.Tensor:
+        tensor.mul_(self.world_size)
+        self.reduce_called = True
+        return tensor
+
+    def reduce_mean(self, tensor: torch.Tensor) -> torch.Tensor:
+        return self.reduce_sum(tensor) / self.world_size
+
+    def reduce_min(self, tensor: torch.Tensor) -> torch.Tensor:
+        return tensor
+
+    def reduce_max(self, tensor: torch.Tensor) -> torch.Tensor:
+        return tensor
+
+
+@contextlib.contextmanager
+def mock_identical_ranks(world_size: int):
+    """
+    Mock the distributed singleton with an IdenticalRanksDistributed object.
+
+    Results that are correctly reduced across ranks should equal the
+    single-process result, however many times they are computed.
+    """
+    original = distributed.singleton
+    distributed.singleton = IdenticalRanksDistributed(world_size=world_size)  # type: ignore
+    try:
+        yield distributed.singleton
+    finally:
+        distributed.singleton = original
+
+
 @contextlib.contextmanager
 def mock_distributed(fill_value: float = 0.0, world_size: int = 1):
     """
