@@ -210,7 +210,11 @@ class DistributedBackend(ABC):
         mmax: int | None = None,
         grid: str = "legendre-gauss",
     ) -> nn.Module:
-        """Create a forward SHT (possibly distributed)."""
+        """Create a forward SHT (possibly distributed).
+
+        Transforms may share their Legendre table with other transforms of
+        the same grid, so it must not be modified in place.
+        """
         ...
 
     @abstractmethod

@@ -36,6 +36,7 @@ from .base import DistributedBackend
 from .external.pnd_manager import DistributedManager
 from .non_distributed import DummyWrapper
 from .parameter_sharding import ParameterShard, named_parameter_shards
+from .sht import InverseRealSHT, RealSHT
 from .torch_distributed import _gather_irregular, _rank_metadata_from_env
 
 logger = logging.getLogger(__name__)
@@ -726,14 +727,10 @@ class ModelTorchDistributed(DistributedBackend):
         return local_sum / local_count
 
     def get_sht(self, nlat, nlon, lmax=None, mmax=None, grid="legendre-gauss"):
-        return thd.DistributedRealSHT(
-            nlat, nlon, lmax=lmax, mmax=mmax, grid=grid
-        ).float()
+        return RealSHT(nlat, nlon, lmax=lmax, mmax=mmax, grid=grid)
 
     def get_isht(self, nlat, nlon, lmax=None, mmax=None, grid="legendre-gauss"):
-        return thd.DistributedInverseRealSHT(
-            nlat, nlon, lmax=lmax, mmax=mmax, grid=grid
-        ).float()
+        return InverseRealSHT(nlat, nlon, lmax=lmax, mmax=mmax, grid=grid)
 
     def get_disco_conv_s2(self, *args, **kwargs) -> nn.Module:
         return thd.DistributedDiscreteContinuousConvS2(*args, **kwargs)
