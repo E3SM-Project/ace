@@ -270,12 +270,15 @@ class EMATracker:
         # double up during the next ``store``).
         self._stored_params = []
 
-    def get_state(self, include_params: bool = True):
+    def get_state(self, include_params: bool = True, copy: bool = True):
         """
         Get the state of the EMA tracker.
 
         Args:
             include_params: Whether to include the EMA weights.
+            copy: Whether to copy the EMA weights. Without a copy, the state
+                shares memory with the tracker and is only valid until the
+                next update, e.g. to be saved right away.
 
         Returns:
             The state of the EMA tracker.
@@ -288,18 +291,18 @@ class EMATracker:
         }
         if include_params:
             state[self._PARAMS_KEY] = {
-                name: self._param_state(name, param)
+                name: self._param_state(name, param, copy)
                 for name, param in self._ema_params.items()
             }
         return state
 
-    def _param_state(self, name: str, param: torch.Tensor) -> torch.Tensor:
+    def _param_state(self, name: str, param: torch.Tensor, copy: bool) -> torch.Tensor:
         if name in self._shards:
             # the full average, when gathering for a checkpoint
             gathered = gather_shard(param.detach(), self._shards[name])
             if gathered.data_ptr() != param.data_ptr():
                 return gathered
-        return param.clone().detach()
+        return param.detach().clone() if copy else param.detach()
 
     def _localize(self, ema_params: Mapping[str, torch.Tensor]) -> dict:
         """This rank's slices of the full averages of sharded parameters."""

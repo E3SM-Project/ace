@@ -389,3 +389,33 @@ def test_ema_update_without_trainable_parameters():
     ema = EMATracker(model, decay=0.9)
     ema(model)
     assert int(ema.get_state()["num_updates"]) == 1
+
+
+def test_get_state_without_copy_shares_the_averages():
+    """A rank that only takes part in a checkpoint gather discards the
+    state, so it must not copy the averages to build it."""
+    from fme.core.distributed.parameter_sharding import (
+        ParameterShard,
+        gathered_parameter_shards,
+        shard_parameter,
+    )
+
+    model = nn.Linear(1, 2).to(get_device())
+    shard_parameter(
+        model,
+        "weight",
+        ParameterShard(
+            global_shape=(2, 1),
+            index=(slice(0, 1), slice(0, 1)),
+            split=(True, True),
+            owner=True,
+        ),
+    )
+    ema = EMATracker(model, decay=0.9)
+    with gathered_parameter_shards(dst=1):  # this (single) rank is not dst
+        state = ema.get_state(copy=False)
+    for name, average in ema._ema_params.items():
+        assert state["ema_params"][name].data_ptr() == average.data_ptr()
+    copied = ema.get_state()
+    for name, average in ema._ema_params.items():
+        assert copied["ema_params"][name].data_ptr() != average.data_ptr()

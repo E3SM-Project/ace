@@ -750,7 +750,7 @@ class Trainer:
             raise RuntimeError("Only the root process should save checkpoints")
         # on every rank, if they assemble sharded tensors
         stepper_state = self.stepper.get_state()
-        ema_state = self._ema.get_state(include_params=include_optimization)
+        ema_state = self._ema.get_state(include_params=include_optimization, copy=False)
         if not is_root:
             return
         # save to a temporary file in case we get pre-empted during save
