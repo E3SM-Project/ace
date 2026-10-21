@@ -33,6 +33,7 @@ import logging
 from collections.abc import Iterable, Iterator, Mapping
 from typing import Any, Protocol
 
+import numpy as np
 import torch
 from torch import nn
 
@@ -128,8 +129,10 @@ class EMATracker:
 
         self._module_name_to_ema_name = {}
         self.decay = torch.tensor(decay, dtype=torch.float32).to(get_device())
+        # on the host, so that updates need no device sync
+        self._decay = np.float32(decay)
         self._faster_decay_at_start = faster_decay_at_start
-        self.num_updates = torch.tensor(0, dtype=torch.int).to(get_device())
+        self._num_updates = 0
 
         self._ema_params: dict[str, torch.Tensor] = {}
         # spatially sharded parameters: their averages are sharded likewise,
@@ -146,8 +149,16 @@ class EMATracker:
                 if name in shards:
                     self._shards[ema_name] = shards[name]
 
-        self._stored_params: list[nn.Parameter] = []
+        self._stored_params: list[torch.Tensor] = []
         self._in_context = False
+
+    @property
+    def num_updates(self) -> torch.Tensor:
+        return torch.tensor(self._num_updates, dtype=torch.int, device=get_device())
+
+    @num_updates.setter
+    def num_updates(self, value: torch.Tensor | int) -> None:
+        self._num_updates = int(value)
 
     def __call__(self, model: HasNamedParameters):
         """
@@ -160,30 +171,32 @@ class EMATracker:
                 specified identically to the one passed when this object was
                 instantiated.
         """
-        decay = self.decay
-
-        self.num_updates += 1
+        self._num_updates += 1
+        decay = self._decay
         if self._faster_decay_at_start:
-            decay = min(self.decay, (1 + self.num_updates) / (10 + self.num_updates))
-
+            # in float32, as when the decay was computed on the device
+            n = self._num_updates
+            decay = np.minimum(decay, np.float32(1 + n) / np.float32(10 + n))
+        averages = []
+        parameters = []
         with torch.no_grad():
-            module_parameters = dict(model.named_parameters())
-
-            for key in module_parameters:
-                if module_parameters[key].requires_grad:
+            for key, param in model.named_parameters():
+                if param.requires_grad:
                     ema_name = self._module_name_to_ema_name[key]
-                    self._ema_params[ema_name] = self._ema_params[ema_name].type_as(
-                        module_parameters[key]
-                    )
-                    self._ema_params[ema_name].sub_(
-                        (1.0 - decay)
-                        * (self._ema_params[ema_name] - module_parameters[key])
-                    )
+                    average = self._ema_params[ema_name]
+                    if average.dtype != param.dtype or average.device != param.device:
+                        average = average.type_as(param)
+                        self._ema_params[ema_name] = average
+                    averages.append(average)
+                    parameters.append(param.detach())
                 elif key in self._module_name_to_ema_name:
                     raise ValueError(
                         f"Expected model parameter {key} to require gradient, "
                         "but it does not"
                     )
+            if averages:
+                # average + (1 - decay) * (param - average), without temporaries
+                torch._foreach_lerp_(averages, parameters, 1.0 - float(decay))
 
     @contextlib.contextmanager
     def applied_params(self, model: HasNamedParameters) -> Iterator[None]:
@@ -269,7 +282,7 @@ class EMATracker:
         """
         state = {
             "decay": self.decay.clone(),
-            "num_updates": self.num_updates.clone(),
+            "num_updates": self.num_updates,
             "faster_decay_at_start": self._faster_decay_at_start,
             "module_name_to_ema_name": dict(self._module_name_to_ema_name),
         }
@@ -322,7 +335,7 @@ class EMATracker:
                 "contain the full EMA state needed for fine-tuning."
             )
         device = get_device()
-        self.num_updates = state["num_updates"].to(device, copy=True)
+        self.num_updates = state["num_updates"]
         self._module_name_to_ema_name = state["module_name_to_ema_name"]
         self._ema_params = {
             name: param.to(device, copy=True)
@@ -344,7 +357,7 @@ class EMATracker:
         """
         device = get_device()
         ema = cls(model, float(state["decay"]), state["faster_decay_at_start"])
-        ema.num_updates = state["num_updates"].to(device, copy=True)
+        ema.num_updates = state["num_updates"]
         ema._module_name_to_ema_name = state["module_name_to_ema_name"]
         if cls._PARAMS_KEY in state:
             ema._ema_params = {

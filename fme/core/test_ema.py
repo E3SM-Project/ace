@@ -342,3 +342,50 @@ def test_nested_applied_params_raises_and_keeps_live_parameters():
                 pass
     for name, p in model.named_parameters():
         assert torch.equal(p, live[name])
+
+
+@pytest.mark.parametrize("faster_decay_at_start", [True, False])
+def test_ema_update_matches_reference_formula(faster_decay_at_start: bool):
+    torch.manual_seed(0)
+    model = nn.Sequential(nn.Linear(8, 16), nn.Linear(16, 3)).to(get_device())
+    ema = EMATracker(model, decay=0.999, faster_decay_at_start=faster_decay_at_start)
+    decay = torch.tensor(0.999, dtype=torch.float32)
+    reference = {n: p.detach().clone() for n, p in model.named_parameters()}
+    for n_updates in range(1, 31):
+        with torch.no_grad():
+            for p in model.parameters():
+                p.add_(torch.randn_like(p))
+        ema(model)
+        step_decay = decay
+        if faster_decay_at_start:
+            n = torch.tensor(n_updates, dtype=torch.int)
+            step_decay = min(decay, (1 + n) / (10 + n))
+        for name, p in model.named_parameters():
+            reference[name] -= (1.0 - step_decay).to(p.device) * (
+                reference[name] - p.detach()
+            )
+    assert int(ema.get_state()["num_updates"]) == 30
+    for name, value in reference.items():
+        torch.testing.assert_close(
+            ema._ema_params[name.replace(".", "")], value, rtol=1e-6, atol=1e-6
+        )
+
+
+def test_num_updates_state_round_trips():
+    model = ExampleModel()
+    ema = EMATracker(model, decay=0.9)
+    for _ in range(3):
+        ema(model)
+    state = ema.get_state()
+    assert state["num_updates"].dtype == torch.int
+    assert state["num_updates"].device == get_device()
+    restored = EMATracker.from_state(state, model)
+    assert int(restored.get_state()["num_updates"]) == 3
+
+
+def test_ema_update_without_trainable_parameters():
+    model = ExampleModel()
+    model.weight.requires_grad_(False)
+    ema = EMATracker(model, decay=0.9)
+    ema(model)
+    assert int(ema.get_state()["num_updates"]) == 1
