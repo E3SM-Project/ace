@@ -139,3 +139,18 @@ def test_noise_conditioned_sfno_tf32_channel_mixing_requires_linear_filter():
         NoiseConditionedSFNOBuilder(
             filter_type="makani-linear", tf32_channel_mixing=True
         )
+
+
+def test_noise_conditioned_sfno_uncheckpointed_filter_blocks():
+    builder = NoiseConditionedSFNOBuilder(
+        embed_dim=8,
+        noise_embed_dim=4,
+        num_layers=2,
+        checkpointing=3,
+        uncheckpointed_filter_blocks=1,
+    )
+    model = builder.build(3, 2, DatasetInfo(img_shape=(16, 32)))
+    assert model.conditional_model._uncheckpointed_filter_blocks == 1
+    model(torch.randn(2, 3, 16, 32)).sum().backward()
+    with pytest.raises(ValueError, match="uncheckpointed_filter_blocks"):
+        NoiseConditionedSFNOBuilder(num_layers=2, uncheckpointed_filter_blocks=1)

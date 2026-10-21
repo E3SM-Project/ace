@@ -523,6 +523,43 @@ def test_sfnonet_spectral_ratio_preserve_global_mean_spatial_parallel():
     output.sum().backward()
 
 
+def _local_output_and_grads(img_shape, **config):
+    dist = Distributed.get_instance()
+    device = get_device()
+    torch.manual_seed(0)
+    model = get_lat_lon_sfnonet(
+        params=SFNONetConfig(embed_dim=16, num_layers=3, **config),
+        img_shape=img_shape,
+        in_chans=2,
+        out_chans=2,
+    ).to(device)
+    x = torch.randn(2, 2, *img_shape, device=device)
+    h_slice, w_slice = dist.get_local_slices(img_shape)
+    context = Context(
+        embedding_scalar=None, embedding_pos=None, labels=None, noise=None
+    )
+    output = model(x[..., h_slice, w_slice], context)
+    output.square().mean().backward()
+    return output, {name: p.grad for name, p in model.named_parameters()}
+
+
+@pytest.mark.parallel
+def test_filter_speedups_match_reference_under_spatial_parallelism():
+    """TF32 channel mixing (a no-op off GPU) and uncheckpointed filters change
+    only how the filter runs, also when its transforms are distributed."""
+    img_shape = (9, 16)  # splits unevenly over 2 polar ranks
+    reference = _local_output_and_grads(img_shape)
+    actual = _local_output_and_grads(
+        img_shape,
+        checkpointing=3,
+        uncheckpointed_filter_blocks=2,
+        tf32_channel_mixing=True,
+    )
+    torch.testing.assert_close(actual[0], reference[0])
+    for name, grad in reference[1].items():
+        torch.testing.assert_close(actual[1][name], grad, msg=f"gradient for {name}")
+
+
 def test_filter_preserves_global_mean_allows_grad():
     torch.manual_seed(0)
     input_channels = 2
@@ -756,7 +793,7 @@ def test_clip_latent_global_means_envelope_synchronized_across_ranks():
     torch.testing.assert_close(dist.reduce_max(model._gm_max.clone()), model._gm_max)
 
 
-def _grads_after_backward(checkpointing: int):
+def _grads_after_backward(checkpointing: int, **config):
     """Gradient of every parameter after one backward at a checkpointing level."""
     img_shape = (9, 18)
     n_samples, n_channels = 2, 2
@@ -767,6 +804,7 @@ def _grads_after_backward(checkpointing: int):
         num_layers=2,
         filter_type="linear",
         checkpointing=checkpointing,
+        **config,
     )
     model = get_lat_lon_sfnonet(
         params=params,
@@ -802,6 +840,50 @@ def test_checkpointing_gradients_match_uncheckpointed(checkpointing):
     assert set(actual) == set(reference)
     for name, grad in reference.items():
         torch.testing.assert_close(actual[name], grad, msg=f"gradient for {name}")
+
+
+@pytest.mark.parametrize("n_blocks", [1, 2])
+def test_uncheckpointed_filter_blocks_gradients_match_uncheckpointed(n_blocks):
+    reference = _grads_after_backward(0)
+    actual = _grads_after_backward(3, uncheckpointed_filter_blocks=n_blocks)
+    assert set(actual) == set(reference)
+    for name, grad in reference.items():
+        torch.testing.assert_close(actual[name], grad, msg=f"gradient for {name}")
+
+
+def test_uncheckpointed_filter_blocks_run_their_filter_once():
+    """Checkpointed blocks recompute their filter in backward; the first
+    uncheckpointed_filter_blocks blocks do not."""
+    model = get_lat_lon_sfnonet(
+        params=SFNONetConfig(
+            embed_dim=8, num_layers=3, checkpointing=3, uncheckpointed_filter_blocks=2
+        ),
+        img_shape=(8, 16),
+        in_chans=2,
+        out_chans=2,
+    )
+    calls = [0] * len(model.blocks)
+    for i, block in enumerate(model.blocks):
+
+        def count(module, args, i=i):
+            calls[i] += 1
+
+        block.filter.register_forward_pre_hook(count)
+    context = Context(
+        embedding_scalar=None, embedding_pos=None, labels=None, noise=None
+    )
+    model(torch.randn(2, 2, 8, 16), context).square().mean().backward()
+    assert calls == [1, 1, 2]
+
+
+@pytest.mark.parametrize("n_blocks, checkpointing", [(-1, 3), (3, 3), (1, 2), (1, 0)])
+def test_uncheckpointed_filter_blocks_validated(n_blocks, checkpointing):
+    with pytest.raises(ValueError, match="uncheckpointed_filter_blocks"):
+        SFNONetConfig(
+            num_layers=2,
+            checkpointing=checkpointing,
+            uncheckpointed_filter_blocks=n_blocks,
+        )
 
 
 @pytest.mark.parametrize("data_grid", ["legendre-gauss", "equiangular"])

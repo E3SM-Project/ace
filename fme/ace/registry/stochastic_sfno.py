@@ -15,6 +15,7 @@ from fme.core.models.conditional_sfno.sfnonet import (
     ContextConfig,
     SFNONetConfig,
     get_lat_lon_sfnonet,
+    validate_uncheckpointed_filter_blocks,
 )
 from fme.core.rand import randn
 
@@ -292,6 +293,13 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
             mode, like the TF32 1x1 convolutions. The spherical harmonic
             transforms stay in fp32, where TF32 rounding would bury the weak
             small scales. Only for filter_type='linear'; no effect on CPU.
+        uncheckpointed_filter_blocks: With checkpointing >= 3, the number of
+            blocks, counting from the first, whose spectral filter is not
+            recomputed in backward. Each such filter runs its transforms and
+            their all-to-alls once, and keeps about three activations (its
+            input, spectral coefficients and output; fewer below full
+            harmonics) until backward. Use it where memory is spare, e.g.
+            more tiles per sample. 0 (default) recomputes every filter.
     """
 
     filter_type: Literal["linear", "makani-linear"] = "linear"
@@ -328,6 +336,7 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
     hard_thresholding_fraction: float = 1.0
     shard_spatial_parameters: bool = False
     tf32_channel_mixing: bool = False
+    uncheckpointed_filter_blocks: int = 0
 
     @classmethod
     def remove_deprecated_keys(cls, state: Mapping[str, Any]) -> dict[str, Any]:
@@ -362,6 +371,9 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
             )
         if self.tf32_channel_mixing and self.filter_type != "linear":
             raise ValueError("tf32_channel_mixing requires filter_type='linear'")
+        validate_uncheckpointed_filter_blocks(
+            self.uncheckpointed_filter_blocks, self.num_layers, self.checkpointing
+        )
         if self.context_pos_embed_dim > 0 and self.pos_embed:
             raise ValueError(
                 "context_pos_embed_dim and pos_embed should not both be set"
@@ -423,6 +435,7 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
             hard_thresholding_fraction=self.hard_thresholding_fraction,
             shard_spatial_parameters=self.shard_spatial_parameters,
             tf32_channel_mixing=self.tf32_channel_mixing,
+            uncheckpointed_filter_blocks=self.uncheckpointed_filter_blocks,
         )
         sfno_net = get_lat_lon_sfnonet(
             params=sfno_config,

@@ -116,6 +116,13 @@ class SFNONetConfig:
             mixing (a complex matmul over channels at each (l, m)) on TF32
             tensor cores. The spherical harmonic transforms stay in fp32. Only
             filter_type='linear' supports it; no effect on CPU.
+        uncheckpointed_filter_blocks: With checkpointing >= 3, the number of
+            blocks, counting from the first, whose spectral filter is left out
+            of the block's activation checkpoint. It then runs once instead of
+            being recomputed in backward with its transforms and all-to-alls,
+            and keeps its saved tensors: its input, the spectral coefficients
+            and its output, about three activations per block at full
+            harmonics. The rest of the block stays checkpointed.
     """
 
     embed_dim: int = 256
@@ -148,8 +155,12 @@ class SFNONetConfig:
     clip_latent_global_means: bool = False
     shard_spatial_parameters: bool = False
     tf32_channel_mixing: bool = False
+    uncheckpointed_filter_blocks: int = 0
 
     def __post_init__(self):
+        validate_uncheckpointed_filter_blocks(
+            self.uncheckpointed_filter_blocks, self.num_layers, self.checkpointing
+        )
         if self.tf32_channel_mixing and self.filter_type != "linear":
             raise NotImplementedError(
                 "tf32_channel_mixing is only supported for filter_type='linear'."
@@ -160,6 +171,21 @@ class SFNONetConfig:
             self.filter_num_groups,
             filter_type=self.filter_type,
             local_blocks=bool(self.local_blocks),
+        )
+
+
+def validate_uncheckpointed_filter_blocks(
+    n_blocks: int, num_layers: int, checkpointing: int
+):
+    if not 0 <= n_blocks <= num_layers:
+        raise ValueError(
+            f"uncheckpointed_filter_blocks must be in [0, num_layers={num_layers}], "
+            f"got {n_blocks}"
+        )
+    if n_blocks > 0 and checkpointing < 3:
+        raise ValueError(
+            "uncheckpointed_filter_blocks requires checkpointing >= 3 (blocks "
+            f"checkpointed), got checkpointing={checkpointing}"
         )
 
 
@@ -316,8 +342,11 @@ class FourierNeuralOperatorBlock(nn.Module):
         spectral_ratio: float = 1.0,
         shard_spatial_parameters: bool = False,
         tf32_channel_mixing: bool = False,
+        checkpoint_around_filter: bool = False,
     ):
         super(FourierNeuralOperatorBlock, self).__init__()
+        # checkpoint the parts before and after the filter, but not the filter
+        self._checkpoint_around_filter = checkpoint_around_filter
 
         self.input_shape_loc = img_shape
         self.output_shape_loc = img_shape
@@ -411,10 +440,34 @@ class FourierNeuralOperatorBlock(nn.Module):
             )
 
     def forward(self, x, context_embedding, timer: Timer = NullTimer()):
+        if self._checkpoint_around_filter:
+            return self._forward_keeping_filter_activations(x, context_embedding)
         with timer.child("norm0") as norm0_timer:
             x_norm = self.norm0(x, context_embedding, timer=norm0_timer)
         with timer.child("filter") as filter_timer:
             x, residual = self.filter(x_norm, timer=filter_timer)
+        return self._forward_after_filter(x, residual, context_embedding, timer)
+
+    def _forward_keeping_filter_activations(self, x, context_embedding):
+        """Activation-checkpointed forward that leaves the filter out.
+
+        The norm before the filter and everything after it are recomputed in
+        backward. The filter, with its transforms and their all-to-alls, runs
+        once and keeps its saved tensors.
+        """
+        x_norm = checkpoint(self.norm0, x, context_embedding, use_reentrant=False)
+        x, residual = self.filter(x_norm)
+        return checkpoint(
+            self._forward_after_filter,
+            x,
+            residual,
+            context_embedding,
+            use_reentrant=False,
+        )
+
+    def _forward_after_filter(
+        self, x, residual, context_embedding, timer: Timer = NullTimer()
+    ):
         if hasattr(self, "inner_skip"):
             with timer.child("inner_skip"):
                 if self.concat_skip:
@@ -573,6 +626,7 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
         self._use_pos_embed = params.pos_embed
         self.big_skip = params.big_skip
         self.checkpointing = params.checkpointing
+        self._uncheckpointed_filter_blocks = params.uncheckpointed_filter_blocks
         if params.local_blocks is not None:
             self.local_blocks = [
                 i for i in range(self.num_layers) if i in params.local_blocks
@@ -696,6 +750,9 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
                 spectral_ratio=self.spectral_ratio,
                 shard_spatial_parameters=params.shard_spatial_parameters,
                 tf32_channel_mixing=params.tf32_channel_mixing,
+                checkpoint_around_filter=(
+                    self.checkpointing >= 3 and i < params.uncheckpointed_filter_blocks
+                ),
             )
 
             self.blocks.append(block)
@@ -788,8 +845,8 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
             self._gm_reset_pending = True
 
     def _forward_features(self, x: torch.Tensor, context: Context):
-        for blk in self.blocks:
-            if self.checkpointing >= 3:
+        for i, blk in enumerate(self.blocks):
+            if self.checkpointing >= 3 and i >= self._uncheckpointed_filter_blocks:
                 x = checkpoint(blk, x, context, use_reentrant=False)
             else:
                 x = blk(x, context)
