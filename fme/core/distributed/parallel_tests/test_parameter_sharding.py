@@ -23,8 +23,10 @@ from fme.core import get_device
 from fme.core.dataset_info import DatasetInfo
 from fme.core.distributed import Distributed
 from fme.core.distributed.parameter_sharding import (
+    gather_shard,
     gathered_parameter_shards,
     named_parameter_shards,
+    spatial_shard,
 )
 from fme.core.ema import EMA_CHECKPOINT_KEY, EMAConfig, EMATracker
 from fme.core.optimization import Optimization, OptimizationConfig
@@ -480,3 +482,27 @@ def test_gather_to_every_rank_then_overwrite_weights():
     overwrite_weights(full, target.model)
     for (name, a), b in zip(source.model.named_parameters(), target.model.parameters()):
         torch.testing.assert_close(a, b, rtol=0, atol=0, msg=name)
+
+
+@pytest.mark.parallel
+@pytest.mark.parametrize("dtype", [torch.float32, torch.complex64])
+@pytest.mark.parametrize("dims", [(0, 1), (0, None), (None, 1)])
+def test_gather_shard_assembles_the_full_tensor_on_its_destination(dtype, dims):
+    """On every rank (dst None), the root, or a rank of another replica."""
+    dist = Distributed.get_instance()
+    global_shape = (*IMG_SHAPE, 3)
+    shard = spatial_shard(global_shape, IMG_SHAPE, dims)
+    if shard is None:  # the layout does not split these dimensions
+        return
+    full = torch.arange(9 * 16 * 3, dtype=torch.float32).reshape(global_shape)
+    if dtype.is_complex:
+        full = torch.complex(full, -full)
+    local = shard.take(full).to(get_device())
+    for dst in (None, 0, dist.world_size - 1):
+        with gathered_parameter_shards(dst=dst):
+            gathered = gather_shard(local, shard)
+        if dst is None or dist.rank == dst:
+            assert gathered.device.type == "cpu"
+            torch.testing.assert_close(gathered, full, rtol=0, atol=0)
+        else:
+            assert gathered is local
