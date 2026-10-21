@@ -532,8 +532,11 @@ class Distributed:
         weights: torch.Tensor,
         dim: tuple[int, ...],
         keepdim: bool = False,
+        in_graph: bool = False,
     ) -> torch.Tensor:
-        return self._distributed.weighted_mean(data, weights, dim=dim, keepdim=keepdim)
+        return self._distributed.weighted_mean(
+            data, weights, dim=dim, keepdim=keepdim, in_graph=in_graph
+        )
 
     def zonal_mean(self, data: torch.Tensor) -> torch.Tensor:
         return self._distributed.zonal_mean(data)

@@ -253,8 +253,16 @@ class DistributedBackend(ABC):
         weights: torch.Tensor,
         dim: tuple[int, ...],
         keepdim: bool = False,
+        in_graph: bool = False,
     ) -> torch.Tensor:
-        """Compute a weighted mean, correctly handling spatial parallelism."""
+        """Compute a weighted mean, correctly handling spatial parallelism.
+
+        Set ``in_graph`` when the mean is used inside the differentiated
+        graph and broadcast back onto every tile (e.g. a corrector's global
+        mean), rather than being the final loss reduction: then the gradient
+        w.r.t. the replicated mean must be summed over the spatial group.
+        Non-spatial backends ignore it.
+        """
         ...
 
     @abstractmethod

@@ -283,7 +283,9 @@ class _FakeDistributed:
             return tensor
         return tensor + self._contributions.pop(0)
 
-    def weighted_mean(self, data, weights, dim, keepdim=False) -> torch.Tensor:
+    def weighted_mean(
+        self, data, weights, dim, keepdim=False, in_graph=False
+    ) -> torch.Tensor:
         # not a collective; used by the area-weighted RMSE in get_logs
         return metrics.weighted_mean(data, weights, dim=dim, keepdim=keepdim)
 
