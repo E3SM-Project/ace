@@ -68,9 +68,6 @@ class RotateModifier(BatchModifierABC):
     using this data will be affected by the rotation.
     """
 
-    # flips the whole sphere, so it needs the global fields
-    spatially_local = False
-
     # names of variables whose sign is flipped when the poles are reversed
     FLIP_NAMES = [
         "eastward_wind",
