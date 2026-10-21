@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 import torch
 
 from fme.ace.aggregator.inference.data import InferenceBatchData, make_dummy_time
@@ -8,6 +9,7 @@ from fme.ace.aggregator.inference.time_mean import (
     TimeMeanMetricConfig,
 )
 from fme.core.device import get_device
+from fme.core.distributed import Distributed
 from fme.core.gridded_ops import LatLonOperations
 
 
@@ -80,6 +82,44 @@ def test_channel_mean_excludes_all_nan_target_channels():
     assert np.isnan(logs["time_mean_norm/rmse/c"])
     # ...but excluded from channel_mean: mean of "a" (1) and "b" (2).
     assert logs["time_mean_norm/rmse/channel_mean"] == 1.5
+
+
+@pytest.mark.parallel
+def test_channel_mean_all_nan_exclusion_is_global():
+    """Under spatial parallelism, a target that is NaN on the root's tile
+    only is not entirely NaN, so it stays in the channel mean as serially.
+    """
+    dist = Distributed.get_instance()
+    if not dist.has_spatial_parallelism:
+        pytest.skip("needs spatial parallelism")
+    n_lat, n_lon = 4, 8
+    tile = dist.get_local_slices((n_lat, n_lon))
+    agg = TimeMeanEvaluatorAggregator(
+        LatLonOperations(torch.ones(n_lat, n_lon)),
+        horizontal_dims=["lat", "lon"],
+        target="norm",
+    )
+    ones = torch.ones([2, 3, n_lat, n_lon], device=get_device())
+    nan_on_root_tile = ones.clone()
+    root_tile = dist.scatter_object(tile if dist.is_root() else None)
+    nan_on_root_tile[..., *root_tile] = torch.nan
+    target = {"a": ones, "c": nan_on_root_tile}
+    gen = {"a": 2 * ones, "c": ones}
+    target = {k: v[..., *tile] for k, v in target.items()}
+    gen = {k: v[..., *tile] for k, v in gen.items()}
+    agg.record_batch(
+        InferenceBatchData(
+            prediction=gen,
+            prediction_norm=gen,
+            target=target,
+            target_norm=target,
+            time=make_dummy_time(2, 3),
+            i_time_start=0,
+        )
+    )
+    logs = agg.get_logs(label="time_mean_norm")
+    assert np.isnan(logs["time_mean_norm/rmse/c"])
+    assert np.isnan(logs["time_mean_norm/rmse/channel_mean"])
 
 
 def test_custom_channel_mean_names():

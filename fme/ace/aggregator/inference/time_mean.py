@@ -65,6 +65,14 @@ def _local_reference(reference: xr.DataArray, device: torch.device) -> torch.Ten
     return values[slices]
 
 
+def _all_nan(tile: torch.Tensor) -> bool:
+    """Whether the global field of which ``tile`` is this rank's tile is
+    entirely NaN. Collective over the spatial group.
+    """
+    n_valid = (~torch.isnan(tile)).sum()
+    return int(Distributed.get_instance().spatial_reduce_sum(n_valid)) == 0
+
+
 def get_gen_shape(gen_data: TensorMapping):
     for name in gen_data:
         return gen_data[name].shape
@@ -407,7 +415,7 @@ class TimeMeanEvaluatorAggregator:
         all_nan_target_names: set[str] = set()
         for pred in preds:
             rmse_all_channels[pred.name] = pred.rmse()
-            if torch.isnan(pred.target).all():
+            if _all_nan(pred.target):
                 all_nan_target_names.add(pred.name)
             should_log = self._log_variables is None or pred.name in self._log_variables
             if should_log:
