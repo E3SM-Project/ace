@@ -417,7 +417,10 @@ class FourierNeuralOperatorBlock(nn.Module):
                 hidden_features=mlp_hidden_dim,
                 act_layer=act_layer,
                 drop_rate=drop_rate,
-                checkpointing=checkpointing,
+                # Inside a checkpointed block (level 3) an MLP checkpoint saves
+                # no memory: torch keeps its recomputed activations, and the
+                # MLP is the first part of the block that backward reaches.
+                checkpointing=checkpointing if checkpointing < 3 else 0,
                 lora_rank=lora_rank,
                 lora_alpha=lora_alpha,
             )
