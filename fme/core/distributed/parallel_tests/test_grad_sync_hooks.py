@@ -2,12 +2,13 @@
 collective replaced by a fake that records when it is waited on."""
 
 import dataclasses
+import unittest.mock
 
 import pytest
 import torch
 from torch import nn
 
-from fme.core.distributed.model_torch_distributed import _register_mean_hooks
+from fme.core.distributed.model_torch_distributed import _register_reduce_hooks
 
 
 @dataclasses.dataclass
@@ -28,7 +29,7 @@ class _FailingBackward(torch.autograd.Function):
         raise RuntimeError("backward failed")
 
 
-def test_mean_hooks_wait_after_a_failed_backward(monkeypatch):
+def test_reduce_hooks_wait_after_a_failed_backward(monkeypatch):
     """A backward that raises after a hook fired skips its queued wait; the
     next backward must still wait for its own all-reduces before returning."""
     works: list[_Work] = []
@@ -39,7 +40,7 @@ def test_mean_hooks_wait_after_a_failed_backward(monkeypatch):
 
     monkeypatch.setattr(torch.distributed, "all_reduce", all_reduce)
     param = nn.Parameter(torch.ones(3))
-    _register_mean_hooks([param], group=None, size=2)  # type: ignore[arg-type]
+    _register_reduce_hooks([param], group=unittest.mock.MagicMock(), divisor=2)
 
     # created first, so its backward runs after the parameter's hook
     failing = _FailingBackward.apply(torch.ones(3, requires_grad=True))

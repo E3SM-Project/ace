@@ -102,19 +102,20 @@ def _ddp_ignore_names(names: set[str]) -> list[str]:
     return sorted(names | {f".{name}" for name in names if "." not in name})
 
 
-def _register_mean_hooks(
-    params: list[nn.Parameter], group: torch.distributed.ProcessGroup, size: int
+def _register_reduce_hooks(
+    params: list[nn.Parameter], group: torch.distributed.ProcessGroup, divisor: int
 ) -> None:
-    """Average the gradients of ``params`` over ``group`` in every backward.
+    """Sum the gradients of ``params`` over ``group``, divided by
+    ``divisor``, in every backward.
 
-    For spatially sharded parameters whose gradient is complete on each rank
-    (DDP over the world cannot handle them: their shapes and values differ
-    between spatial ranks), so that data-parallel replicas of the same slice
-    only need its mean. Each all-reduce starts as soon as the parameter's
-    gradient is accumulated, overlapping the rest of the backward pass, and
-    the backward pass waits for all of them before it returns, as DDP's does.
-    Repeated backward passes before an optimizer step (gradient accumulation)
-    average correctly: the mean of the already averaged part is itself.
+    For spatially sharded parameters (DDP over the world cannot handle them:
+    their shapes and values differ between spatial ranks): ``group`` holds
+    the ranks with the same slice, its data-parallel replicas and any spatial
+    ranks the slice is replicated over, and ``divisor`` is the data-parallel
+    size. Each all-reduce starts as soon as the parameter's gradient is
+    accumulated, overlapping the rest of the backward pass, and the backward
+    pass waits for all of them before it returns, as DDP's does. Like the DDP
+    sync, it assumes one backward pass per optimizer step.
     """
     pending: list[Any] = []
 
@@ -125,7 +126,8 @@ def _register_mean_hooks(
 
     def hook(param: torch.Tensor) -> None:
         assert param.grad is not None
-        param.grad.div_(size)
+        if divisor != 1:
+            param.grad.div_(divisor)
         pending.append(
             torch.distributed.all_reduce(param.grad, group=group, async_op=True)
         )
@@ -135,31 +137,6 @@ def _register_mean_hooks(
 
     for param in params:
         param.register_post_accumulate_grad_hook(hook)
-
-
-def _register_sum_hooks(
-    params: list[nn.Parameter],
-    group: torch.distributed.ProcessGroup,
-    divisor: int = 1,
-) -> None:
-    """Sum each backward pass's gradient of ``params`` over ``group`` (then
-    divide by ``divisor``), before it is accumulated into ``.grad``.
-
-    Reducing the per-pass gradient rather than the accumulated one keeps a
-    sum right under gradient accumulation. It is stream-synchronous (no
-    overlap), which is acceptable for the layouts that need it (a polar-split
-    spectral weight under an azimuth split).
-    """
-
-    def hook(grad: torch.Tensor) -> torch.Tensor:
-        reduced = grad.contiguous().clone()
-        if divisor != 1:
-            reduced.div_(divisor)
-        torch.distributed.all_reduce(reduced, group=group)
-        return reduced
-
-    for param in params:
-        param.register_hook(hook)
 
 
 class _AutogradAllReduce(torch.autograd.Function):
@@ -610,14 +587,12 @@ class ModelTorchDistributed(DistributedBackend):
             )
             params.setdefault(axes, []).append(param)
         for axes, group_params in params.items():
-            if axes:
-                _register_sum_hooks(
+            if axes or self._data_size > 1:
+                _register_reduce_hooks(
                     group_params,
                     self._mesh_group(("data",) + axes),
                     divisor=self._data_size,
                 )
-            elif self._data_size > 1:
-                _register_mean_hooks(group_params, self._data_group, self._data_size)
 
     def _mesh_group(self, axes: tuple[str, ...]) -> torch.distributed.ProcessGroup:
         """The process group of the ranks that differ only along ``axes``."""
