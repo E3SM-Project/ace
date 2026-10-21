@@ -177,6 +177,23 @@ def test_paired_spherical_power_spectrum_aggregator_get_dataset():
     xr.testing.assert_identical(result, expected)
 
 
+def test_paired_spherical_power_spectrum_aggregator_builds_one_sht(monkeypatch):
+    """The generated and target spectra share one SHT: each one built under
+    spatial parallelism holds a full-resolution Legendre table per rank.
+    """
+    gridded_operations = get_gridded_operations(8, 16)
+    built = []
+    real_get_real_sht = gridded_operations.get_real_sht
+
+    def counting_get_real_sht():
+        built.append(real_get_real_sht())
+        return built[-1]
+
+    monkeypatch.setattr(gridded_operations, "get_real_sht", counting_get_real_sht)
+    PairedSphericalPowerSpectrumAggregator(gridded_operations, report_plot=False)
+    assert len(built) == 1
+
+
 def test_paired_spherical_power_spectrum_aggregator_get_dataset_no_data():
     nlat, nlon = 8, 16
     gridded_operations = get_gridded_operations(nlat, nlon)

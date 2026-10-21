@@ -29,8 +29,8 @@ def _spherical_power_spectrum(
     returns this rank's block of the (l, m) coefficients, split like the
     (lat, lon) tiles, and transposes its channel dimension (-3) across the
     ranks, so the leading dimensions are flattened into channels, padded to
-    give every rank some. The power of each (l, m) is assembled from the
-    blocks before summing over m.
+    give every rank some. Each rank sums the power over its block of m, and
+    the (l, m-block) sums are assembled and summed over the blocks.
     """
     dist = Distributed.get_instance()
     if not dist.has_spatial_parallelism:
@@ -42,8 +42,9 @@ def _spherical_power_spectrum(
     n_pad = -n % (h_size * w_size)
     if n_pad > 0:
         flat = torch.cat([flat, flat.new_zeros((n_pad, *flat.shape[1:]))])
-    power_lm = dist.gather_spatial_tile(abs(sht.forward(flat)) ** 2)
-    return power_lm[:n].sum(dim=-1).reshape(*lead, -1)
+    power_l_block = (abs(sht.forward(flat)) ** 2).sum(dim=-1, keepdim=True)
+    power_l = dist.gather_spatial_tile(power_l_block).sum(dim=-1)
+    return power_l[:n].reshape(*lead, -1)
 
 
 class SphericalPowerSpectrumAggregator:
@@ -55,8 +56,19 @@ class SphericalPowerSpectrumAggregator:
         nan_fill_fn: Callable[[torch.Tensor, str], torch.Tensor] = lambda x, _: x,
         report_plot: bool = True,
         variable_metadata: Mapping[str, VariableMetadata] | None = None,
+        sht: torch.nn.Module | None = None,
     ):
-        self._real_sht = gridded_operations.get_real_sht()
+        """
+        Args:
+            gridded_operations: Builds the SHT if ``sht`` is not given.
+            nan_fill_fn: Per-variable NaN filler applied before the SHT.
+            report_plot: Whether to plot the spectra.
+            variable_metadata: Metadata for the dataset attributes.
+            sht: The real SHT of the grid, to share one between aggregators.
+        """
+        if sht is None:
+            sht = gridded_operations.get_real_sht()
+        self._real_sht = sht
         self._power_spectrum: dict[str, torch.Tensor] = {}
         self._counts: dict[str, int] = defaultdict(int)
         self._nan_fill_fn = nan_fill_fn
@@ -170,17 +182,20 @@ class PairedSphericalPowerSpectrumAggregator:
         report_directional_bias: bool = True,
         plot_variables: list[str] | None = None,
     ):
+        sht = gridded_operations.get_real_sht()
         self._gen_aggregator = SphericalPowerSpectrumAggregator(
             gridded_operations,
             nan_fill_fn,
             report_plot=False,
             variable_metadata=variable_metadata,
+            sht=sht,
         )
         self._target_aggregator = SphericalPowerSpectrumAggregator(
             gridded_operations,
             nan_fill_fn,
             report_plot=False,
             variable_metadata=variable_metadata,
+            sht=sht,
         )
         self._report_plot = report_plot
         self._report_directional_bias = report_directional_bias
