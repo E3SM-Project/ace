@@ -250,6 +250,11 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
             within the observed envelope (no-op when it already does).
             Bounds the global-mean of the latent the transformer blocks see
             at inference to the range observed in training.
+        hard_thresholding_fraction: Fraction of the grid's spherical-harmonic
+            modes the spectral filters keep (lmax = nlat * fraction). The
+            per-mode weights scale with lmax, so at 0.25 deg (lmax 720) 0.5
+            halves the spectral parameters; the grid itself, and every
+            pointwise layer, stay at full resolution.
     """
 
     filter_type: Literal["linear", "makani-linear"] = "linear"
@@ -283,6 +288,7 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
     filter_preserves_global_mean: bool = False
     spectral_ratio: float = 1.0
     clip_latent_global_means: bool = False
+    hard_thresholding_fraction: float = 1.0
 
     @classmethod
     def remove_deprecated_keys(cls, state: Mapping[str, Any]) -> dict[str, Any]:
@@ -310,6 +316,11 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
         return result
 
     def __post_init__(self):
+        if not 0.0 < self.hard_thresholding_fraction <= 1.0:
+            raise ValueError(
+                "hard_thresholding_fraction must be in (0, 1], got "
+                f"{self.hard_thresholding_fraction}"
+            )
         if self.context_pos_embed_dim > 0 and self.pos_embed:
             raise ValueError(
                 "context_pos_embed_dim and pos_embed should not both be set"
@@ -359,6 +370,7 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
             filter_preserves_global_mean=self.filter_preserves_global_mean,
             spectral_ratio=self.spectral_ratio,
             clip_latent_global_means=self.clip_latent_global_means,
+            hard_thresholding_fraction=self.hard_thresholding_fraction,
         )
         sfno_net = get_lat_lon_sfnonet(
             params=sfno_config,
