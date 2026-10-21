@@ -215,6 +215,7 @@ class ModelTorchDistributed(DistributedBackend):
         verbose: bool = False,
     ):
         spatial_size = h_size * w_size
+        self._cached_spatial_group_coords: list[tuple[int, int]] | None = None
         if in_dataloader_worker():
             self._rank, self._world_size = _rank_metadata_from_env()
             _check_world_size_divisible(self._world_size, spatial_size)
@@ -619,7 +620,7 @@ class ModelTorchDistributed(DistributedBackend):
         """The (h, w) coordinates of each rank of the spatial group, indexed
         by its rank in the group. Collective (once) over the spatial group.
         """
-        coords = getattr(self, "_cached_spatial_group_coords", None)
+        coords = self._cached_spatial_group_coords
         if coords is None:
             gathered: list[Any] = [None] * (self._h_size * self._w_size)
             torch.distributed.all_gather_object(
