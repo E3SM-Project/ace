@@ -53,8 +53,24 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
 <header style="display:grid;gap:6px">
   <span class="eyebrow">e3sm/exps/hr-2026.10.0 &middot; v3.HR.F2010.aigo.PD.y1 &middot; 720&times;1440 Gaussian &middot; atmosphere only</span>
   <h1>HR ACE2S Bring-up</h1>
-  <p class="mono" style="color:var(--muted);font-size:.85rem">Updated 2026-10-20 20:53 &middot; allocations 60022811 + 60023253 (10-19), 60032495 + 60048637 (10-20), 60063553 + 60063766 (10-21)</p>
+  <p class="mono" style="color:var(--muted);font-size:.85rem">Updated 2026-10-21 01:40 &middot; allocations 60022811 + 60023253 (10-19), 60032495 + 60048637 (10-20), 60063553 + 60063766 (10-21)</p>
 </header>
+
+<section class="answer">
+  <span class="eyebrow">Clean production branch and optimizations (2026-10-21)</span>
+  <p><b>Use branch <code>e3sm/exps/hr-ace2s</code></b>: 54 commits on v2026.10.0 with code, tests and a slim <code>configs/experiments/hr-ace2s</code> (config, README, launcher). It came out of an adversarially verified multi-agent review of every change, then fixes and optimizations in six areas.</p>
+  <table>
+    <thead><tr><th>full harmonics, local batch 1</th><th>before</th><th>after</th></tr></thead>
+    <tbody>
+      <tr><td>4&times;1, 40&nbsp;GB</td><td>5.00&nbsp;s, 35.2&nbsp;GiB</td><td><b>3.80&nbsp;s</b>, 34.0&nbsp;GiB</td></tr>
+      <tr><td>4&times;1, 80&nbsp;GB</td><td>4.00&nbsp;s, 37.4&nbsp;GiB</td><td>3.40&nbsp;s; <b>2.60&nbsp;s</b> with 8 uncheckpointed filter blocks (47&nbsp;GiB)</td></tr>
+      <tr><td>8&times;1 over 2 nodes, 80&nbsp;GB</td><td>3.00&nbsp;s</td><td><b>2.00&nbsp;s</b>, 24&nbsp;GiB</td></tr>
+      <tr><td>inline-inference summaries</td><td>~4&nbsp;min</td><td>~0</td></tr>
+      <tr><td>epoch-end checkpoints</td><td>2.5&nbsp;min</td><td>~1&nbsp;min</td></tr>
+    </tbody>
+  </table>
+  <p>Global TF32 was faster (2.80&nbsp;s on 80&nbsp;GB) but rejected. In the Legendre transforms it puts 1.2% error at l=360 and 5% at l=700, against 1e-5 in fp32. Only the per-mode channel mixing runs on TF32. 4&times;1 remains the best layout within a node: on 80&nbsp;GB, 1&times;4 takes 4.40&nbsp;s and 2&times;2 5.20&nbsp;s, and 2&times;1 does not fit. A larger local batch does not raise throughput. 8&times;1 trades ~15% more node-hours for 1.3&ndash;1.5&times; faster steps.</p>
+</section>
 
 <section class="answer">
   <span class="eyebrow">Scaling and cost on real 40&nbsp;GB nodes (2026-10-21)</span>
