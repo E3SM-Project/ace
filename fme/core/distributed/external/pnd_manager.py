@@ -26,13 +26,27 @@ We also require a minimum of torch 2.4.0 for FME as a result.
 
 import atexit
 import os
+from datetime import timedelta
 from warnings import warn
 
 import numpy as np
 import torch
 import torch.distributed as dist
+from torch._C._distributed_c10d import Backend as C10dBackend
 
 from fme.core.distributed.torch_distributed import _process_group_timeout
+
+
+def _backend_options(timeout: timedelta) -> C10dBackend.Options:
+    """Options for a new process group of the default group's backend."""
+    options: C10dBackend.Options
+    if dist.get_backend() == dist.Backend.NCCL:
+        options = dist.ProcessGroupNCCL.Options()
+        options.is_high_priority_stream = False
+    else:
+        options = C10dBackend.Options(dist.get_backend())
+    options._timeout = timeout
+    return options
 
 
 class PhysicsNeMoUninitializedDistributedManagerWarning(Warning):
@@ -378,10 +392,19 @@ class DistributedManager:
         # Actually create the mesh:
         force_cpu = os.environ.get("FME_FORCE_CPU", "0") == "1"
         device_type = "cuda" if (self.cuda and not force_cpu) else "cpu"
+        # without options the subgroups get torch's per-backend default
+        # timeout, not the world group's; a world-sized dimension reuses the
+        # world group
+        options = _backend_options(_process_group_timeout())
         self._global_mesh = dist.init_device_mesh(
             device_type,
             mesh_shape,
             mesh_dim_names=mesh_dim_names,
+            backend_override={
+                name: options
+                for name, size in zip(mesh_dim_names, mesh_shape)
+                if size != self.world_size
+            },
         )
 
         # Finally, upon success, cache the mesh dimensions:
@@ -411,7 +434,11 @@ class DistributedManager:
                 # The mesh.mesh object is a GPU tensor and using it will block.
                 ranks = mesh.mesh.cpu()
                 ranks = list(ranks.flatten().tolist())
-                group = dist.new_group(ranks=ranks, use_local_synchronization=True)
+                group = dist.new_group(
+                    ranks=ranks,
+                    timeout=_process_group_timeout(),
+                    use_local_synchronization=True,
+                )
                 self._mesh_groups[key] = group
                 return group
 

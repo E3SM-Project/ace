@@ -34,21 +34,12 @@ def _rank_metadata_from_env() -> tuple[int, int]:
 
 
 def _process_group_timeout() -> timedelta:
-    """How long a collective may wait for the slowest rank before it aborts.
+    """How long a collective may wait for the slowest rank before it aborts,
+    for every process group: ``FME_DIST_TIMEOUT_MINUTES``, 30 by default.
 
-    Ranks synchronise only at the *end* of an inline inference epoch: the window
-    loop has no collective in it, so each rank walks its own initial condition
-    at its own speed and per-rank differences accumulate unchecked. The first
-    all-reduce afterwards, in the aggregator's ``flush_diagnostics``, is where
-    the fastest rank waits out the whole accumulated skew.
-
-    On a 16-rank atmosphere run (876 windows, one initial condition per rank)
-    under campaign I/O contention that skew reached ~30 minutes, which is
-    exactly the default, so the leading rank's NCCL watchdog tore the job down
-    minutes before the trailing rank arrived. Raise
-    ``FME_DIST_TIMEOUT_MINUTES`` when a run dies in ``flush_diagnostics`` with a
-    watchdog timeout on a ``NumelIn=1`` ALLREDUCE; the cost of a larger value is
-    only that a genuine hang takes longer to be reported.
+    Ranks first synchronise after an inline inference epoch, whose per-rank
+    skew can exceed the default on a large, I/O-contended run. A larger value
+    only delays the report of a genuine hang.
     """
     return timedelta(minutes=float(os.environ.get("FME_DIST_TIMEOUT_MINUTES", "30")))
 
