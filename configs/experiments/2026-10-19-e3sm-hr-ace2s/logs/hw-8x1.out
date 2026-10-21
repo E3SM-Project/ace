@@ -1,0 +1,117 @@
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+2026-10-20 20:41:43,520 - root - INFO - --------------- Versions ---------------
+2026-10-20 20:41:43,520 - root - INFO - Torch: 2.10.0+cu128
+2026-10-20 20:41:43,521 - root - INFO - ----------------------------------------
+2026-10-20 20:41:43,521 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 20:41:43,521 - root - INFO - Beaker ID: None
+2026-10-20 20:41:43,521 - root - INFO - Beaker URL: No beaker URL.
+2026-10-20 20:41:43,521 - root - WARNING - Environmental variable BEAKER_EXPERIMENT_ID not found.
+2026-10-20 20:41:43,521 - root - INFO - Environmental variable SLURM_JOB_ID=60063766.
+2026-10-20 20:41:43,521 - root - INFO - Environmental variable SLURM_JOB_USER=mahf708.
+2026-10-20 20:41:43,521 - root - WARNING - Environmental variable FME_TRAIN_DIR not found.
+2026-10-20 20:41:43,521 - root - WARNING - Environmental variable FME_VALID_DIR not found.
+2026-10-20 20:41:43,521 - root - WARNING - Environmental variable FME_STATS_DIR not found.
+2026-10-20 20:41:43,521 - root - WARNING - Environmental variable FME_CHECKPOINT_DIR not found.
+2026-10-20 20:41:43,521 - root - WARNING - Environmental variable FME_OUTPUT_DIR not found.
+2026-10-20 20:41:43,521 - root - WARNING - Environmental variable FME_IMAGE not found.
+2026-10-20 20:41:43,522 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 20:41:43,522 - root - INFO - Current device is cuda:0
+2026-10-20 20:41:43,522 - root - INFO - Initializing training data loader
+2026-10-20 20:41:43,523 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 20:41:47,580 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 20:41:47,585 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 20:41:47,603 - root - INFO - The required variables have been found in the dataset: ['U_2', 'ICEFRAC', 'V_6', 'STW_1', 'V_0', 'surface_precipitation_rate', 'V_5', 'STW_4', 'PS', 'U_0', 'STW_5', 'U_4', 'STW_6', 'T_5', 'STW_2', 'V_3', 'V_2', 'Tat2m', 'T_7', 'T_2', 'LANDFRAC', 'U_6', 'LHFLX', 'V_4', 'FLUT', 'FLUS', 'Vat10m', 'U_7', 'FSUTOA', 'PHIS', 'V_7', 'T_6', 'STW_3', 'STW_0', 'V_1', 'SHFLX', 'Uat10m', 'OCNFRAC', 'STW_7', 'U_1', 'T_0', 'FLDS', 'Qat2m', 'DTENDTTW', 'U_5', 'TAUY', 'TAUX', 'T_3', 'FSNS', 'T_4', 'T_1', 'TS', 'frozen_precipitation_rate', 'SOLIN', 'U_3'].
+2026-10-20 20:41:47,619 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:41:47,647 - root - INFO - Subsetting dataset samples according to slice(124, np.int64(360), None).
+2026-10-20 20:41:47,648 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 90, None), slice(0, 1440, None)) of the data.
+2026-10-20 20:41:47,651 - root - INFO - Initializing validation data loaders
+2026-10-20 20:41:47,652 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 20:41:47,710 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 20:41:47,712 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 20:41:47,729 - root - INFO - The required variables have been found in the dataset: ['U_2', 'ICEFRAC', 'V_6', 'STW_1', 'V_0', 'surface_precipitation_rate', 'V_5', 'STW_4', 'PS', 'U_0', 'STW_5', 'U_4', 'STW_6', 'T_5', 'STW_2', 'V_3', 'V_2', 'Tat2m', 'T_7', 'T_2', 'LANDFRAC', 'U_6', 'LHFLX', 'V_4', 'FLUT', 'FLUS', 'Vat10m', 'U_7', 'FSUTOA', 'PHIS', 'V_7', 'T_6', 'STW_3', 'STW_0', 'V_1', 'SHFLX', 'Uat10m', 'OCNFRAC', 'STW_7', 'U_1', 'T_0', 'FLDS', 'Qat2m', 'DTENDTTW', 'U_5', 'TAUY', 'TAUX', 'T_3', 'FSNS', 'T_4', 'T_1', 'TS', 'frozen_precipitation_rate', 'SOLIN', 'U_3'].
+2026-10-20 20:41:47,741 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 20:41:47,761 - root - INFO - Subsetting dataset samples according to slice(18980, np.int64(20440), 4).
+2026-10-20 20:41:47,761 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 90, None), slice(0, 1440, None)) of the data.
+2026-10-20 20:41:47,762 - root - INFO - train data: 240 samples, 240 batches
+2026-10-20 20:41:47,762 - root - INFO - train data: pool_size=1, 5 sub-batches per window, coming from the following base loader:
+2026-10-20 20:41:47,762 - root - INFO - train (base loader) data: 48 samples, 48 batches
+2026-10-20 20:41:47,762 - root - INFO - train (base loader) data: first sample's initial time: 0001-02-01 00:00:00
+2026-10-20 20:41:47,762 - root - INFO - train (base loader) data: last sample's initial time: 0001-03-31 18:00:00
+2026-10-20 20:41:47,762 - root - INFO - val data: 365 samples, 365 batches
+2026-10-20 20:41:47,762 - root - INFO - val data: first sample's initial time: 0014-01-01 00:00:00
+2026-10-20 20:41:47,762 - root - INFO - val data: last sample's initial time: 0014-12-31 00:00:00
+2026-10-20 20:41:47,763 - root - INFO - Initializing inline inference data loaders
+2026-10-20 20:41:47,763 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 20:41:47,823 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 20:41:47,826 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 20:41:47,843 - root - INFO - The required variables have been found in the dataset: ['U_2', 'ICEFRAC', 'V_6', 'STW_1', 'V_0', 'surface_precipitation_rate', 'V_5', 'STW_4', 'PS', 'U_0', 'STW_5', 'U_4', 'STW_6', 'T_5', 'STW_2', 'V_3', 'V_2', 'Tat2m', 'T_7', 'T_2', 'LANDFRAC', 'U_6', 'LHFLX', 'V_4', 'FLUT', 'FLUS', 'Vat10m', 'U_7', 'FSUTOA', 'PHIS', 'V_7', 'T_6', 'STW_3', 'STW_0', 'V_1', 'SHFLX', 'Uat10m', 'OCNFRAC', 'STW_7', 'U_1', 'T_0', 'FLDS', 'Qat2m', 'DTENDTTW', 'U_5', 'TAUY', 'TAUX', 'T_3', 'FSNS', 'T_4', 'T_1', 'TS', 'frozen_precipitation_rate', 'SOLIN', 'U_3'].
+2026-10-20 20:41:47,854 - root - INFO - Dataset now has 23340 samples of length 21.
+2026-10-20 20:41:47,855 - root - INFO - Loading only this rank's spatial tile (slice(0, 90, None), slice(0, 1440, None)) of the data.
+2026-10-20 20:41:47,869 - root - INFO - Multiprocessing inference context: fork
+2026-10-20 20:42:43,615 - root - INFO - Starting model initialization
+2026-10-20 20:42:43,616 - root - INFO - Initializing stepper from provided config
+2026-10-20 20:42:43,616 - root - INFO - Initializing stepper from provided config
+2026-10-20 20:43:17,632 - root - INFO - Current device is cuda:0
+2026-10-20 20:43:17,677 - root - INFO - Number of trainable model parameters: 268770048
+2026-10-20 20:43:17,677 - root - INFO - Starting Training Loop...
+2026-10-20 20:43:18,003 - root - INFO - Beginning epoch after 0 complete epochs
+2026-10-20 20:43:18,004 - root - INFO - Starting training step for model trained for 0 complete epochs
+2026-10-20 20:43:18,122 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:43:18,122 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:43:18,122 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:43:18,148 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:43:31,924 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:43:31,924 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:43:31,924 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:43:31,932 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:44:00,314 - root - INFO - Step 5: {'batch_loss': tensor(4.1588, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.1756573892895054, 'lr': 0.0001}
+2026-10-20 20:44:16,441 - root - INFO - Step 10: {'batch_loss': tensor(2.5823, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.308455483098203, 'lr': 0.0001}
+2026-10-20 20:44:33,381 - root - INFO - Step 15: {'batch_loss': tensor(2.0996, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.2955285820601054, 'lr': 0.0001}
+2026-10-20 20:44:49,534 - root - INFO - Step 20: {'batch_loss': tensor(1.7823, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.3091122410733285, 'lr': 0.0001}
+2026-10-20 20:45:05,682 - root - INFO - Step 25: {'batch_loss': tensor(1.5361, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.30965186977119213, 'lr': 0.0001}
+2026-10-20 20:45:22,193 - root - INFO - Step 30: {'batch_loss': tensor(1.3014, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.3032092115829206, 'lr': 0.0001}
+2026-10-20 20:45:38,346 - root - INFO - Step 35: {'batch_loss': tensor(1.2914, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.30913673257282853, 'lr': 0.0001}
+2026-10-20 20:45:54,501 - root - INFO - Step 40: {'batch_loss': tensor(1.2180, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.3094879181471609, 'lr': 0.0001}
+2026-10-20 20:46:11,075 - root - INFO - Step 45: {'batch_loss': tensor(1.0701, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.3020359709570472, 'lr': 0.0001}
+2026-10-20 20:46:27,195 - root - INFO - Step 50: {'batch_loss': tensor(1.1160, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.3098225037779872, 'lr': 0.0001}
+2026-10-20 20:46:43,345 - root - INFO - Step 55: {'batch_loss': tensor(1.1579, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.3098000773217947, 'lr': 0.0001}
+2026-10-20 20:46:59,529 - root - INFO - Step 60: {'batch_loss': tensor(1.0198, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.3087256170811436, 'lr': 0.0001}
+2026-10-20 20:47:15,716 - root - INFO - Step 65: {'batch_loss': tensor(0.9674, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.3089094229944552, 'lr': 0.0001}
+2026-10-20 20:47:31,831 - root - INFO - Step 70: {'batch_loss': tensor(0.9697, device='cuda:0'), 'training_samples_per_second_on_rank_0': 0.31033892518019257, 'lr': 0.0001}
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 20:47:36.467000 758931 torch/distributed/elastic/agent/server/api.py:739] Received 15 death signal, shutting down workers
+W1020 20:47:36.471000 758931 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 758983 closing signal SIGTERM
+W1020 20:47:36.472000 758931 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 758984 closing signal SIGTERM
+W1020 20:47:36.473000 758931 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 758985 closing signal SIGTERM
+W1020 20:47:36.473000 758931 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 758986 closing signal SIGTERM
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 20:47:36.511000 734396 torch/distributed/elastic/agent/server/api.py:739] Received 15 death signal, shutting down workers
+W1020 20:47:36.514000 734396 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 734438 closing signal SIGTERM
+W1020 20:47:36.515000 734396 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 734439 closing signal SIGTERM
+W1020 20:47:36.516000 734396 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 734440 closing signal SIGTERM
+W1020 20:47:36.516000 734396 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 734441 closing signal SIGTERM

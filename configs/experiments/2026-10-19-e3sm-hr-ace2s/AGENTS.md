@@ -248,3 +248,5 @@ Newest last. Times are PDT on 2026-10-19 unless noted.
 - Correction: earlier 40 GB results that fit had <= 2 ICs per replica and
   mostly FME_GPU_MEM_CAP_GB=38.5 on every rank; the "~2 GiB margin" was
   over-stated; the margin is ~1.4 GiB.
+- Tile layouts at full harmonics on 40 GB (section 16): 8x1 over 2 nodes
+  3.20 s/step (20.8 GiB), 4x2 3.80 s (22.3 GiB); 2x2, 1x4 and 2x1 OOM.

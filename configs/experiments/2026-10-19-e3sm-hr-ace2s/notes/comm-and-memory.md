@@ -530,3 +530,23 @@ reserved = 2.5-2.6 GB per GPU. PyTorch can therefore use ~37.0 GiB of the
 - checkpoints: latest/epoch (32 GB, with optimizer state) 53-65 s each,
   best/best_inference/EMA (8 GB) 12-16 s each; 2.5 min at an epoch end;
 - startup to the first step: ~6-8 min.
+
+### Tile layouts at full harmonics on 40 GB (one replica, batch 1)
+
+Production config, log every 5 steps, median of 5-step intervals after
+step 15. Allocator peak on rank 0.
+
+| layout | nodes | s/step | samples/s per node | vs 4x1 per node | peak alloc / reserved GiB |
+|---|---|---|---|---|---|
+| 4x1 | 1 | 5.00 | 0.200 | - | 35.6 / 37.1 |
+| 8x1 | 2 | 3.20 | 0.156 | -22% | 20.8 / 21.9 |
+| 4x2 | 2 | 3.80 | 0.132 | -34% | 22.3 / 23.8 |
+| 2x2 | 1 | OOM (first step, 36.4 allocated) | | | |
+| 1x4 | 1 | OOM (first step, 36.4 allocated) | | | |
+| 2x1 x 2 replicas | 1 | OOM (first step, 36.4 allocated) | | | |
+
+8x1 is 1.56x faster per sample on 2x the GPUs (78% parallel efficiency).
+Layouts with H < 4 do not fit on 40 GB: `shard_spatial_parameters` splits
+the spectral weights along l, i.e. over H only, so a W split saves less.
+8x1 leaves ~15 GiB free, so 8x1 with 2 samples per replica may fit
+(untested).

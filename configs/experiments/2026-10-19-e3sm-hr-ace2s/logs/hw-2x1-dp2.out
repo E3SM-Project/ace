@@ -1,0 +1,651 @@
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+Could not import pad from earth2grid.healpix.
+2026-10-20 20:41:42,635 - root - INFO - --------------- Versions ---------------
+2026-10-20 20:41:42,636 - root - INFO - Torch: 2.10.0+cu128
+2026-10-20 20:41:42,636 - root - INFO - ----------------------------------------
+2026-10-20 20:41:42,636 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 20:41:42,636 - root - INFO - Beaker ID: None
+2026-10-20 20:41:42,636 - root - INFO - Beaker URL: No beaker URL.
+2026-10-20 20:41:42,636 - root - WARNING - Environmental variable BEAKER_EXPERIMENT_ID not found.
+2026-10-20 20:41:42,636 - root - INFO - Environmental variable SLURM_JOB_ID=60063553.
+2026-10-20 20:41:42,636 - root - INFO - Environmental variable SLURM_JOB_USER=mahf708.
+2026-10-20 20:41:42,636 - root - WARNING - Environmental variable FME_TRAIN_DIR not found.
+2026-10-20 20:41:42,636 - root - WARNING - Environmental variable FME_VALID_DIR not found.
+2026-10-20 20:41:42,636 - root - WARNING - Environmental variable FME_STATS_DIR not found.
+2026-10-20 20:41:42,636 - root - WARNING - Environmental variable FME_CHECKPOINT_DIR not found.
+2026-10-20 20:41:42,636 - root - WARNING - Environmental variable FME_OUTPUT_DIR not found.
+2026-10-20 20:41:42,637 - root - WARNING - Environmental variable FME_IMAGE not found.
+2026-10-20 20:41:42,637 - root - WARNING - Beaker Experiment ID not found.
+2026-10-20 20:41:42,637 - root - INFO - Current device is cuda:0
+2026-10-20 20:41:42,637 - root - INFO - Initializing training data loader
+2026-10-20 20:41:42,638 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 20:41:46,643 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 20:41:46,646 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 20:41:46,663 - root - INFO - The required variables have been found in the dataset: ['STW_1', 'PHIS', 'LHFLX', 'FLDS', 'FLUT', 'T_7', 'U_2', 'T_0', 'T_6', 'FSUTOA', 'SOLIN', 'U_4', 'Vat10m', 'U_0', 'V_3', 'frozen_precipitation_rate', 'U_3', 'Qat2m', 'U_7', 'SHFLX', 'V_4', 'STW_7', 'V_5', 'V_2', 'U_1', 'PS', 'STW_5', 'T_5', 'V_0', 'OCNFRAC', 'U_5', 'DTENDTTW', 'T_3', 'V_6', 'LANDFRAC', 'TS', 'STW_0', 'T_1', 'surface_precipitation_rate', 'T_4', 'U_6', 'Uat10m', 'V_7', 'FSNS', 'FLUS', 'ICEFRAC', 'STW_4', 'T_2', 'STW_3', 'Tat2m', 'V_1', 'STW_6', 'STW_2', 'TAUX', 'TAUY'].
+2026-10-20 20:41:46,677 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:41:46,705 - root - INFO - Subsetting dataset samples according to slice(124, np.int64(360), None).
+2026-10-20 20:41:46,706 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 360, None), slice(0, 1440, None)) of the data.
+2026-10-20 20:41:46,707 - root - INFO - Initializing validation data loaders
+2026-10-20 20:41:46,708 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 20:41:46,763 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 20:41:46,765 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 20:41:46,781 - root - INFO - The required variables have been found in the dataset: ['STW_1', 'PHIS', 'LHFLX', 'FLDS', 'FLUT', 'T_7', 'U_2', 'T_0', 'T_6', 'FSUTOA', 'SOLIN', 'U_4', 'Vat10m', 'U_0', 'V_3', 'frozen_precipitation_rate', 'U_3', 'Qat2m', 'U_7', 'SHFLX', 'V_4', 'STW_7', 'V_5', 'V_2', 'U_1', 'PS', 'STW_5', 'T_5', 'V_0', 'OCNFRAC', 'U_5', 'DTENDTTW', 'T_3', 'V_6', 'LANDFRAC', 'TS', 'STW_0', 'T_1', 'surface_precipitation_rate', 'T_4', 'U_6', 'Uat10m', 'V_7', 'FSNS', 'FLUS', 'ICEFRAC', 'STW_4', 'T_2', 'STW_3', 'Tat2m', 'V_1', 'STW_6', 'STW_2', 'TAUX', 'TAUY'].
+2026-10-20 20:41:46,793 - root - INFO - Dataset now has 23359 samples of length 2.
+2026-10-20 20:41:46,812 - root - INFO - Subsetting dataset samples according to slice(18980, np.int64(20440), 4).
+2026-10-20 20:41:46,812 - fme.ace.data_loading.getters - INFO - Loading only this rank's spatial tile (slice(0, 360, None), slice(0, 1440, None)) of the data.
+2026-10-20 20:41:46,813 - root - INFO - train data: 120 samples, 120 batches
+2026-10-20 20:41:46,813 - root - INFO - train data: pool_size=1, 5 sub-batches per window, coming from the following base loader:
+2026-10-20 20:41:46,813 - root - INFO - train (base loader) data: 24 samples, 24 batches
+2026-10-20 20:41:46,813 - root - INFO - train (base loader) data: first sample's initial time: 0001-02-01 00:00:00
+2026-10-20 20:41:46,813 - root - INFO - train (base loader) data: last sample's initial time: 0001-03-31 18:00:00
+2026-10-20 20:41:46,813 - root - INFO - val data: 183 samples, 183 batches
+2026-10-20 20:41:46,813 - root - INFO - val data: first sample's initial time: 0014-01-01 00:00:00
+2026-10-20 20:41:46,813 - root - INFO - val data: last sample's initial time: 0014-12-31 00:00:00
+2026-10-20 20:41:46,813 - root - INFO - Initializing inline inference data loaders
+2026-10-20 20:41:46,814 - root - INFO - Opening data at /pscratch/sd/m/mahf708/hr-data/v3.HR.F2010.aigo.PD.y1/eam.h0/v3.HR.F2010.aigo.PD.y1.eam.h0.*.nc
+2026-10-20 20:41:46,869 - root - INFO - Initialized SpatialMaskProvider(
+    masks=[
+        ,
+    ]
+).
+2026-10-20 20:41:46,871 - root - INFO - Horizontal coordinate sizes are {'lat': 720, 'lon': 1440}.
+2026-10-20 20:41:46,888 - root - INFO - The required variables have been found in the dataset: ['STW_1', 'PHIS', 'LHFLX', 'FLDS', 'FLUT', 'T_7', 'U_2', 'T_0', 'T_6', 'FSUTOA', 'SOLIN', 'U_4', 'Vat10m', 'U_0', 'V_3', 'frozen_precipitation_rate', 'U_3', 'Qat2m', 'U_7', 'SHFLX', 'V_4', 'STW_7', 'V_5', 'V_2', 'U_1', 'PS', 'STW_5', 'T_5', 'V_0', 'OCNFRAC', 'U_5', 'DTENDTTW', 'T_3', 'V_6', 'LANDFRAC', 'TS', 'STW_0', 'T_1', 'surface_precipitation_rate', 'T_4', 'U_6', 'Uat10m', 'V_7', 'FSNS', 'FLUS', 'ICEFRAC', 'STW_4', 'T_2', 'STW_3', 'Tat2m', 'V_1', 'STW_6', 'STW_2', 'TAUX', 'TAUY'].
+2026-10-20 20:41:46,899 - root - INFO - Dataset now has 23340 samples of length 21.
+2026-10-20 20:41:46,900 - root - INFO - Loading only this rank's spatial tile (slice(0, 360, None), slice(0, 1440, None)) of the data.
+2026-10-20 20:41:46,913 - root - INFO - Multiprocessing inference context: fork
+2026-10-20 20:43:21,271 - root - INFO - Starting model initialization
+2026-10-20 20:43:21,273 - root - INFO - Initializing stepper from provided config
+2026-10-20 20:43:21,273 - root - INFO - Initializing stepper from provided config
+2026-10-20 20:44:01,445 - root - INFO - Current device is cuda:0
+2026-10-20 20:44:01,504 - root - INFO - Number of trainable model parameters: 1055079168
+2026-10-20 20:44:01,505 - root - INFO - Starting Training Loop...
+2026-10-20 20:44:01,881 - root - INFO - Beginning epoch after 0 complete epochs
+2026-10-20 20:44:01,881 - root - INFO - Starting training step for model trained for 0 complete epochs
+2026-10-20 20:44:01,969 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:44:01,969 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:44:01,969 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:44:01,984 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:44:26,536 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:44:26,536 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:44:26,536 - root - INFO - Dataset now has 23355 samples of length 6.
+2026-10-20 20:44:26,562 - root - INFO - Dataset now has 23355 samples of length 6.
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank3]:   File "<frozen runpy>", line 88, in _run_code
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/__main__.py", line 9, in <module>
+[rank3]:     main(args.yaml_config, override_dotlist=args.override)
+[rank3]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train.py", line 107, in main
+[rank3]:     run_train(config)
+[rank3]:     ~~~~~~~~~^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train.py", line 91, in run_train
+[rank3]:     trainer.train()
+[rank3]:     ~~~~~~~~~~~~~^^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/generics/trainer.py", line 495, in train
+[rank3]:     train_summary = self.train_one_epoch()
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/generics/trainer.py", line 624, in train_one_epoch
+[rank3]:     stepped = self.stepper.train_on_batch(batch, self.optimization)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/stepper/single_module.py", line 1727, in train_on_batch
+[rank3]:     output_list, per_channel_losses = self._accumulate_loss(
+[rank3]:                                       ~~~~~~~~~~~~~~~~~~~~~^
+[rank3]:         data,
+[rank3]:         ^^^^^
+[rank3]:     ...<4 lines>...
+[rank3]:         n_loss_steps=n_loss_steps,
+[rank3]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank3]:     )
+[rank3]:     ^
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/stepper/single_module.py", line 1803, in _accumulate_loss
+[rank3]:     step_output = next(output_iterator)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/stepper/single_module.py", line 1203, in predict_generator
+[rank3]:     result = self.step(
+[rank3]:         StepArgs(
+[rank3]:     ...<6 lines>...
+[rank3]:         wrapper=checkpoint,
+[rank3]:     )
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/stepper/single_module.py", line 1117, in step
+[rank3]:     result = self._step_obj.step(args=args, wrapper=wrapper)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/step/single_module.py", line 555, in step
+[rank3]:     return step_with_adjustments(
+[rank3]:         input=args.input,
+[rank3]:     ...<10 lines>...
+[rank3]:         stepper_state=args.stepper_state,
+[rank3]:     )
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/step/single_module.py", line 792, in step_with_adjustments
+[rank3]:     output_norm = network_calls(input_norm)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/step/single_module.py", line 536, in network_call
+[rank3]:     output_tensor = self.module.wrap_module(wrapper)(
+[rank3]:         input_tensor,
+[rank3]:         labels=args.labels,
+[rank3]:     )
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/registry/module.py", line 97, in __call__
+[rank3]:     return self._module(input)
+[rank3]:            ~~~~~~~~~~~~^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank3]:     return self._call_impl(*args, **kwargs)
+[rank3]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank3]:     return forward_call(*args, **kwargs)
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/parallel/distributed.py", line 1666, in forward
+[rank3]:     else self._run_ddp_forward(*inputs, **kwargs)
+[rank3]:          ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/parallel/distributed.py", line 1492, in _run_ddp_forward
+[rank3]:     return self.module(*inputs, **kwargs)  # type: ignore[index]
+[rank3]:            ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank3]:     return self._call_impl(*args, **kwargs)
+[rank3]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank3]:     return forward_call(*args, **kwargs)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/registry/stochastic_sfno.py", line 184, in forward
+[rank3]:     return self.conditional_model(
+[rank3]:            ~~~~~~~~~~~~~~~~~~~~~~^
+[rank3]:         x,
+[rank3]:         ^^
+[rank3]:     ...<5 lines>...
+[rank3]:         ),
+[rank3]:         ^^
+[rank3]:     )
+[rank3]:     ^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank3]:     return self._call_impl(*args, **kwargs)
+[rank3]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank3]:     return forward_call(*args, **kwargs)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/sfnonet.py", line 843, in forward
+[rank3]:     x = self._forward_features(x, context)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/sfnonet.py", line 794, in _forward_features
+[rank3]:     x = checkpoint(blk, x, context, use_reentrant=False)
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_compile.py", line 54, in inner
+[rank3]:     return disable_fn(*args, **kwargs)
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_dynamo/eval_frame.py", line 1181, in _fn
+[rank3]:     return fn(*args, **kwargs)
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/checkpoint.py", line 512, in checkpoint
+[rank3]:     ret = function(*args, **kwargs)
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank3]:     return self._call_impl(*args, **kwargs)
+[rank3]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank3]:     return forward_call(*args, **kwargs)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/sfnonet.py", line 427, in forward
+[rank3]:     self.norm1(
+[rank3]:     ~~~~~~~~~~^
+[rank3]:         x[..., : self.output_shape_loc[0], : self.output_shape_loc[1]],
+[rank3]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank3]:         context_embedding,
+[rank3]:         ^^^^^^^^^^^^^^^^^^
+[rank3]:         timer=norm1_timer,
+[rank3]:         ^^^^^^^^^^^^^^^^^^
+[rank3]:     )
+[rank3]:     ^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank3]:     return self._call_impl(*args, **kwargs)
+[rank3]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank3]:     return forward_call(*args, **kwargs)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/layers.py", line 317, in forward
+[rank3]:     x_norm: torch.Tensor = self.norm(x)
+[rank3]:                            ~~~~~~~~~^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank3]:     return self._call_impl(*args, **kwargs)
+[rank3]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank3]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank3]:     return forward_call(*args, **kwargs)
+[rank3]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/layers.py", line 139, in forward
+[rank3]:     y = y * self.weight.view(*shape) + self.bias.view(*shape)
+[rank3]:         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+[rank3]: torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.48 GiB. GPU 3 has a total capacity of 39.49 GiB of which 942.25 MiB is free. Including non-PyTorch memory, this process has 38.50 GiB memory in use. Of the allocated memory 36.43 GiB is allocated by PyTorch, and 66.63 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[rank2]: Traceback (most recent call last):
+[rank2]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank2]:   File "<frozen runpy>", line 88, in _run_code
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/__main__.py", line 9, in <module>
+[rank2]:     main(args.yaml_config, override_dotlist=args.override)
+[rank2]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train.py", line 107, in main
+[rank2]:     run_train(config)
+[rank2]:     ~~~~~~~~~^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train.py", line 91, in run_train
+[rank2]:     trainer.train()
+[rank2]:     ~~~~~~~~~~~~~^^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/generics/trainer.py", line 495, in train
+[rank2]:     train_summary = self.train_one_epoch()
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/generics/trainer.py", line 624, in train_one_epoch
+[rank2]:     stepped = self.stepper.train_on_batch(batch, self.optimization)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/stepper/single_module.py", line 1727, in train_on_batch
+[rank2]:     output_list, per_channel_losses = self._accumulate_loss(
+[rank2]:                                       ~~~~~~~~~~~~~~~~~~~~~^
+[rank2]:         data,
+[rank2]:         ^^^^^
+[rank2]:     ...<4 lines>...
+[rank2]:         n_loss_steps=n_loss_steps,
+[rank2]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank2]:     )
+[rank2]:     ^
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/stepper/single_module.py", line 1803, in _accumulate_loss
+[rank2]:     step_output = next(output_iterator)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/stepper/single_module.py", line 1203, in predict_generator
+[rank2]:     result = self.step(
+[rank2]:         StepArgs(
+[rank2]:     ...<6 lines>...
+[rank2]:         wrapper=checkpoint,
+[rank2]:     )
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/stepper/single_module.py", line 1117, in step
+[rank2]:     result = self._step_obj.step(args=args, wrapper=wrapper)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/step/single_module.py", line 555, in step
+[rank2]:     return step_with_adjustments(
+[rank2]:         input=args.input,
+[rank2]:     ...<10 lines>...
+[rank2]:         stepper_state=args.stepper_state,
+[rank2]:     )
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/step/single_module.py", line 792, in step_with_adjustments
+[rank2]:     output_norm = network_calls(input_norm)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/step/single_module.py", line 536, in network_call
+[rank2]:     output_tensor = self.module.wrap_module(wrapper)(
+[rank2]:         input_tensor,
+[rank2]:         labels=args.labels,
+[rank2]:     )
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/registry/module.py", line 97, in __call__
+[rank2]:     return self._module(input)
+[rank2]:            ~~~~~~~~~~~~^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank2]:     return self._call_impl(*args, **kwargs)
+[rank2]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank2]:     return forward_call(*args, **kwargs)
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/parallel/distributed.py", line 1666, in forward
+[rank2]:     else self._run_ddp_forward(*inputs, **kwargs)
+[rank2]:          ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/parallel/distributed.py", line 1492, in _run_ddp_forward
+[rank2]:     return self.module(*inputs, **kwargs)  # type: ignore[index]
+[rank2]:            ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank2]:     return self._call_impl(*args, **kwargs)
+[rank2]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank2]:     return forward_call(*args, **kwargs)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/registry/stochastic_sfno.py", line 184, in forward
+[rank2]:     return self.conditional_model(
+[rank2]:            ~~~~~~~~~~~~~~~~~~~~~~^
+[rank2]:         x,
+[rank2]:         ^^
+[rank2]:     ...<5 lines>...
+[rank2]:         ),
+[rank2]:         ^^
+[rank2]:     )
+[rank2]:     ^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank2]:     return self._call_impl(*args, **kwargs)
+[rank2]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank2]:     return forward_call(*args, **kwargs)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/sfnonet.py", line 843, in forward
+[rank2]:     x = self._forward_features(x, context)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/sfnonet.py", line 794, in _forward_features
+[rank2]:     x = checkpoint(blk, x, context, use_reentrant=False)
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_compile.py", line 54, in inner
+[rank2]:     return disable_fn(*args, **kwargs)
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_dynamo/eval_frame.py", line 1181, in _fn
+[rank2]:     return fn(*args, **kwargs)
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/checkpoint.py", line 512, in checkpoint
+[rank2]:     ret = function(*args, **kwargs)
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank2]:     return self._call_impl(*args, **kwargs)
+[rank2]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank2]:     return forward_call(*args, **kwargs)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/sfnonet.py", line 427, in forward
+[rank2]:     self.norm1(
+[rank2]:     ~~~~~~~~~~^
+[rank2]:         x[..., : self.output_shape_loc[0], : self.output_shape_loc[1]],
+[rank2]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank2]:         context_embedding,
+[rank2]:         ^^^^^^^^^^^^^^^^^^
+[rank2]:         timer=norm1_timer,
+[rank2]:         ^^^^^^^^^^^^^^^^^^
+[rank2]:     )
+[rank2]:     ^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank2]:     return self._call_impl(*args, **kwargs)
+[rank2]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank2]:     return forward_call(*args, **kwargs)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/layers.py", line 317, in forward
+[rank2]:     x_norm: torch.Tensor = self.norm(x)
+[rank2]:                            ~~~~~~~~~^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank2]:     return self._call_impl(*args, **kwargs)
+[rank2]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank2]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank2]:     return forward_call(*args, **kwargs)
+[rank2]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/layers.py", line 139, in forward
+[rank2]:     y = y * self.weight.view(*shape) + self.bias.view(*shape)
+[rank2]:         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+[rank2]: torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.48 GiB. GPU 2 has a total capacity of 39.49 GiB of which 942.25 MiB is free. Including non-PyTorch memory, this process has 38.50 GiB memory in use. Of the allocated memory 36.43 GiB is allocated by PyTorch, and 66.63 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank0]:   File "<frozen runpy>", line 88, in _run_code
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/__main__.py", line 9, in <module>
+[rank0]:     main(args.yaml_config, override_dotlist=args.override)
+[rank0]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train.py", line 107, in main
+[rank0]:     run_train(config)
+[rank0]:     ~~~~~~~~~^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train.py", line 91, in run_train
+[rank0]:     trainer.train()
+[rank0]:     ~~~~~~~~~~~~~^^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/generics/trainer.py", line 495, in train
+[rank0]:     train_summary = self.train_one_epoch()
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/generics/trainer.py", line 624, in train_one_epoch
+[rank0]:     stepped = self.stepper.train_on_batch(batch, self.optimization)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/stepper/single_module.py", line 1727, in train_on_batch
+[rank0]:     output_list, per_channel_losses = self._accumulate_loss(
+[rank0]:                                       ~~~~~~~~~~~~~~~~~~~~~^
+[rank0]:         data,
+[rank0]:         ^^^^^
+[rank0]:     ...<4 lines>...
+[rank0]:         n_loss_steps=n_loss_steps,
+[rank0]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:     )
+[rank0]:     ^
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/stepper/single_module.py", line 1803, in _accumulate_loss
+[rank0]:     step_output = next(output_iterator)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/stepper/single_module.py", line 1203, in predict_generator
+[rank0]:     result = self.step(
+[rank0]:         StepArgs(
+[rank0]:     ...<6 lines>...
+[rank0]:         wrapper=checkpoint,
+[rank0]:     )
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/stepper/single_module.py", line 1117, in step
+[rank0]:     result = self._step_obj.step(args=args, wrapper=wrapper)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/step/single_module.py", line 555, in step
+[rank0]:     return step_with_adjustments(
+[rank0]:         input=args.input,
+[rank0]:     ...<10 lines>...
+[rank0]:         stepper_state=args.stepper_state,
+[rank0]:     )
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/step/single_module.py", line 792, in step_with_adjustments
+[rank0]:     output_norm = network_calls(input_norm)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/step/single_module.py", line 536, in network_call
+[rank0]:     output_tensor = self.module.wrap_module(wrapper)(
+[rank0]:         input_tensor,
+[rank0]:         labels=args.labels,
+[rank0]:     )
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/registry/module.py", line 97, in __call__
+[rank0]:     return self._module(input)
+[rank0]:            ~~~~~~~~~~~~^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/parallel/distributed.py", line 1666, in forward
+[rank0]:     else self._run_ddp_forward(*inputs, **kwargs)
+[rank0]:          ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/parallel/distributed.py", line 1492, in _run_ddp_forward
+[rank0]:     return self.module(*inputs, **kwargs)  # type: ignore[index]
+[rank0]:            ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/registry/stochastic_sfno.py", line 184, in forward
+[rank0]:     return self.conditional_model(
+[rank0]:            ~~~~~~~~~~~~~~~~~~~~~~^
+[rank0]:         x,
+[rank0]:         ^^
+[rank0]:     ...<5 lines>...
+[rank0]:         ),
+[rank0]:         ^^
+[rank0]:     )
+[rank0]:     ^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/sfnonet.py", line 843, in forward
+[rank0]:     x = self._forward_features(x, context)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/sfnonet.py", line 794, in _forward_features
+[rank0]:     x = checkpoint(blk, x, context, use_reentrant=False)
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_compile.py", line 54, in inner
+[rank0]:     return disable_fn(*args, **kwargs)
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_dynamo/eval_frame.py", line 1181, in _fn
+[rank0]:     return fn(*args, **kwargs)
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/checkpoint.py", line 512, in checkpoint
+[rank0]:     ret = function(*args, **kwargs)
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/sfnonet.py", line 427, in forward
+[rank0]:     self.norm1(
+[rank0]:     ~~~~~~~~~~^
+[rank0]:         x[..., : self.output_shape_loc[0], : self.output_shape_loc[1]],
+[rank0]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank0]:         context_embedding,
+[rank0]:         ^^^^^^^^^^^^^^^^^^
+[rank0]:         timer=norm1_timer,
+[rank0]:         ^^^^^^^^^^^^^^^^^^
+[rank0]:     )
+[rank0]:     ^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/layers.py", line 317, in forward
+[rank0]:     x_norm: torch.Tensor = self.norm(x)
+[rank0]:                            ~~~~~~~~~^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank0]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/layers.py", line 139, in forward
+[rank0]:     y = y * self.weight.view(*shape) + self.bias.view(*shape)
+[rank0]:         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+[rank0]: torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.48 GiB. GPU 0 has a total capacity of 39.49 GiB of which 830.25 MiB is free. Including non-PyTorch memory, this process has 38.59 GiB memory in use. Of the allocated memory 36.43 GiB is allocated by PyTorch, and 66.63 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "<frozen runpy>", line 198, in _run_module_as_main
+[rank1]:   File "<frozen runpy>", line 88, in _run_code
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/__main__.py", line 9, in <module>
+[rank1]:     main(args.yaml_config, override_dotlist=args.override)
+[rank1]:     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train.py", line 107, in main
+[rank1]:     run_train(config)
+[rank1]:     ~~~~~~~~~^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/train/train.py", line 91, in run_train
+[rank1]:     trainer.train()
+[rank1]:     ~~~~~~~~~~~~~^^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/generics/trainer.py", line 495, in train
+[rank1]:     train_summary = self.train_one_epoch()
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/generics/trainer.py", line 624, in train_one_epoch
+[rank1]:     stepped = self.stepper.train_on_batch(batch, self.optimization)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/stepper/single_module.py", line 1727, in train_on_batch
+[rank1]:     output_list, per_channel_losses = self._accumulate_loss(
+[rank1]:                                       ~~~~~~~~~~~~~~~~~~~~~^
+[rank1]:         data,
+[rank1]:         ^^^^^
+[rank1]:     ...<4 lines>...
+[rank1]:         n_loss_steps=n_loss_steps,
+[rank1]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank1]:     )
+[rank1]:     ^
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/stepper/single_module.py", line 1803, in _accumulate_loss
+[rank1]:     step_output = next(output_iterator)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/stepper/single_module.py", line 1203, in predict_generator
+[rank1]:     result = self.step(
+[rank1]:         StepArgs(
+[rank1]:     ...<6 lines>...
+[rank1]:         wrapper=checkpoint,
+[rank1]:     )
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/stepper/single_module.py", line 1117, in step
+[rank1]:     result = self._step_obj.step(args=args, wrapper=wrapper)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/step/single_module.py", line 555, in step
+[rank1]:     return step_with_adjustments(
+[rank1]:         input=args.input,
+[rank1]:     ...<10 lines>...
+[rank1]:         stepper_state=args.stepper_state,
+[rank1]:     )
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/step/single_module.py", line 792, in step_with_adjustments
+[rank1]:     output_norm = network_calls(input_norm)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/step/single_module.py", line 536, in network_call
+[rank1]:     output_tensor = self.module.wrap_module(wrapper)(
+[rank1]:         input_tensor,
+[rank1]:         labels=args.labels,
+[rank1]:     )
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/registry/module.py", line 97, in __call__
+[rank1]:     return self._module(input)
+[rank1]:            ~~~~~~~~~~~~^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/parallel/distributed.py", line 1666, in forward
+[rank1]:     else self._run_ddp_forward(*inputs, **kwargs)
+[rank1]:          ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/parallel/distributed.py", line 1492, in _run_ddp_forward
+[rank1]:     return self.module(*inputs, **kwargs)  # type: ignore[index]
+[rank1]:            ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/ace/registry/stochastic_sfno.py", line 184, in forward
+[rank1]:     return self.conditional_model(
+[rank1]:            ~~~~~~~~~~~~~~~~~~~~~~^
+[rank1]:         x,
+[rank1]:         ^^
+[rank1]:     ...<5 lines>...
+[rank1]:         ),
+[rank1]:         ^^
+[rank1]:     )
+[rank1]:     ^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/sfnonet.py", line 843, in forward
+[rank1]:     x = self._forward_features(x, context)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/sfnonet.py", line 794, in _forward_features
+[rank1]:     x = checkpoint(blk, x, context, use_reentrant=False)
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_compile.py", line 54, in inner
+[rank1]:     return disable_fn(*args, **kwargs)
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/_dynamo/eval_frame.py", line 1181, in _fn
+[rank1]:     return fn(*args, **kwargs)
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/utils/checkpoint.py", line 512, in checkpoint
+[rank1]:     ret = function(*args, **kwargs)
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/sfnonet.py", line 427, in forward
+[rank1]:     self.norm1(
+[rank1]:     ~~~~~~~~~~^
+[rank1]:         x[..., : self.output_shape_loc[0], : self.output_shape_loc[1]],
+[rank1]:         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[rank1]:         context_embedding,
+[rank1]:         ^^^^^^^^^^^^^^^^^^
+[rank1]:         timer=norm1_timer,
+[rank1]:         ^^^^^^^^^^^^^^^^^^
+[rank1]:     )
+[rank1]:     ^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/layers.py", line 317, in forward
+[rank1]:     x_norm: torch.Tensor = self.norm(x)
+[rank1]:                            ~~~~~~~~~^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1776, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:            ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+[rank1]:   File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1787, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/pscratch/sd/m/mahf708/hr-bench-snap/efeeecd26-dirty192336/fme/core/models/conditional_sfno/layers.py", line 139, in forward
+[rank1]:     y = y * self.weight.view(*shape) + self.bias.view(*shape)
+[rank1]:         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~
+[rank1]: torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.48 GiB. GPU 1 has a total capacity of 39.49 GiB of which 950.25 MiB is free. Including non-PyTorch memory, this process has 38.50 GiB memory in use. Of the allocated memory 36.43 GiB is allocated by PyTorch, and 66.63 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+W1020 20:45:01.705000 705256 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 705301 closing signal SIGTERM
+W1020 20:45:01.707000 705256 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 705302 closing signal SIGTERM
+W1020 20:45:01.708000 705256 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 705303 closing signal SIGTERM
+E1020 20:45:05.829000 705256 torch/distributed/elastic/multiprocessing/api.py:984] failed (exitcode: 1) local_rank: 3 (pid: 705304) of binary: /pscratch/sd/m/mahf708/ace/.venv/bin/python3
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+    ~~~^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 317, in launch_agent
+    raise ChildFailedError(
+    ...<2 lines>...
+    )
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+fme.ace.train FAILED
+------------------------------------------------------------
+Failures:
+[1]:
+  time      : 2026-10-20_20:45:05
+  host      : nid001908-hsn0
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 705301)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[2]:
+  time      : 2026-10-20_20:45:05
+  host      : nid001908-hsn0
+  rank      : 1 (local_rank: 1)
+  exitcode  : 1 (pid: 705302)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[3]:
+  time      : 2026-10-20_20:45:05
+  host      : nid001908-hsn0
+  rank      : 2 (local_rank: 2)
+  exitcode  : 1 (pid: 705303)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-10-20_20:45:01
+  host      : nid001908-hsn0
+  rank      : 3 (local_rank: 3)
+  exitcode  : 1 (pid: 705304)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
+srun: error: nid001908: task 0: Exited with exit code 1
+srun: Terminating StepId=60063553.11

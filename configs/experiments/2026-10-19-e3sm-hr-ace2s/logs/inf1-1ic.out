@@ -151,3 +151,54 @@ Could not import pad from earth2grid.healpix.
 2026-10-20 20:28:35,657 - root - INFO - Saving lowest validation loss checkpoint to /pscratch/sd/m/mahf708/hr-runs/inf1-1ic/training_checkpoints/best_ckpt.tar
 2026-10-20 20:28:52,503 - root - INFO - Saving latest checkpoint model trained for 1 complete epochs and 0 additional batches, or 30 total batches, with best_validation_loss 2.974280834197998 and best_inference_error 0.4778766152262688
 2026-10-20 20:29:49,667 - root - INFO - Saving EMA epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/inf1-1ic/training_checkpoints/ema_ckpt_0001.tar
+2026-10-20 20:30:08,940 - root - INFO - Saving epoch checkpoint to /pscratch/sd/m/mahf708/hr-runs/inf1-1ic/training_checkpoints/ckpt_0001.tar
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+Received SIGTERM, aborting distributed communicators before exiting.
+W1020 20:30:44.145000 731691 torch/distributed/elastic/agent/server/api.py:739] Received 15 death signal, shutting down workers
+W1020 20:30:44.150000 731691 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 731737 closing signal SIGTERM
+W1020 20:30:44.151000 731691 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 731738 closing signal SIGTERM
+W1020 20:30:44.152000 731691 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 731739 closing signal SIGTERM
+W1020 20:30:44.152000 731691 torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 731740 closing signal SIGTERM
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Main thread has not parked 5.0s after the signal; aborting without it.
+Exiting with code 143.
+Exiting with code 143.
+Exiting with code 143.
+Traceback (most recent call last):
+  File "/pscratch/sd/m/mahf708/ace/.venv/bin/torchrun", line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+    ~~~^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/launcher/api.py", line 308, in launch_agent
+    result = agent.run()
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/metrics/api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 731, in run
+    result = self._invoke_run(role)
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/agent/server/api.py", line 908, in _invoke_run
+    time.sleep(monitor_interval)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/pscratch/sd/m/mahf708/ace/.venv/lib/python3.13/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 731691 got signal: 15
+srun: error: nid002905: task 0: Exited with exit code 1
+srun: Terminating StepId=60063766.42
