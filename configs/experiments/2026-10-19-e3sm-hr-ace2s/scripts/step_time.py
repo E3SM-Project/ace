@@ -1,6 +1,6 @@
 """Median s/step (5-step intervals after step 15) and allocator peak of a run.
 
-    python scripts/step_time.py RUN [RUN ...]
+Usage: python scripts/step_time.py RUN [RUN ...]
 """
 
 import datetime
@@ -24,7 +24,8 @@ for run in sys.argv[1:]:
         if s1 >= 15 and s2 > s1
     ]
     peak = 0.0
-    for f in glob.glob(os.path.join(os.environ["PSCRATCH"], "hr-memlog", run, "rank*.txt")):
+    memlogs = os.path.join(os.environ["PSCRATCH"], "hr-memlog", run, "rank*.txt")
+    for f in glob.glob(memlogs):
         for line in open(f):
             peak = max(peak, float(line.split()[3]))
     step = f"{statistics.median(d):.2f} s/step (n={len(d)})" if d else "no steps"
