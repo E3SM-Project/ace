@@ -189,6 +189,17 @@ def reset_global_timer():
 
 
 @pytest.fixture(autouse=True)
+def reset_wandb():
+    # entrypoints configure the process-wide singleton (e.g. disabling it),
+    # which would otherwise leak into later tests, such as turning images off
+    import fme.core.wandb
+
+    fme.core.wandb.singleton = None
+    yield
+    fme.core.wandb.singleton = None
+
+
+@pytest.fixture(autouse=True)
 def reset_post_abort_callbacks():
     # the registry is process-global and nothing clears it between tests:
     # without this, every Trainer built by an earlier test would still have
