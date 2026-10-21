@@ -275,7 +275,9 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
             modes the spectral filters keep (lmax = nlat * fraction). The
             per-mode weights scale with lmax, so at 0.25 deg (lmax 720) 0.5
             halves the spectral parameters; the grid itself, and every
-            pointwise layer, stay at full resolution.
+            pointwise layer, stay at full resolution. It also band-limits
+            isotropic noise (noise_type='isotropic'), which is drawn through
+            the same inverse transform: the noise has no degrees l >= lmax.
         shard_spatial_parameters: Under spatial parallelism
             (``FME_DISTRIBUTED_BACKEND=model``), store on each rank only the
             parameter slices it uses, instead of a full replica: its range of
