@@ -115,3 +115,27 @@ def test_noise_conditioned_sfno_hard_thresholding_fraction(fraction: float):
 def test_noise_conditioned_sfno_hard_thresholding_fraction_validated():
     with pytest.raises(ValueError, match="hard_thresholding_fraction"):
         NoiseConditionedSFNOBuilder(hard_thresholding_fraction=0.0)
+
+
+def test_noise_conditioned_sfno_tf32_channel_mixing_matches_fp32():
+    img_shape = (16, 32)
+    models = []
+    for tf32 in (False, True):
+        builder = NoiseConditionedSFNOBuilder(
+            embed_dim=8, noise_embed_dim=4, num_layers=2, tf32_channel_mixing=tf32
+        )
+        models.append(builder.build(3, 2, DatasetInfo(img_shape=img_shape)))
+    models[1].load_state_dict(models[0].state_dict())
+    x = torch.randn(2, 3, *img_shape)
+    outputs = []
+    for model in models:
+        torch.manual_seed(0)  # same noise draw
+        outputs.append(model(x))
+    torch.testing.assert_close(outputs[1], outputs[0])
+
+
+def test_noise_conditioned_sfno_tf32_channel_mixing_requires_linear_filter():
+    with pytest.raises(ValueError, match="tf32_channel_mixing"):
+        NoiseConditionedSFNOBuilder(
+            filter_type="makani-linear", tf32_channel_mixing=True
+        )

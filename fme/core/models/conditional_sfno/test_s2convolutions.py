@@ -7,7 +7,7 @@ from fme.core.device import get_device
 from fme.core.gridded_ops import LatLonOperations
 from fme.core.models.conditional_sfno.s2convolutions import SpectralConvS2
 
-from .s2convolutions import _contract_dhconv
+from .s2convolutions import _contract_dhconv, _contract_dhconv_tf32, _tf32_matmul
 
 
 @dataclasses.dataclass
@@ -277,3 +277,75 @@ def test_spectral_conv_s2_lora():
     # initial outputs should be identical since LoRA starts at 0
     assert torch.allclose(y1, y2, atol=1e-6)
     assert torch.allclose(residual1, residual2, atol=1e-6)
+
+
+def _matmul_tf32_state():
+    matmul = torch.backends.cuda.matmul
+    if hasattr(matmul, "fp32_precision"):
+        return matmul.fp32_precision
+    return matmul.allow_tf32
+
+
+@pytest.mark.parametrize("groups, batch", [(1, 2), (2, 1)])
+def test_contract_dhconv_tf32_matches_complex_einsum(groups: int, batch: int):
+    torch.manual_seed(0)
+    n_in, n_out, n_lat, n_lon = 3, 5, 4, 6
+    x = torch.randn(batch, groups, n_in, n_lat, n_lon, dtype=torch.complex128)
+    weight = torch.randn(groups, n_lat, n_out, n_in, 2, dtype=torch.float64)
+    outputs, grads = [], []
+    for contract in (_contract_dhconv, _contract_dhconv_tf32):
+        x_ = x.clone().requires_grad_()
+        weight_ = weight.clone().requires_grad_()
+        out = contract(x_, weight_)
+        # a real loss that depends on both the real and imaginary parts
+        (out.real.square() + 3 * out.imag).sum().backward()
+        outputs.append(out)
+        grads.append((x_.grad, weight_.grad))
+    torch.testing.assert_close(outputs[1], outputs[0])
+    torch.testing.assert_close(grads[1][0], grads[0][0])
+    torch.testing.assert_close(grads[1][1], grads[0][1])
+
+
+def test_tf32_matmul_enables_and_restores():
+    before = _matmul_tf32_state()
+    with _tf32_matmul():
+        assert _matmul_tf32_state() in ("tf32", True)
+    assert _matmul_tf32_state() == before
+    with pytest.raises(RuntimeError):
+        with _tf32_matmul():
+            raise RuntimeError()
+    assert _matmul_tf32_state() == before
+
+
+def test_contract_dhconv_tf32_runs_both_passes_on_tf32(monkeypatch):
+    states = []
+    bmm = torch.bmm
+
+    def recording_bmm(*args, **kwargs):
+        states.append(_matmul_tf32_state())
+        return bmm(*args, **kwargs)
+
+    before = _matmul_tf32_state()
+    monkeypatch.setattr(torch, "bmm", recording_bmm)
+    x = torch.randn(2, 1, 3, 4, 5, dtype=torch.complex64, requires_grad=True)
+    weight = torch.randn(1, 4, 3, 3, 2, requires_grad=True)
+    _contract_dhconv_tf32(x, weight).abs().sum().backward()
+    assert len(states) == 3  # forward, input grad, weight grad
+    assert all(state in ("tf32", True) for state in states)
+    assert _matmul_tf32_state() == before
+
+
+def test_spectral_conv_s2_tf32_channel_mixing_matches_fp32():
+    torch.manual_seed(0)
+    reference = _make_conv(8, bias=True, num_groups=2)
+    tf32 = _make_conv(8, bias=True, num_groups=2, tf32_channel_mixing=True)
+    tf32.load_state_dict(reference.state_dict())
+    x = torch.randn(2, 8, 12, 24)
+    results = []
+    for conv in (reference, tf32):
+        x_ = x.clone().requires_grad_()
+        y, _ = conv(x_)
+        y.square().sum().backward()
+        results.append((y, x_.grad, conv.weight.grad))
+    for actual, expected in zip(results[1], results[0]):
+        torch.testing.assert_close(actual, expected)

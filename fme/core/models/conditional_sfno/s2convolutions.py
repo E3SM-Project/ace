@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import math
 import torch
 import torch.nn as nn
@@ -136,6 +137,89 @@ def _contract_dhconv(
     return torch.einsum("bgixy,gxoi->bgoxy", xc, wc)
 
 
+_HAS_FP32_PRECISION = hasattr(torch.backends.cuda.matmul, "fp32_precision")
+
+
+@contextlib.contextmanager
+def _tf32_matmul():
+    """Let fp32 cuBLAS matmuls use TF32 tensor cores, then restore the setting."""
+    matmul = torch.backends.cuda.matmul
+    # torch >= 2.9 raises on reads of allow_tf32 once both APIs have been used
+    name, value = (
+        ("fp32_precision", "tf32") if _HAS_FP32_PRECISION else ("allow_tf32", True)
+    )
+    previous = getattr(matmul, name)
+    setattr(matmul, name, value)
+    try:
+        yield
+    finally:
+        setattr(matmul, name, previous)
+
+
+def _complex_block(weight: torch.Tensor) -> torch.Tensor:
+    """(N, O, I, 2) real/imag weight -> (N, 2O, 2I) real [[Wr, -Wi], [Wi, Wr]]."""
+    wr, wi = weight[..., 0], weight[..., 1]
+    return torch.cat(
+        [torch.cat([wr, -wi], dim=-1), torch.cat([wi, wr], dim=-1)], dim=-2
+    )
+
+
+def _complex_block_grad(grad_block: torch.Tensor) -> torch.Tensor:
+    """Adjoint of ``_complex_block``: (N, 2O, 2I) -> (N, O, I, 2)."""
+    o = grad_block.shape[-2] // 2
+    i = grad_block.shape[-1] // 2
+    top_left, top_right = grad_block[..., :o, :i], grad_block[..., :o, i:]
+    bottom_left, bottom_right = grad_block[..., o:, :i], grad_block[..., o:, i:]
+    return torch.stack([top_left + bottom_right, bottom_left - top_right], dim=-1)
+
+
+class _TF32ComplexBmm(torch.autograd.Function):
+    """Batched complex matmul as one real bmm with the block weight, on TF32.
+
+    The weight is stored as (N, O, I, 2) and expanded to its block form in both
+    passes, so only the parameter view is saved for backward.
+    """
+
+    @staticmethod
+    @torch.amp.custom_fwd(device_type="cuda", cast_inputs=torch.float32)
+    def forward(ctx, weight: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+        # weight: (N, O, I, 2); x: (N, 2I, K), real parts stacked over imaginary
+        ctx.save_for_backward(weight, x)
+        with _tf32_matmul():
+            return torch.bmm(_complex_block(weight), x)
+
+    @staticmethod
+    @torch.amp.custom_bwd(device_type="cuda")
+    def backward(ctx, grad: torch.Tensor):
+        weight, x = ctx.saved_tensors
+        grad_weight = grad_x = None
+        with _tf32_matmul():
+            if ctx.needs_input_grad[0]:
+                grad_weight = _complex_block_grad(torch.bmm(grad, x.transpose(1, 2)))
+            if ctx.needs_input_grad[1]:
+                grad_x = torch.bmm(_complex_block(weight).transpose(1, 2), grad)
+        return grad_weight, grad_x
+
+
+def _contract_dhconv_tf32(xc: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:
+    """``_contract_dhconv`` with the channel contraction on TF32 tensor cores.
+
+    Args:
+        xc: Complex input tensor of shape (batch_size, group, in_channels, nlat, nlon)
+        weight: Weight tensor of shape (group, nlat, out_channels, in_channels, 2)
+
+    Returns:
+        Complex output tensor of shape (batch_size, group, out_channels, nlat, nlon)
+    """
+    b, g, i, l, m = xc.shape
+    o = weight.shape[2]
+    # (b, g, i, l, m, 2) -> (g * l, [re; im] x i, b * m)
+    x = torch.view_as_real(xc).permute(1, 3, 5, 2, 0, 4).reshape(g * l, 2 * i, b * m)
+    out = _TF32ComplexBmm.apply(weight.reshape(g * l, o, i, 2), x)
+    out = out.view(g, l, 2, o, b, m).permute(4, 0, 3, 1, 5, 2)
+    return torch.view_as_complex(out.contiguous())
+
+
 class SpectralConvS2(nn.Module):
     """
     Spectral Convolution according to Driscoll & Healy. Designed for convolutions on
@@ -150,6 +234,12 @@ class SpectralConvS2(nn.Module):
     ``spectral_ratio < 1`` the l=0 instead passes through the shared channel
     projections (pre_proj/post_proj), so the mean is no longer held fixed --
     but that is a fixed channel mix, not per-mode l=0 reasoning.
+
+    ``tf32_channel_mixing`` runs the per-mode channel mixing (the complex
+    matmul over channels at each (l, m)) as a real matmul on TF32 tensor
+    cores. Its rounding error is relative to each mode, as for the TF32 1x1
+    convolutions. The spherical harmonic transforms stay in fp32: TF32
+    rounding there is white noise that buries the weak small scales.
     """
 
     def __init__(
@@ -166,6 +256,7 @@ class SpectralConvS2(nn.Module):
         preserve_global_mean: bool = False,
         spectral_ratio: float = 1.0,
         shard_spatial_parameters: bool = False,
+        tf32_channel_mixing: bool = False,
     ):  # pragma: no cover
         super(SpectralConvS2, self).__init__()
 
@@ -207,6 +298,7 @@ class SpectralConvS2(nn.Module):
         self.modes_lat_local = l_stop - l_start
         self._l_slice = l_slice
         self._preserve_global_mean = preserve_global_mean
+        self._tf32_channel_mixing = tf32_channel_mixing
         self._has_global_mean = l_start == 0
 
         # When spectral_ratio < 1, the SHT and per-mode complex weight operate
@@ -423,7 +515,10 @@ class SpectralConvS2(nn.Module):
                 )
 
         with timer.child("dhconv"):
-            xp = _contract_dhconv(x_modes, weight_local)
+            if self._tf32_channel_mixing:
+                xp = _contract_dhconv_tf32(x_modes, weight_local)
+            else:
+                xp = _contract_dhconv(x_modes, weight_local)
             if xp.shape != x.shape:
                 # the transform keeps more modes than the weights: zero the rest
                 xp_full = torch.zeros_like(x)

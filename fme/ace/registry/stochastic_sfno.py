@@ -286,6 +286,12 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
             unsharded model. No effect without spatial parallelism. Not
             supported with ``enable_automatic_mixed_precision`` or
             ``lr_tuning``.
+        tf32_channel_mixing: Run the spectral filters' per-mode channel
+            mixing (a complex matmul over channels at each (l, m)) on TF32
+            tensor cores instead of fp32. Its rounding is relative to each
+            mode, like the TF32 1x1 convolutions. The spherical harmonic
+            transforms stay in fp32, where TF32 rounding would bury the weak
+            small scales. Only for filter_type='linear'; no effect on CPU.
     """
 
     filter_type: Literal["linear", "makani-linear"] = "linear"
@@ -321,6 +327,7 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
     clip_latent_global_means: bool = False
     hard_thresholding_fraction: float = 1.0
     shard_spatial_parameters: bool = False
+    tf32_channel_mixing: bool = False
 
     @classmethod
     def remove_deprecated_keys(cls, state: Mapping[str, Any]) -> dict[str, Any]:
@@ -353,6 +360,8 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
                 "hard_thresholding_fraction must be in (0, 1], got "
                 f"{self.hard_thresholding_fraction}"
             )
+        if self.tf32_channel_mixing and self.filter_type != "linear":
+            raise ValueError("tf32_channel_mixing requires filter_type='linear'")
         if self.context_pos_embed_dim > 0 and self.pos_embed:
             raise ValueError(
                 "context_pos_embed_dim and pos_embed should not both be set"
@@ -413,6 +422,7 @@ class NoiseConditionedSFNOBuilder(ModuleConfig):
             clip_latent_global_means=self.clip_latent_global_means,
             hard_thresholding_fraction=self.hard_thresholding_fraction,
             shard_spatial_parameters=self.shard_spatial_parameters,
+            tf32_channel_mixing=self.tf32_channel_mixing,
         )
         sfno_net = get_lat_lon_sfnonet(
             params=sfno_config,

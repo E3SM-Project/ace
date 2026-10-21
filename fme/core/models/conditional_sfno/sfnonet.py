@@ -112,6 +112,10 @@ class SFNONetConfig:
             positional embedding (its tile) that the rank uses, instead of a
             full copy. Checkpoints keep the full tensors. No effect without
             spatial parallelism. See ``fme.core.distributed.parameter_sharding``.
+        tf32_channel_mixing: Run the linear spectral filters' per-mode channel
+            mixing (a complex matmul over channels at each (l, m)) on TF32
+            tensor cores. The spherical harmonic transforms stay in fp32. Only
+            filter_type='linear' supports it; no effect on CPU.
     """
 
     embed_dim: int = 256
@@ -143,8 +147,13 @@ class SFNONetConfig:
     spectral_ratio: float = 1.0
     clip_latent_global_means: bool = False
     shard_spatial_parameters: bool = False
+    tf32_channel_mixing: bool = False
 
     def __post_init__(self):
+        if self.tf32_channel_mixing and self.filter_type != "linear":
+            raise NotImplementedError(
+                "tf32_channel_mixing is only supported for filter_type='linear'."
+            )
         validate_spectral_ratio(
             self.spectral_ratio,
             self.embed_dim,
@@ -198,6 +207,7 @@ class SpectralFilterLayer(nn.Module):
         preserve_global_mean: bool = False,
         spectral_ratio: float = 1.0,
         shard_spatial_parameters: bool = False,
+        tf32_channel_mixing: bool = False,
     ):
         super(SpectralFilterLayer, self).__init__()
 
@@ -232,6 +242,7 @@ class SpectralFilterLayer(nn.Module):
                 preserve_global_mean=preserve_global_mean,
                 spectral_ratio=spectral_ratio,
                 shard_spatial_parameters=shard_spatial_parameters,
+                tf32_channel_mixing=tf32_channel_mixing,
             )
         elif filter_type == "makani-linear":
             self.filter = SpectralConv(
@@ -304,6 +315,7 @@ class FourierNeuralOperatorBlock(nn.Module):
         filter_preserves_global_mean: bool = False,
         spectral_ratio: float = 1.0,
         shard_spatial_parameters: bool = False,
+        tf32_channel_mixing: bool = False,
     ):
         super(FourierNeuralOperatorBlock, self).__init__()
 
@@ -332,6 +344,7 @@ class FourierNeuralOperatorBlock(nn.Module):
             preserve_global_mean=filter_preserves_global_mean,
             spectral_ratio=spectral_ratio,
             shard_spatial_parameters=shard_spatial_parameters,
+            tf32_channel_mixing=tf32_channel_mixing,
         )
 
         if inner_skip == "linear":
@@ -682,6 +695,7 @@ class SphericalFourierNeuralOperatorNet(torch.nn.Module):
                 filter_preserves_global_mean=self.filter_preserves_global_mean,
                 spectral_ratio=self.spectral_ratio,
                 shard_spatial_parameters=params.shard_spatial_parameters,
+                tf32_channel_mixing=params.tf32_channel_mixing,
             )
 
             self.blocks.append(block)
