@@ -53,8 +53,26 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
 <header style="display:grid;gap:6px">
   <span class="eyebrow">e3sm/exps/hr-2026.10.0 &middot; v3.HR.F2010.aigo.PD.y1 &middot; 720&times;1440 Gaussian &middot; atmosphere only</span>
   <h1>HR ACE2S Bring-up</h1>
-  <p class="mono" style="color:var(--muted);font-size:.85rem">Updated {{updated}} &middot; allocations 60022811 + 60023253 (10-19) and 60032495 (10-20)</p>
+  <p class="mono" style="color:var(--muted);font-size:.85rem">Updated {{updated}} &middot; allocations 60022811 + 60023253 (10-19), 60032495 + 60048637 (10-20), 60063553 + 60063766 (10-21)</p>
 </header>
+
+<section class="answer">
+  <span class="eyebrow">Scaling and cost on real 40&nbsp;GB nodes (2026-10-21)</span>
+  <p><b>A memory bug made the production config OOM on 40&nbsp;GB, and it is fixed.</b> The config&rsquo;s 8 inline-inference initial conditions kept their whole first inference window on the GPU for the entire run, ~1.15&nbsp;GiB per IC. <code>BatchData.get_start</code>/<code>get_end</code> returned views of the loaded batch, so the stored initial condition kept the full batch alive. On 1&ndash;2 nodes the first training step OOMed, and 2 ICs per replica OOMed in inference. Earlier &ldquo;fits&rdquo; had at most 2 ICs per replica and mostly an allocator cap on every rank. Commit <code>e035d4cbf</code> copies the slice instead, with a test. After it, training peaks at 35.6&nbsp;GiB allocated at 1, 2 and 4 nodes, and a full 4-node epoch cycle completes. The margin is ~1.4&nbsp;GiB, since CUDA and NCCL take ~2.5&nbsp;GB outside PyTorch.</p>
+  <p><b>Data parallelism is free to 4 nodes:</b> 5.00&nbsp;s/step at 1, 2 and 4 nodes (0.200 samples/s per replica). 8+ nodes are extrapolated: one run cannot span two Slurm allocations, because Slingshot isolates each job (<code>VNI_NOT_FOUND</code>).</p>
+  <table>
+    <thead><tr><th>per 13-year epoch</th><th>4 nodes</th><th>8 nodes</th><th>16 nodes</th></tr></thead>
+    <tbody>
+      <tr><td>training (26.2&nbsp;h / N)</td><td>6.55&nbsp;h</td><td>3.27&nbsp;h</td><td>1.64&nbsp;h</td></tr>
+      <tr><td>periodic checkpoints (+3%)</td><td>12&nbsp;min</td><td>6</td><td>3</td></tr>
+      <tr><td>validation, 1 year daily</td><td>3.9&nbsp;min</td><td>1.9</td><td>1.0</td></tr>
+      <tr><td>epoch-end checkpoints (88&nbsp;GB)</td><td>2.5&nbsp;min</td><td>2.5</td><td>2.5</td></tr>
+      <tr><td>inline inference, every 2nd epoch</td><td>7&nbsp;min</td><td>4.3</td><td>4.3</td></tr>
+      <tr><td><b>20 epochs</b></td><td><b>~139&nbsp;h</b></td><td><b>~70&nbsp;h</b></td><td><b>~36&nbsp;h</b></td></tr>
+    </tbody>
+  </table>
+  <p>Node-hours are 560&ndash;580 per 20-epoch run at any node count. Constraints: <code>batch_size</code> = N (one sample per replica fits), so the global batch changes with N; and the 8 ICs need N = 4 or 8 (at most 2 per replica). 16 nodes needs 16 ICs.</p>
+</section>
 
 <section class="answer">
   <span class="eyebrow">Production readiness (2026-10-20, allocation 60048637)</span>
@@ -192,9 +210,10 @@ ul, ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 74c
 <section>
   <h2>Open issues</h2>
   <ul>
-    <li><b>Production is not submitted.</b> <code>scripts/sbatch-train-hr.sh</code> is ready (8 nodes, 48&nbsp;h, self-requeue) but has only passed <code>sbatch --test-only</code>. The choice of 0.5 modes is set in the config and is yours to confirm.</li>
+    <li><b>Production is not submitted.</b> <code>scripts/sbatch-train-hr.sh</code> passed a real requeue test in the debug queue. The config still defaults to 0.5 modes; full harmonics, validated on 40&nbsp;GB, is an <code>EXTRA</code> override. Both are yours to confirm.</li>
     <li><b>No restart checkpoint on SIGTERM under spatial parallelism.</b> A walltime requeue resumes from the last <code>checkpoint_every_n_batches</code> save, so set that interval to fit the walltime.</li>
-    <li><b>Writers and map aggregators</b> have no spatial gather and may save only the root tile. The power spectrum is skipped under spatial parallelism.</li>
+    <li><b>Inline-inference summaries take ~4&nbsp;min</b> at 0.25&deg; (time-mean maps etc.), as long as the 360-step rollout with 1 IC.</li>
+    <li><b>Stochastic rollouts depend on the replica count:</b> each replica draws its own noise. Tiling is bitwise invariant. This doesn&rsquo;t matter for training.</li>
     <li><b>Slow SHT setup.</b> The Legendre precompute takes about 40&nbsp;s per model build at lmax&nbsp;720 on one CPU thread, and much longer on a busy node. It runs on every start and requeue.</li>
   </ul>
 </section>

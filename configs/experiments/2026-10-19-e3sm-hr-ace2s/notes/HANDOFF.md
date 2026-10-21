@@ -1,7 +1,7 @@
 # Handoff: HR ACE2S bring-up (2026-10-19 evening)
 
-Branch `e3sm/exps/hr-2026.10.0` (worktree `/pscratch/sd/m/mahf708/ace-hr`), not
-pushed. Status page: https://claude.ai/artifact/Bc2uTxmhi7Ct1VqXcNnb9u (built
+Branch `e3sm/exps/hr-2026.10.0` (worktree `/pscratch/sd/m/mahf708/ace-hr`), pushed to E3SM-Project/ace.
+Status page: https://claude.ai/artifact/Bc2uTxmhi7Ct1VqXcNnb9u (built
 from `report/narrative.html` by `scripts/build_report.py`).
 
 ## Current state (2026-10-21) -- read this first
