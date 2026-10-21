@@ -128,8 +128,7 @@ class ChannelLayerNorm(nn.Module):
             )
 
         # Compute per-pixel mean/var across channels without transposing
-        mean = x.mean(dim=-3, keepdim=True)
-        var = x.var(dim=-3, keepdim=True, unbiased=False)
+        var, mean = torch.var_mean(x, dim=-3, keepdim=True, correction=0)
         inv_std = torch.rsqrt(var + self.eps)
         y = (x - mean) * inv_std
 

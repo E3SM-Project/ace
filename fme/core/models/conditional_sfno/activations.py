@@ -61,10 +61,7 @@ class ComplexReLU(nn.Module):
             out = torch.where(condition, z, self.negative_slope * z)
 
         elif self.mode == "real":
-            zr = torch.view_as_real(z)
-            outr = zr.clone()
-            outr[..., 0] = self.act(zr[..., 0])
-            out = torch.view_as_complex(outr)
+            out = torch.complex(self.act(z.real), z.imag)
 
         else:
             raise NotImplementedError
