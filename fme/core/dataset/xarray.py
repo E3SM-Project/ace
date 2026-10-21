@@ -34,6 +34,7 @@ from fme.core.spatial_mask_provider import SpatialMaskProvider
 from fme.core.stacker import Stacker
 from fme.core.typing_ import Slice, TensorDict
 
+from .cdf5 import get_xarray_engine
 from .data_typing import VariableMetadata
 from .dataset import DatasetABC, DatasetItem
 from .utils import (
@@ -375,6 +376,8 @@ def _open_xr_dataset(path: str, *args, mask_and_scale: bool = False, **kwargs):
     protocol_kw = _get_fs_protocol_kwargs(path)
     if protocol_kw:
         kwargs.update({"storage_options": protocol_kw})
+    if "engine" in kwargs:
+        kwargs["engine"] = get_xarray_engine(kwargs["engine"])
 
     return xr.open_dataset(
         path,
@@ -535,7 +538,11 @@ class XarrayDataConfig(DatasetConfigABC):
         n_repeats: Number of times to repeat the dataset (in time). It is up
             to the user to ensure that the input dataset to repeat results in
             data that is reasonably continuous across repetitions.
-        engine: Backend used in xarray.open_dataset call.
+        engine: Backend used in xarray.open_dataset call. "cdf5" reads local
+            netCDF classic files (CDF-5, also CDF-1/CDF-2) with one large
+            pread per record of each variable, and is much faster than
+            "netcdf4" on such files on parallel filesystems; it returns the
+            same data and attributes. It does not read netCDF-4/HDF5 files.
         spatial_dimensions: Specifies the spatial dimensions for the grid, default
             is lat/lon. If 'latlon', it is assumed that the last two dimensions are
             latitude and longitude, respectively. If 'healpix', it is assumed that the
@@ -611,7 +618,7 @@ class XarrayDataConfig(DatasetConfigABC):
     data_path: str
     file_pattern: str = "*.nc"
     n_repeats: int = 1
-    engine: Literal["netcdf4", "zarr"] = "netcdf4"
+    engine: Literal["netcdf4", "zarr", "cdf5"] = "netcdf4"
     spatial_dimensions: Literal["healpix", "latlon"] = "latlon"
     subset: Slice | TimeSlice | RepeatedInterval = dataclasses.field(
         default_factory=Slice
@@ -701,6 +708,12 @@ class XarrayDataConfig(DatasetConfigABC):
                 "variables read from disk, before combine builds its targets, "
                 "so these entries would silently do nothing. Apply the scaling "
                 "to the combine sources instead."
+            )
+        if self.engine == "cdf5" and _get_protocol(self.data_path):
+            raise ValueError(
+                "XarrayDataConfig.engine='cdf5' reads local files only, but "
+                f"data_path '{self.data_path}' has a protocol. Use "
+                "engine='netcdf4' for remote files."
             )
         if self.engine == "zarr" and self.mask_and_scale:
             raise ValueError(
@@ -798,7 +811,7 @@ class XarrayDataset(DatasetABC):
                 self.full_paths[0],
                 decode_times=False,
                 decode_timedelta=False,
-                engine=self.engine,
+                engine=get_xarray_engine(self.engine),
                 chunks=None,
                 mask_and_scale=self.mask_and_scale,
             )
