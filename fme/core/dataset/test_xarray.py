@@ -1822,9 +1822,7 @@ def test_cdf5_engine_samples_match_netcdf4_engine(
 @pytest.mark.parametrize(
     "engine, nc_format", [("netcdf4", "NETCDF4"), ("cdf5", "NETCDF3_64BIT_DATA")]
 )
-def test_sample_within_one_file_is_a_fresh_tensor(
-    tmp_path_factory, engine, nc_format
-):
+def test_sample_within_one_file_is_a_fresh_tensor(tmp_path_factory, engine, nc_format):
     """A sample is safe to modify in place (as SST perturbations do): it
     shares memory with nothing that a later read returns."""
     mock_data = get_mock_monthly_netcdfs(
